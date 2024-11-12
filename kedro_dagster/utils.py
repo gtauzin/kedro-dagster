@@ -1,7 +1,7 @@
 """Utility functions."""
 
 from pathlib import Path
-from typing import Union
+from typing import Any, Union
 
 
 from jinja2 import Environment, FileSystemLoader
@@ -11,7 +11,6 @@ from kedro.config import MissingConfigException
 from kedro.framework.context import KedroContext
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
-
 
 
 def kedro_init(

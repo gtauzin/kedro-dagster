@@ -18,7 +18,6 @@ dependencies = [
     "kedro-datasets",
     "dagster>=1.9,<2.0",
 ]
-dynamic = ["readme", "version"]
 
 [dependency-groups]
 dev = [
@@ -50,7 +49,7 @@ test = [
 ]
 
 [project.entry-points."kedro.project_commands"]
-dagster = "kedro_dagster.plugin:commands"
+dagster = "kedro_dagster.cli:commands"
 
 [tool.pdm.version]
 source = "scm"

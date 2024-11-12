@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Any
 from logging import getLogger
 from pathlib import Path
 
 import click
 from kedro.framework.project import settings
-from kedro.framework.startup import bootstrap_project, _find_kedro_project
+from kedro.framework.startup import bootstrap_project
+from kedro.utils import _find_kedro_project
 
 from kedro_dagster.utils import write_jinja_template
 
 
 LOGGER = getLogger(__name__)
-TEMPLATE_FOLDER_PATH = Path(__file__).parent.parent.parent / "templates"
+TEMPLATE_FOLDER_PATH = Path(__file__).parent / "templates"
 
 
 @click.group(name="Kedro-Dagster")
