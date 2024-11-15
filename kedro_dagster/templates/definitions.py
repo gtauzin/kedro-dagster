@@ -1,21 +1,20 @@
 """Dagster definitions."""
 
-from dagster import Definitions, InMemoryIOManager
+from dagster import Definitions, fs_io_manager
 
 from kedro_dagster import (
-    load_assets_from_kedro_nodes,
-    load_io_managers_from_kedro_datasets,
+    translate_kedro,
 )
 
-kedro_assets = load_assets_from_kedro_nodes()
-kedro_io_managers = load_io_managers_from_kedro_datasets()
+kedro_assets, kedro_io_managers, kedro_jobs = translate_kedro()
 
 # The "io_manager" key handles how Kedro MemoryDatasets are handled by Dagster
 kedro_io_managers |= {
-    "io_manager": InMemoryIOManager()
+    "io_manager": fs_io_manager,
 }
 
 defs = Definitions(
     assets=kedro_assets,
-    resources=kedro_io_managers
+    resources=kedro_io_managers,
+    jobs=kedro_jobs,
 )

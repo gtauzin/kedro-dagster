@@ -3,49 +3,9 @@
 from pathlib import Path
 from typing import Any, Union
 
-
 from jinja2 import Environment, FileSystemLoader
-from dagster import get_dagster_logger
-
 from kedro.config import MissingConfigException
 from kedro.framework.context import KedroContext
-from kedro.framework.session import KedroSession
-from kedro.framework.startup import bootstrap_project
-
-
-def kedro_init(
-    project_path: Path,
-    env: str,
-):
-    """Initialize a Kedro session and returns the DataCatalog and KedroSession.
-
-    Args:
-        pipeline_name (str): The name of the pipeline to initialize.
-        project_path (Path): The path to the Kedro project.
-        env (str): Kedro environment to load the catalog and the parameters from.
-
-    Returns: A tuple containing the config loader, the data catalog, the kedro session
-        ID, and the memory asset names.
-    """
-    logger = get_dagster_logger()
-
-    # bootstrap project within task / flow scope
-    logger.info("Bootstrapping project")
-    bootstrap_project(project_path)
-
-    session = KedroSession.create(
-        project_path=project_path,
-        env=env,
-    )
-
-    logger.info("Session created with ID %s", session.session_id)
-
-    logger.info("Loading context...")
-    context = session.load_context()
-    config_loader = context.config_loader
-    catalog = context.catalog
-
-    return config_loader, catalog, session.session_id
 
 
 def _load_config(context: KedroContext) -> dict[str, Any]:
@@ -84,9 +44,7 @@ def _get_pipeline_config(config_dagster: dict, params: dict, pipeline_name: str)
     return dag_config
 
 
-def render_jinja_template(
-    src: Union[str, Path], is_cookiecutter=False, **kwargs
-) -> str:
+def render_jinja_template(src: Union[str, Path], is_cookiecutter=False, **kwargs) -> str:
     """This functions enable to copy a file and render the
     tags (identified by {{ my_tag }}) with the values provided in kwargs.
 
@@ -118,9 +76,7 @@ def render_jinja_template(
     return parsed_template
 
 
-def write_jinja_template(
-    src: Union[str, Path], dst: Union[str, Path], **kwargs
-) -> None:
+def write_jinja_template(src: Union[str, Path], dst: Union[str, Path], **kwargs) -> None:
     """Write a template file and replace tis jinja's tags
      (identified by {{ my_tag }}) with the values provided in kwargs.
 

@@ -144,3 +144,6 @@ venv.bak/
 .pytest_cache/
 docs/tmp-build-artifacts
 docs/build
+
+# dagster
+tmp**
