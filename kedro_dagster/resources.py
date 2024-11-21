@@ -1,11 +1,33 @@
 from pathlib import PurePosixPath
 
-from dagster import InputContext, IOManager, IOManagerDefinition, OutputContext, get_dagster_logger
+from dagster import Config, ConfigurableIOManager, InputContext, OutputContext, get_dagster_logger
 from kedro.io import DataCatalog, MemoryDataset
-from pydantic import ConfigDict, create_model
+from kedro.pipeline import Pipeline
+from pydantic import ConfigDict
+
+from kedro_dagster.utils import _create_pydantic_model_from_dict
 
 
-def load_io_managers_from_kedro_datasets(catalog: DataCatalog):
+def get_mlflow_resource_from_config(mlflow_config):
+    from dagster_mlflow import mlflow_tracking
+
+    mlflow_resource = mlflow_tracking.configured({
+        "experiment_name": mlflow_config.tracking.experiment.name,
+        "mlflow_tracking_uri": mlflow_config.server.mlflow_tracking_uri,
+        "parent_run_id": None,
+        "env": {
+            # "MLFLOW_S3_ENDPOINT_URL": "my_s3_endpoint",
+            # "AWS_ACCESS_KEY_ID": "my_aws_key_id",
+            # "AWS_SECRET_ACCESS_KEY": "my_secret",
+        },
+        "env_to_tag": [],
+        "extra_tags": {},
+    })
+
+    return {"mlflow": mlflow_resource}
+
+
+def load_io_managers_from_kedro_datasets(default_pipeline: Pipeline, catalog: DataCatalog, hook_manager):
     """
     Get the IO managers for an environment.
 
@@ -19,6 +41,8 @@ def load_io_managers_from_kedro_datasets(catalog: DataCatalog):
 
     logger = get_dagster_logger()
 
+    node_dict = {node.name: node for node in default_pipeline.nodes}
+
     logger.info("Creating IO managers...")
     io_managers = {}
     for dataset_name in catalog.list():
@@ -28,33 +52,66 @@ def load_io_managers_from_kedro_datasets(catalog: DataCatalog):
             if isinstance(dataset, MemoryDataset):
                 continue
 
-            # TODO: Figure out why this does not allow to see the config of the io managers in dagit
-            dataset_config = {
-                key: val if not isinstance(val, PurePosixPath) else str(val) for key, val in dataset._describe().items()
-            }
-            DatasetParameters = create_model(
-                "DatasetParameters",
-                __config__=ConfigDict(arbitrary_types_allowed=True),
-                dataset=(type(dataset), dataset),
-                **{key: (type(val), val) for key, val in dataset_config.items()},
-            )
+            def get_io_manager_definition(dataset, dataset_name):
+                # TODO: Figure out why thisConfigDict does not allow to see the config of the io managers in dagit
+                dataset_config = {
+                    key: val if not isinstance(val, PurePosixPath) else str(val)
+                    for key, val in dataset._describe().items()
+                    if key not in ["version"]
+                }  # | {"dataset": dataset}
 
-            class DatasetIOManager(IOManager, DatasetParameters):
-                f"""IO Manager for kedro dataset `{dataset_name}`."""
-                __name__ = f"{dataset_name}_io_manager"
+                DatasetModel = _create_pydantic_model_from_dict(
+                    dataset_config,
+                    __base__=Config,
+                    __config__=ConfigDict(arbitrary_types_allowed=True),
+                )
 
-                def __call__(self):
-                    return self
+                class ConfiguredDatasetIOManager(DatasetModel, ConfigurableIOManager):
+                    f"""IO Manager for kedro dataset `{dataset_name}`."""
+                    # __name__ = f"{dataset_name}_io_manager"
 
-                def handle_output(self, context: OutputContext, obj):
-                    self.dataset.save(obj)
+                    # def __call__(self):
+                    #     return self
 
-                def load_input(self, context: InputContext):
-                    return self.dataset.load()
+                    def handle_output(self, context: OutputContext, obj):
+                        node = node_dict[context.op_def.name]
+                        hook_manager.hook.before_dataset_saved(
+                            dataset_name=dataset_name,
+                            data=obj,
+                            node=node,
+                        )
 
-            io_managers[f"{dataset_name}_io_manager"] = IOManagerDefinition(
-                DatasetIOManager(dataset=dataset, **dataset_config),
-                description=f"IO Manager for kedro dataset `{dataset_name}`.",
-            )
+                        dataset.save(obj)
+
+                        hook_manager.hook.after_dataset_saved(
+                            dataset_name=dataset_name,
+                            data=obj,
+                            node=node,
+                        )
+
+                    def load_input(self, context: InputContext):
+                        node = node_dict[context.op_def.name]
+                        hook_manager.hook.before_dataset_loaded(
+                            dataset_name=dataset_name,
+                            node=node,
+                        )
+
+                        data = dataset.load()
+
+                        hook_manager.hook.after_dataset_loaded(
+                            dataset_name=dataset_name,
+                            data=data,
+                            node=node,
+                        )
+
+                        return data
+
+                return ConfiguredDatasetIOManager(**dataset_config)
+                # IOManagerDefinition(
+                #     ConfiguredDatasetIOManager(**dataset_config),
+                #     description=f"IO Manager for kedro dataset `{dataset_name}`.",
+                # )
+
+            io_managers[f"{dataset_name}_io_manager"] = get_io_manager_definition(dataset, dataset_name)
 
     return io_managers

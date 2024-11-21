@@ -3,14 +3,17 @@
 from pathlib import Path
 
 from dagster import get_dagster_logger
+from kedro.framework.project import pipelines
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 from kedro.utils import _find_kedro_project
 
 from kedro_dagster.assets import load_assets_from_kedro_nodes
-from kedro_dagster.config import get_dagster_config
+from kedro_dagster.config import get_dagster_config, get_mlflow_config
 from kedro_dagster.jobs import load_jobs_from_kedro_config
-from kedro_dagster.resources import load_io_managers_from_kedro_datasets
+from kedro_dagster.loggers import get_kedro_loggers
+from kedro_dagster.resources import get_mlflow_resource_from_config, load_io_managers_from_kedro_datasets
+from kedro_dagster.utils import _include_mlflow
 
 
 def translate_kedro(
@@ -48,15 +51,22 @@ def translate_kedro(
 
     logger.info("Loading context...")
     context = session.load_context()
-    config_loader = context.config_loader
     catalog = context.catalog
-    catalog_config = config_loader.get("catalog")
     dagster_config = get_dagster_config(context)
+    hook_manager = context._hook_manager
+    default_pipeline = pipelines.get("__default__")
 
-    kedro_assets = load_assets_from_kedro_nodes(catalog, catalog_config, session_id)
-    kedro_io_managers = load_io_managers_from_kedro_datasets(catalog)
+    kedro_resources = {}
+    if _include_mlflow():
+        mlflow_config = get_mlflow_config(context)
+        kedro_resources = {"mlflow": get_mlflow_resource_from_config(mlflow_config)}
+
+    kedro_assets = load_assets_from_kedro_nodes(default_pipeline, catalog, hook_manager, session_id)
     kedro_jobs = load_jobs_from_kedro_config(dagster_config)
+    kedro_loggers = get_kedro_loggers(project_metadata.package_name)
+    kedro_io_managers = load_io_managers_from_kedro_datasets(default_pipeline, catalog, hook_manager)
+    kedro_resources |= kedro_io_managers
 
     logger.info("Kedro project translated into Dagster.")
 
-    return kedro_assets, kedro_io_managers, kedro_jobs
+    return kedro_assets, kedro_resources, kedro_jobs, kedro_loggers

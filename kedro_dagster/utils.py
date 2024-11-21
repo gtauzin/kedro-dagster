@@ -1,11 +1,12 @@
 """Utility functions."""
 
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from jinja2 import Environment, FileSystemLoader
 from kedro.config import MissingConfigException
 from kedro.framework.context import KedroContext
+from pydantic import BaseModel, ConfigDict, create_model
 
 
 def _load_config(context: KedroContext) -> dict[str, Any]:
@@ -88,3 +89,37 @@ def write_jinja_template(src: Union[str, Path], dst: Union[str, Path], **kwargs)
     parsed_template = render_jinja_template(src, **kwargs)
     with open(dst, "w") as file_handler:
         file_handler.write(parsed_template)
+
+
+def _include_mlflow():
+    try:
+        import dagster_mlflow  # noqa: F401
+        import kedro_mlflow  # noqa: F401
+        import mlflow  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def _create_pydantic_model_from_dict(
+    params: dict[str, Any], __base__, __config__: Optional[ConfigDict] = None
+) -> type[BaseModel]:
+    fields = {}
+    for param_name, param_value in params.items():
+        if isinstance(param_value, dict):
+            # Recursively create a nested model for nested dictionaries
+            nested_model = _create_pydantic_model_from_dict(param_value, __base__=__base__, __config__=__config__)
+            # TODO: Nested __base__? Yes for NodeParams, no for IOManagers?
+
+            fields[param_name] = (nested_model, ...)
+        else:
+            # Use the type of the value as the field type
+            fields[param_name] = (type(param_value), param_value)
+
+    if __base__ is None:
+        model = create_model("ParametersConfig", __config__=__config__, **fields)
+    else:
+        model = create_model("ParametersConfig", __base__=__base__, **fields)
+        model.config = __config__
+
+    return model

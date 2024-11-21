@@ -32,8 +32,8 @@ class DevOptions(BaseModel):
         extra = "forbid"
 
 
-class JobsOptions(BaseModel):
-    pipeline: Optional[str] = None
+class PipelineOptions(BaseModel):
+    pipeline_name: str | None = None
     from_nodes: Iterable[str] | None = None
     to_nodes: Iterable[str] | None = None
     node_names: Iterable[str] | None = None
@@ -41,6 +41,13 @@ class JobsOptions(BaseModel):
     to_outputs: Iterable[str] | None = None
     namespace: str | None = None
     tags: Iterable[str] | None = None
+
+    class Config:
+        extra = "forbid"
+
+
+class JobsOptions(BaseModel):
+    pipeline: PipelineOptions
 
     class Config:
         extra = "forbid"
@@ -79,3 +86,29 @@ def get_dagster_config(context):
     context.__setattr__("dagster", dagster_config)
 
     return dagster_config
+
+
+def get_mlflow_config(context):
+    from kedro_mlflow.config.kedro_mlflow_config import KedroMlflowConfig
+
+    try:
+        if "mlflow" not in context.config_loader.config_patterns.keys():
+            context.config_loader.config_patterns.update({"mlflow": ["mlflow*", "mlflow*/**", "**/mlflow*"]})
+        conf_mlflow_yml = context.config_loader["mlflow"]
+    except MissingConfigException:
+        LOGGER.warning(
+            "No 'mlflow.yml' config file found in environment. Default configuration will be used. Use ``kedro mlflow init`` command in CLI to customize the configuration."
+        )
+        # we create an empty dict to have the same behaviour when the mlflow.yml
+        # is commented out. In this situation there is no MissingConfigException
+        # but we got an empty dict
+        conf_mlflow_yml = {}
+
+    mlflow_config = KedroMlflowConfig.model_validate({**conf_mlflow_yml})
+
+    # store in context for interactive use
+    # we use __setattr__ instead of context.mlflow because
+    # the class will become frozen in kedro>=0.19
+    context.__setattr__("mlflow", mlflow_config)
+
+    return mlflow_config
