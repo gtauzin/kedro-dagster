@@ -71,7 +71,8 @@ def get_dagster_config(context):
         conf_dagster_yml = context.config_loader["dagster"]
     except MissingConfigException:
         LOGGER.warning(
-            "No 'dagster.yml' config file found in environment. Default configuration will be used. Use ``kedro dagster init`` command in CLI to customize the configuration."
+            "No 'dagster.yml' config file found in environment. Default configuration will be used. "
+            "Use ``kedro dagster init`` command in CLI to customize the configuration."
         )
         # we create an empty dict to have the same behaviour when the dagster.yml
         # is commented out. In this situation there is no MissingConfigException
@@ -97,7 +98,8 @@ def get_mlflow_config(context):
         conf_mlflow_yml = context.config_loader["mlflow"]
     except MissingConfigException:
         LOGGER.warning(
-            "No 'mlflow.yml' config file found in environment. Default configuration will be used. Use ``kedro mlflow init`` command in CLI to customize the configuration."
+            "No 'mlflow.yml' config file found in environment. Default configuration will be used. "
+            "Use ``kedro mlflow init`` command in CLI to customize the configuration."
         )
         # we create an empty dict to have the same behaviour when the mlflow.yml
         # is commented out. In this situation there is no MissingConfigException

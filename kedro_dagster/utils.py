@@ -4,45 +4,7 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 from jinja2 import Environment, FileSystemLoader
-from kedro.config import MissingConfigException
-from kedro.framework.context import KedroContext
 from pydantic import BaseModel, ConfigDict, create_model
-
-
-def _load_config(context: KedroContext) -> dict[str, Any]:
-    # Backwards compatibility for ConfigLoader that does not support `config_patterns`
-    config_loader = context.config_loader
-    if not hasattr(config_loader, "config_patterns"):
-        return config_loader.get("dagster*", "dagster/**")  # pragma: no cover
-
-    # Set the default pattern for `dagster` if not provided in `settings.py`
-    if "dagster" not in config_loader.config_patterns.keys():
-        config_loader.config_patterns.update(  # pragma: no cover
-            {"dagster": ["dagster*", "dagster/**"]}
-        )
-
-    assert "dagster" in config_loader.config_patterns.keys()
-
-    # Load the config
-    try:
-        return config_loader["dagster"]
-    except MissingConfigException:
-        # File does not exist
-        return {}
-
-
-def _get_pipeline_config(config_dagster: dict, params: dict, pipeline_name: str):
-    dag_config = {}
-    # Load the default config if specified
-    if "default" in config_dagster:
-        dag_config.update(config_dagster["default"])
-    # Update with pipeline-specific config if present
-    if pipeline_name in config_dagster:
-        dag_config.update(config_dagster[pipeline_name])
-
-    # Update with params if provided
-    dag_config.update(params)
-    return dag_config
 
 
 def render_jinja_template(src: Union[str, Path], is_cookiecutter=False, **kwargs) -> str:
