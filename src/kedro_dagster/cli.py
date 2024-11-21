@@ -1,4 +1,4 @@
-"""Kedro plugin for running a project with Dagster"""
+"""A collection of CLI commands for working with Kedro-Dagster."""
 
 import subprocess
 from logging import getLogger
@@ -54,6 +54,7 @@ def init(env: str, force: bool, silent: bool):
     """Updates the template of a kedro project.
 
     Running this command is mandatory to use kedro-dagster.
+
     This adds:
      - "conf/base/dagster.yml": This is a configuration file
      used for the dagster run parametrization.
@@ -167,7 +168,7 @@ def dev(
     live_data_poll_rate: str,
 ):
     """Opens the dagster dev user interface with the
-    project-specific settings of dagster.yml.
+    project-specific settings of `dagster.yml`.
     """
 
     project_path = _find_kedro_project(Path.cwd()) or Path.cwd()

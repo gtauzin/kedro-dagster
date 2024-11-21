@@ -1,9 +1,12 @@
+"""Configuration definitions for Kedro-Dagster."""
+
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from dagster import get_dagster_logger
 from kedro.config import MissingConfigException
+from kedro.framework.context import KedroContext
 from kedro.framework.startup import bootstrap_project
 from kedro.utils import _find_kedro_project
 from pydantic import BaseModel
@@ -54,8 +57,8 @@ class JobsOptions(BaseModel):
 
 
 class KedroDagsterConfig(BaseModel):
-    dev: Optional[DevOptions] = None
-    jobs: Optional[dict[str, JobsOptions]] = None
+    dev: DevOptions | None = None
+    jobs: dict[str, JobsOptions] | None = None
 
     class Config:
         # force triggering type control when setting value instead of init
@@ -64,14 +67,23 @@ class KedroDagsterConfig(BaseModel):
         extra = "forbid"
 
 
-def get_dagster_config(context):
+def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
+    """Get the Dagster configuration from the `dagster.yml` file.
+
+    Args:
+        context: The ``KedroContext`` that was created.
+
+    Returns:
+        KedroDagsterConfig: The Dagster configuration.
+    """
     try:
         if "dagster" not in context.config_loader.config_patterns.keys():
             context.config_loader.config_patterns.update({"dagster": ["dagster*", "dagster*/**", "**/dagster*"]})
         conf_dagster_yml = context.config_loader["dagster"]
     except MissingConfigException:
         LOGGER.warning(
-            "No 'dagster.yml' config file found in environment. Default configuration will be used. Use ``kedro dagster init`` command in CLI to customize the configuration."
+            "No 'dagster.yml' config file found in environment. Default configuration will be used. "
+            "Use ``kedro dagster init`` command in CLI to customize the configuration."
         )
         # we create an empty dict to have the same behaviour when the dagster.yml
         # is commented out. In this situation there is no MissingConfigException
@@ -88,7 +100,15 @@ def get_dagster_config(context):
     return dagster_config
 
 
-def get_mlflow_config(context):
+def get_mlflow_config(context: KedroContext) -> BaseModel:
+    """Get the MLFlow configuration from the `mlflow.yml` file.
+
+    Args:
+        context: The ``KedroContext`` that was created.
+
+    Returns:
+        KedroMlflowConfig: The Mlflow configuration.
+    """
     from kedro_mlflow.config.kedro_mlflow_config import KedroMlflowConfig
 
     try:
@@ -97,7 +117,8 @@ def get_mlflow_config(context):
         conf_mlflow_yml = context.config_loader["mlflow"]
     except MissingConfigException:
         LOGGER.warning(
-            "No 'mlflow.yml' config file found in environment. Default configuration will be used. Use ``kedro mlflow init`` command in CLI to customize the configuration."
+            "No 'mlflow.yml' config file found in environment. Default configuration will be used. "
+            "Use ``kedro mlflow init`` command in CLI to customize the configuration."
         )
         # we create an empty dict to have the same behaviour when the mlflow.yml
         # is commented out. In this situation there is no MissingConfigException

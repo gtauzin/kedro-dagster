@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  dists-artifact-name: python-package-distributions
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Build package
+        run: uv build --python 3.13 --python-preference only-managed --sdist --wheel . --out-dir dist
+
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.dists-artifact-name }}
+          path: dist/*
+
+  pypi-publish:
+    name: upload release to PyPI
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    # Specifying a GitHub environment is optional, but strongly encouraged
+    environment: pypi
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.dists-artifact-name }}
+          path: dist/
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
