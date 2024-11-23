@@ -182,6 +182,7 @@ def load_assets_from_kedro_nodes(default_pipeline: Pipeline, catalog: DataCatalo
             ).with_io_manager_key(io_manager_key=f"{external_asset_name}_io_manager")
             assets.append(asset)
 
+    multi_asset_node_dict = {}
     for node in default_pipeline.nodes:
         node_pipeline_name = _get_node_pipeline_name(pipelines, node)
 
@@ -193,5 +194,6 @@ def load_assets_from_kedro_nodes(default_pipeline: Pipeline, catalog: DataCatalo
             session_id,
         )
         assets.append(asset)
+        multi_asset_node_dict[node.name] = asset
 
-    return assets
+    return assets, multi_asset_node_dict
