@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from dagster import AssetSelection, graph, op
+from dagster import AssetIn, AssetKey, AssetOut, AssetSpec, AssetSelection, In, Nothing, multi_asset, graph, op
 from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
@@ -12,10 +12,11 @@ from kedro_dagster.config import KedroDagsterConfig
 from kedro_dagster.utils import _include_mlflow
 
 
-
-
 def get_job_from_pipeline(
+    before_pipeline_run_hook,
+    asset_input_dict: dict[str, AssetSpec],
     multi_asset_node_dict: dict[str, Any],
+    op_node_dict: dict[str, Any],
     pipeline: Pipeline,
     catalog: CatalogProtocol,
     job_name: str,
@@ -38,17 +39,16 @@ def get_job_from_pipeline(
     Returns:
         A Dagster job.
     """
-    
-    @op
-    def before_pipeline_run_hook():
-        hook_manager.hook.before_pipeline_run(
-            run_params=run_params, 
-            pipeline=pipeline, 
-            catalog=catalog,
-        )
 
-    @op
-    def after_pipeline_run_hook():
+    @op(
+        name=f"{job_name}_after_pipeline_run_hook",
+        description=f"Hook to be executed after the `{job_name}` pipeline run.",
+        ins={asset_name: In(asset_key=AssetKey(asset_name)) for asset_name in pipeline.outputs()},
+        # out=None,
+        # tags=None,
+        # config_schema=None,
+    )
+    def after_pipeline_run_hook(**run_results):
         hook_manager.hook.after_pipeline_run(
             run_params=run_params,
             run_result=run_results,
@@ -56,7 +56,14 @@ def get_job_from_pipeline(
             catalog=catalog,
         )
 
-    @op
+    @op(
+        name=f"{job_name}_on_pipeline_error_hook",
+        description=f"Hook to be executed when the `{job_name}` pipeline run fails.",
+        # ins={"error": Exception},
+        # out=None,
+        # tags=None,
+        # config_schema=None,
+    )
     def on_pipeline_error_hook(error):
             hook_manager.hook.on_pipeline_error(
             error=error,
@@ -65,37 +72,78 @@ def get_job_from_pipeline(
             catalog=catalog,
         )
 
+    ins = {}
+    for asset_name in pipeline.inputs():
+        if not asset_name.startswith("params:"):
+            ins[asset_name] = AssetIn(
+                key=asset_name,
+                input_manager_key=f"{asset_name}_io_manager",
+            )
+
     @graph(
         name=job_name,
         description=f"Graph derived from pipeline associated to the `{job_name}` job.",
-        ins=None,
+        # ins=ins,
         out=None,
         tags=None,
         config=None,
     )
     def pipeline_graph():
-        before_pipeline_run_hook()
+        materialized_before_pipeline_run_hook_outputs = before_pipeline_run_hook()
 
+        materialized_assets = {
+            materialized_output.output_name: materialized_output
+            for materialized_output in materialized_before_pipeline_run_hook_outputs
+        }
+
+        # TODO: Not sure graph supports try/except
         try:
-            for node in pipeline.nodes:
-                if node.name in multi_asset_node_dict:
-                    multi_asset_op = multi_asset_node_dict[node.name]
-                    multi_asset_op()
-                
+            for layer in pipeline.grouped_nodes:
+                for node in layer:
+                    if node.name in multi_asset_node_dict:
+                        if len(node.outputs):
+                            op = multi_asset_node_dict[node.name]
+                        else:
+                            op = op_node_dict[node.name]
+
+                        node_inputs = node.inputs
+                        node_inputs.append(f"{node.name}_before_pipeline_run_hook")
+
+                        materialized_input_assets = {
+                            input_name: asset_input_dict[input_name]
+                             for input_name in node_inputs
+                             if input_name in asset_input_dict
+                        }
+                        
+                        materialized_input_assets |= {
+                            input_name: materialized_assets[input_name]
+                            for input_name in node_inputs
+                            if input_name in materialized_assets
+                        }
+
+                        materialized_outputs = op(**materialized_input_assets)
+
+                        if len(node.outputs) == 1:
+                            materialized_output_assets = {
+                                materialized_outputs.output_name: materialized_outputs
+                            }
+                        elif len(node.outputs) > 1:
+                            materialized_output_assets = {
+                                materialized_output.output_name: materialized_output
+                                for materialized_output in materialized_outputs
+                            }
+
+                        materialized_assets |= materialized_output_assets
+
         except Exception as exec:
             on_pipeline_error_hook(exec)
-            
-        after_pipeline_run_hook()
+        
+        run_results = {
+            asset_name: materialized_assets[asset_name]
+             for asset_name in pipeline.outputs()
+        }
 
-    asset_list = []
-    for node in pipeline.nodes:
-        output_assets = [node.name]
-        if len(node.outputs):
-            output_assets = node.outputs
-
-        asset_list.extend(output_assets)
-
-    asset_selection = AssetSelection.assets(*asset_list)
+        after_pipeline_run_hook(**run_results)
 
     hooks = None
     if _include_mlflow():
@@ -104,8 +152,8 @@ def get_job_from_pipeline(
         hooks = {end_mlflow_on_run_finished}
 
     job = pipeline_graph.to_job(
-        name=None, 
-        description=None, 
+        name=job_name, 
+        description=f"", 
         resource_defs=None, 
         config=job_config.get("config", None),
         tags=job_config.get("tags", None),
@@ -127,7 +175,9 @@ def get_job_from_pipeline(
 
 def load_jobs_from_kedro_config(
     dagster_config: KedroDagsterConfig,
+    asset_input_dict: dict,
     multi_asset_node_dict: dict,
+    op_node_dict: dict,
     catalog: CatalogProtocol,
     hook_manager,
     session_id: str,
@@ -143,18 +193,42 @@ def load_jobs_from_kedro_config(
         A list of dagster job definitions.
 
     """
+    @multi_asset(
+        name="before_pipeline_run_hook",
+        group_name="hooks",
+        description=f"Hook to be executed before a pipeline run.",
+        outs={
+            f"{node.name}_before_pipeline_run_hook": AssetOut(
+                key=f"{node.name}_before_pipeline_run_hook",
+                description=f"Untangible asset corresponding to `{node.name}` for the `before_pipeline_run` hook.",
+                dagster_type=Nothing,
+                is_required=False,
+            ) 
+            for node in pipelines["__default__"].nodes},
+    )
+    def before_pipeline_run_hook():
+        hook_manager.hook.before_pipeline_run(
+            run_params=run_params, 
+            pipeline=pipeline, 
+            catalog=catalog,
+        )
+
+        return tuple([None]* len(pipelines["__default__"].nodes))
+
     jobs = []
     for job_name, job_config in dagster_config.jobs.items():
-        pipeline_name = job_config.pipeline.pipeline_name
+        pipeline_config = job_config.pipeline.model_dump()
+        pipeline_name = pipeline_config.get("pipeline_name")
 
+        # TODO: Remove all defaults in get as the config takes care of default values 
         filter_params = dict(
-            tags=job_config.tags,
-            from_nodes=job_config.from_nodes,
-            to_nodes=job_config.to_nodes,
-            node_names=job_config.node_names,
-            from_inputs=job_config.from_inputs,
-            to_outputs=job_config.to_outputs,
-            namespace=job_config.pipeline.namespace,
+            tags=pipeline_config.get("tags", None),
+            from_nodes=pipeline_config.get("from_nodes", None),
+            to_nodes=pipeline_config.get("to_nodes", None),
+            node_names=pipeline_config.get("node_names", None),
+            from_inputs=pipeline_config.get("from_inputs", None),
+            to_outputs=pipeline_config.get("to_outputs", None),
+            node_namespace=pipeline_config.get("node_namespace", None),
         )
 
         run_params = filter_params | dict(
@@ -163,27 +237,29 @@ def load_jobs_from_kedro_config(
             env=env,
             kedro_version=kedro_version,
             pipeline_name=pipeline_name,
-            load_versions=job_config.load_versions,
-            extra_params=job_config.extra_params,
-            runner=job_config.pipeline.runner,
+            load_versions=pipeline_config.get("load_versions", None),
+            extra_params=pipeline_config.get("extra_params", None),
+            runner=pipeline_config.get("runner", None),
         )
     
-
         pipeline = pipelines.get(pipeline_name).filter(
             **filter_params
         )
 
         job = get_job_from_pipeline(
+            before_pipeline_run_hook=before_pipeline_run_hook,
+            asset_input_dict=asset_input_dict,
             multi_asset_node_dict=multi_asset_node_dict,
+            op_node_dict=op_node_dict,
             pipeline=pipeline,
             catalog=catalog,
             hook_manager=hook_manager,
             job_name=job_name,
-            job_config=job_config.pipeline.dict(),
+            job_config=job_config.pipeline.model_dump(),
             run_params=run_params,
         )
 
         jobs.append(job)
 
-    return jobs
+    return jobs, before_pipeline_run_hook
 

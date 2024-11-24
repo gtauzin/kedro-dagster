@@ -74,35 +74,41 @@ def load_io_managers_from_kedro_datasets(default_pipeline: Pipeline, catalog: Da
                     #     return self
 
                     def handle_output(self, context: OutputContext, obj):
-                        node = node_dict[context.op_def.name]
-                        hook_manager.hook.before_dataset_saved(
-                            dataset_name=dataset_name,
-                            data=obj,
-                            node=node,
-                        )
+                        op_name = context.op_def.name
+                        if not op_name.endswith("after_pipeline_run_hook"):
+                            node = node_dict[op_name]
+                            hook_manager.hook.before_dataset_saved(
+                                dataset_name=dataset_name,
+                                data=obj,
+                                node=node,
+                            )
 
                         dataset.save(obj)
 
-                        hook_manager.hook.after_dataset_saved(
-                            dataset_name=dataset_name,
-                            data=obj,
-                            node=node,
-                        )
+                        if not op_name.endswith("after_pipeline_run_hook"):
+                            hook_manager.hook.after_dataset_saved(
+                                dataset_name=dataset_name,
+                                data=obj,
+                                node=node,
+                            )
 
                     def load_input(self, context: InputContext):
-                        node = node_dict[context.op_def.name]
-                        hook_manager.hook.before_dataset_loaded(
-                            dataset_name=dataset_name,
-                            node=node,
-                        )
+                        op_name = context.op_def.name
+                        if not op_name.endswith("after_pipeline_run_hook"):
+                            node = node_dict[op_name]
+                            hook_manager.hook.before_dataset_loaded(
+                                dataset_name=dataset_name,
+                                node=node,
+                            )
 
                         data = dataset.load()
 
-                        hook_manager.hook.after_dataset_loaded(
-                            dataset_name=dataset_name,
-                            data=data,
-                            node=node,
-                        )
+                        if not op_name.endswith("after_pipeline_run_hook"):
+                            hook_manager.hook.after_dataset_loaded(
+                                dataset_name=dataset_name,
+                                data=data,
+                                node=node,
+                            )
 
                         return data
 

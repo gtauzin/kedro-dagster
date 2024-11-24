@@ -12,6 +12,7 @@ from kedro_dagster.assets import load_assets_from_kedro_nodes
 from kedro_dagster.config import get_dagster_config, get_mlflow_config
 from kedro_dagster.jobs import load_jobs_from_kedro_config
 from kedro_dagster.loggers import get_kedro_loggers
+from kedro_dagster.ops import load_ops_from_kedro_nodes
 from kedro_dagster.resources import get_mlflow_resource_from_config, load_io_managers_from_kedro_datasets
 from kedro_dagster.utils import _include_mlflow
 
@@ -61,16 +62,20 @@ def translate_kedro(
         mlflow_config = get_mlflow_config(context)
         kedro_resources = {"mlflow": get_mlflow_resource_from_config(mlflow_config)}
 
-    kedro_assets, multi_asset_node_dict = load_assets_from_kedro_nodes(default_pipeline, catalog, hook_manager, session_id)
-    kedro_jobs = load_jobs_from_kedro_config(
-        dagster_config, 
+    kedro_assets, multi_asset_node_dict, asset_input_dict = load_assets_from_kedro_nodes(default_pipeline, catalog, hook_manager, session_id)
+    op_node_dict = load_ops_from_kedro_nodes(default_pipeline, catalog, hook_manager, session_id)
+    kedro_jobs, before_pipeline_run_hook = load_jobs_from_kedro_config(
+        dagster_config,
+        asset_input_dict,
         multi_asset_node_dict,
+        op_node_dict,
         catalog, 
         hook_manager,
         session_id,
         project_path,
         env,
     )
+    kedro_assets.append(before_pipeline_run_hook)
     kedro_loggers = get_kedro_loggers(project_metadata.package_name)
     kedro_io_managers = load_io_managers_from_kedro_datasets(default_pipeline, catalog, hook_manager)
     kedro_resources |= kedro_io_managers

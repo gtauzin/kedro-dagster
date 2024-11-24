@@ -3,13 +3,12 @@
 from collections.abc import Callable
 
 from dagster import (
-    AssetIn,
-    AssetOut,
-    AssetSpec,
+    AssetKey,
     Config,
+    In,
     Nothing,
     get_dagster_logger,
-    multi_asset,
+    op,
 )
 from kedro.framework.project import pipelines
 from kedro.io import DataCatalog, MemoryDataset
@@ -20,7 +19,7 @@ from pydantic import ConfigDict
 from kedro_dagster.utils import _create_pydantic_model_from_dict, _include_mlflow
 
 
-def _define_node_multi_asset(
+def _define_node_op(
     node: Node,
     pipeline_name: str,
     catalog: DataCatalog,
@@ -40,36 +39,14 @@ def _define_node_multi_asset(
     ins, params = {}, {}
     for asset_name in node.inputs:
         if not asset_name.startswith("params:"):
-            ins[asset_name] = AssetIn(
-                key=asset_name,
-                # input_manager_key=f"{asset_name}_io_manager",
-            )
+            ins[asset_name] = In(asset_key=AssetKey(asset_name))
         else:
             params[asset_name] = catalog.load(asset_name)
 
-    ins[f"{node.name}_before_pipeline_run_hook"] = AssetIn(
-        key=f"{node.name}_before_pipeline_run_hook",
+    ins["before_pipeline_run_hook_result"] = In(
+        asset_key=AssetKey("before_pipeline_run_hook_result"),
         dagster_type=Nothing,
     )
-
-    outs = {}
-    for asset_name in node.outputs:
-        metadata, description = None, None
-        if asset_name in catalog.list():
-            dataset = catalog._get_dataset(asset_name)
-            metadata = dataset.metadata or {}
-            description = metadata.pop("description", "")
-
-        io_manager_key = "io_manager"
-        if asset_name in catalog.list() and not isinstance(catalog._get_dataset(asset_name), MemoryDataset):
-            io_manager_key = f"{asset_name}_io_manager"
-
-        outs[asset_name] = AssetOut(
-            key=asset_name,
-            description=description,
-            metadata=metadata,
-            io_manager_key=io_manager_key,
-        )
 
     # Node parameters are mapped to Dagster configs
     NodeParametersConfig = _create_pydantic_model_from_dict(
@@ -78,17 +55,16 @@ def _define_node_multi_asset(
         __config__=ConfigDict(extra="allow", frozen=False),
     )
 
-    # Define a multi_asset from a Kedro node
-    @multi_asset(
+    # Define an op from a Kedro node
+    # TODO: dagster tags are dicts
+    @op(
         name=node.name,
-        description=f"Kedro node {node.name} wrapped as a Dagster multi asset.",
-        group_name=pipeline_name,
+        description=f"Kedro node {node.name} wrapped as a Dagster op.",
         ins=ins,
-        outs=outs,
         required_resource_keys={"mlflow"} if _include_mlflow() else None,
-        op_tags=node.tags,
+        # tags=node.tags,
     )
-    def dagster_asset(config: NodeParametersConfig, **inputs):
+    def dagster_op(config: NodeParametersConfig, **inputs):
         # Logic to execute the Kedro node
 
         inputs |= config.model_dump()
@@ -124,13 +100,7 @@ def _define_node_multi_asset(
             session_id=session_id,
         )
 
-        if len(outputs) > 1:
-            return tuple(outputs.values())
-
-        elif len(outputs) == 1:
-            return list(outputs.values())[0]
-
-    return dagster_asset
+    return dagster_op
 
 
 def _get_node_pipeline_name(pipelines, node):
@@ -149,7 +119,7 @@ def _get_node_pipeline_name(pipelines, node):
                     return pipeline_name
 
 
-def load_assets_from_kedro_nodes(default_pipeline: Pipeline, catalog: DataCatalog, hook_manager, session_id: str):
+def load_ops_from_kedro_nodes(default_pipeline: Pipeline, catalog: DataCatalog, hook_manager, session_id: str):
     """Load Kedro assets from a pipeline into Dagster.
 
     Args:
@@ -161,38 +131,21 @@ def load_assets_from_kedro_nodes(default_pipeline: Pipeline, catalog: DataCatalo
     """
     logger = get_dagster_logger()
 
-    logger.info("Building asset list...")
-    assets = []
-    asset_input_dict = {}
+    logger.info("Building op list...")
     # Assets that are not generated through dagster are external and
     # registered with AssetSpec
-    for external_asset_name in default_pipeline.inputs():
-        if not external_asset_name.startswith("params:"):
-            dataset = catalog._get_dataset(external_asset_name)
-            metadata = dataset.metadata or {}
-            description = metadata.pop("description", "")
-            asset = AssetSpec(
-                external_asset_name,
-                group_name="external",
-                description=description,
-                metadata=metadata,
-            ).with_io_manager_key(io_manager_key=f"{external_asset_name}_io_manager")
-            assets.append(asset)
-            asset_input_dict[external_asset_name] = asset
-
-    multi_asset_node_dict = {}
+    op_node_dict = {}
     for node in default_pipeline.nodes:
-        if len(node.outputs):
+        if not len(node.outputs):
             node_pipeline_name = _get_node_pipeline_name(pipelines, node)
 
-            asset = _define_node_multi_asset(
+            op = _define_node_op(
                 node,
                 node_pipeline_name,
                 catalog,
                 hook_manager,
                 session_id,
             )
-            assets.append(asset)
-            multi_asset_node_dict[node.name] = asset
+            op_node_dict[node.name] = op
 
-    return assets, multi_asset_node_dict, asset_input_dict
+    return op_node_dict
