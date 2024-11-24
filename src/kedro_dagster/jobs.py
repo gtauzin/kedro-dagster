@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from dagster import AssetIn, AssetKey, AssetOut, AssetSpec, AssetSelection, In, Nothing, multi_asset, graph, op
+from dagster import AssetIn, AssetKey, AssetOut, AssetSpec, AssetSelection, HookContext, In, Nothing, failure_hook, multi_asset, graph, op
 from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
@@ -56,22 +56,23 @@ def get_job_from_pipeline(
             catalog=catalog,
         )
 
-    @op(
+    required_resource_keys = None
+    if _include_mlflow():
+        required_resource_keys = {"mlflow"}
+
+    @failure_hook(
         name=f"{job_name}_on_pipeline_error_hook",
-        description=f"Hook to be executed when the `{job_name}` pipeline run fails.",
-        # ins={"error": Exception},
-        # out=None,
-        # tags=None,
-        # config_schema=None,
+        required_resource_keys=required_resource_keys,
     )
-    def on_pipeline_error_hook(error):
+    def on_pipeline_error_hook(context: HookContext):
             hook_manager.hook.on_pipeline_error(
-            error=error,
+            error=context.op_exception,
             run_params=run_params,
             pipeline=pipeline,
             catalog=catalog,
         )
 
+    # TODO: Why does the graph not appear on Dagster UI?
     ins = {}
     for asset_name in pipeline.inputs():
         if not asset_name.startswith("params:"):
@@ -96,47 +97,42 @@ def get_job_from_pipeline(
             for materialized_output in materialized_before_pipeline_run_hook_outputs
         }
 
-        # TODO: Not sure graph supports try/except
-        try:
-            for layer in pipeline.grouped_nodes:
-                for node in layer:
-                    if node.name in multi_asset_node_dict:
-                        if len(node.outputs):
-                            op = multi_asset_node_dict[node.name]
-                        else:
-                            op = op_node_dict[node.name]
+        for layer in pipeline.grouped_nodes:
+            for node in layer:
+                if node.name in multi_asset_node_dict:
+                    if len(node.outputs):
+                        op = multi_asset_node_dict[node.name]
+                    else:
+                        op = op_node_dict[node.name]
 
-                        node_inputs = node.inputs
-                        node_inputs.append(f"{node.name}_before_pipeline_run_hook")
+                    node_inputs = node.inputs
+                    node_inputs.append(f"{node.name}_before_pipeline_run_hook")
 
-                        materialized_input_assets = {
-                            input_name: asset_input_dict[input_name]
-                             for input_name in node_inputs
-                             if input_name in asset_input_dict
-                        }
-                        
-                        materialized_input_assets |= {
-                            input_name: materialized_assets[input_name]
+                    materialized_input_assets = {
+                        input_name: asset_input_dict[input_name]
                             for input_name in node_inputs
-                            if input_name in materialized_assets
+                            if input_name in asset_input_dict
+                    }
+                    
+                    materialized_input_assets |= {
+                        input_name: materialized_assets[input_name]
+                        for input_name in node_inputs
+                        if input_name in materialized_assets
+                    }
+
+                    materialized_outputs = op(**materialized_input_assets)
+
+                    if len(node.outputs) == 1:
+                        materialized_output_assets = {
+                            materialized_outputs.output_name: materialized_outputs
+                        }
+                    elif len(node.outputs) > 1:
+                        materialized_output_assets = {
+                            materialized_output.output_name: materialized_output
+                            for materialized_output in materialized_outputs
                         }
 
-                        materialized_outputs = op(**materialized_input_assets)
-
-                        if len(node.outputs) == 1:
-                            materialized_output_assets = {
-                                materialized_outputs.output_name: materialized_outputs
-                            }
-                        elif len(node.outputs) > 1:
-                            materialized_output_assets = {
-                                materialized_output.output_name: materialized_output
-                                for materialized_output in materialized_outputs
-                            }
-
-                        materialized_assets |= materialized_output_assets
-
-        except Exception as exec:
-            on_pipeline_error_hook(exec)
+                    materialized_assets |= materialized_output_assets
         
         run_results = {
             asset_name: materialized_assets[asset_name]
@@ -144,12 +140,6 @@ def get_job_from_pipeline(
         }
 
         after_pipeline_run_hook(**run_results)
-
-    hooks = None
-    if _include_mlflow():
-        from dagster_mlflow import end_mlflow_on_run_finished
-
-        hooks = {end_mlflow_on_run_finished}
 
     job = pipeline_graph.to_job(
         name=job_name, 
@@ -165,7 +155,7 @@ def get_job_from_pipeline(
         asset_layer=job_config.get("asset_layer", None),
         input_values=job_config.get("input_values", None),
         run_tags=job_config.get("run_tags", None),
-        hooks=hooks, 
+        hooks={on_pipeline_error_hook}, 
         _asset_selection_data=None,
         op_selection=None, 
     )
