@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
@@ -27,9 +27,8 @@ jobs:
       - name: Build package
         run: uv build
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: "dist/*"
-          generate_release_notes: true
-          make_latest: true
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: '__token__'
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish
