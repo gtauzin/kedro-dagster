@@ -48,6 +48,7 @@ test = [
   "pytest-xdist>=3.6.1",
   "covdefaults>=2.3",
   "diff-cover>=9.2",
+  "behave",
 ]
 
 [project.entry-points."kedro.project_commands"]
