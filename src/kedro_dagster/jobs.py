@@ -1,52 +1,50 @@
-""" """
+"""Dagster job definitons from Kedro pipelines."""
 
 from typing import Any
 
-from dagster import AssetIn, AssetKey, AssetOut, AssetSpec, AssetSelection, HookContext, In, Nothing, failure_hook, multi_asset, graph, op
+from dagster import AssetIn, AssetKey, AssetOut, AssetSpec, HookContext, HookDefinition, In, JobDefinition, Nothing, failure_hook, multi_asset, graph, op
 from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
-from kedro.io import CatalogProtocol
+from kedro.io import DataCatalog
 
 from kedro_dagster.config import KedroDagsterConfig
 from kedro_dagster.utils import _include_mlflow
 
 
 def get_job_from_pipeline(
-    before_pipeline_run_hook,
+    before_pipeline_run_hook: HookDefinition,
     asset_input_dict: dict[str, AssetSpec],
     multi_asset_node_dict: dict[str, Any],
     op_node_dict: dict[str, Any],
     pipeline: Pipeline,
-    catalog: CatalogProtocol,
+    catalog: DataCatalog,
     job_name: str,
     job_config: dict,
     hook_manager,
     run_params: dict[str, Any],
-
-):
-    """Create a Dagster job from a Kedro pipeline.
+) -> JobDefinition:
+    """Create a Dagster job from a Kedro ``Pipeline``.
 
     Args:
-        multi_asset_node_dict: A dictionary of node names mapped to their correspondingmulti-asset.
-        pipeline: A Kedro pipeline.
-        catalog: A Kedro catalog.
+        multi_asset_node_dict: A dictionary of node names mapped to their 
+        corresponding multi-asset defintion.
+        pipeline: The Kedro ``Pipeline`` to wrap into a job.
+        catalog: An implemented instance of ``CatalogProtocol`` 
+        from which to fetch data.
         job_name: The name of the job.
         job_config: The configuration of the job.
-        hook_manager: A Kedro hook manager.
+        hook_manager: The ``PluginManager`` to activate hooks.
         run_params: The parameters of the run.
 
     Returns:
-        A Dagster job.
+        JobDefinition: A Dagster job.
     """
 
     @op(
         name=f"{job_name}_after_pipeline_run_hook",
         description=f"Hook to be executed after the `{job_name}` pipeline run.",
         ins={asset_name: In(asset_key=AssetKey(asset_name)) for asset_name in pipeline.outputs()},
-        # out=None,
-        # tags=None,
-        # config_schema=None,
     )
     def after_pipeline_run_hook(**run_results):
         hook_manager.hook.after_pipeline_run(
@@ -168,19 +166,30 @@ def load_jobs_from_kedro_config(
     asset_input_dict: dict,
     multi_asset_node_dict: dict,
     op_node_dict: dict,
-    catalog: CatalogProtocol,
+    catalog: DataCatalog,
     hook_manager,
     session_id: str,
     project_path: str,
     env: str,
-) -> list[dict[str, Any]]:
+) -> tuple[list[JobDefinition], HookDefinition]:
     """Loads job definitions from a Kedro pipeline.
 
     Args:
-        dagster_config :
+        dagster_config : The Dagster configuration.
+        asset_input_dict: A dictionary of asset inputs.
+        multi_asset_node_dict: A dictionary of multi-asset nodes.
+        op_node_dict: A dictionary of operation nodes.
+        catalog: An implemented instance of ``CatalogProtocol`` 
+        from which to fetch data.
+        hook_manager: The ``PluginManager`` to activate hooks.
+        session_id: A string representing Kedro session ID.
+        project_path: The path to the Kedro project.
+        env: A string representing the Kedro environment to use.
 
     Returns:
-        A list of dagster job definitions.
+        List[JobDefintion]: A list of dagster job definitions.
+        HookDefintion: The Kedro ``before_pipeline_run`` hook translated 
+        into a Dagster definition.
 
     """
     @multi_asset(

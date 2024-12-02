@@ -1,3 +1,5 @@
+"""Dagster logger definitons from Kedro loggers."""
+
 import logging
 
 from dagster import InitLoggerContext, LoggerDefinition
@@ -5,7 +7,16 @@ from kedro.framework.project import pipelines
 
 
 # TODO: Allow logger customization
-def get_kedro_loggers(package_name):
+def get_kedro_loggers(package_name: str) -> dict[str, LoggerDefinition]:
+    """Get Kedro loggers for Dagster.
+
+    Args:
+        package_name: Name of the Kedro package.
+    Returns:
+        Dict[str, LoggerDefintion]: Dictionary of logger 
+        definitions.
+    
+    """
     loggers = {}
     for pipeline_name in pipelines:
         if pipeline_name != "__default__":

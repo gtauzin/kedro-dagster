@@ -1,8 +1,8 @@
-"""Translation function."""
+"""Translation function from Kedro to Dagtser."""
 
 from pathlib import Path
 
-from dagster import get_dagster_logger
+from dagster import get_dagster_logger, AssetsDefinition, JobDefinition, LoggerDefinition, ResourceDefinition
 from kedro.framework.project import pipelines
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
@@ -19,16 +19,28 @@ from kedro_dagster.utils import _include_mlflow
 
 def translate_kedro(
     env: str | None = None,
-):
-    """Translate Kedro project into Dagster assets and resources.
+) -> tuple[
+    list[AssetsDefinition], 
+    dict[str, ResourceDefinition], 
+    dict[str, JobDefinition], 
+    dict[str, LoggerDefinition],
+]:
+    """Translate Kedro project into Dagster.
 
     Args:
         env: A string representing the Kedro environment to use.
             If None, the default environment is used.
 
     Returns:
-        Tuple[List[AssetDefinition], Dict[str, ResourceDefinition]]: A tuple containing a list of
-            Dagster assets and a dictionary of Dagster resources.
+        Tuple[
+            List[AssetsDefinition], 
+            Dict[str, ResourceDefinition], 
+            Dict[str, JobDefinition], 
+            Dict[str, LoggerDefinition]
+        ]: A tuple containing a list of Dagster assets, a dictionary 
+        of Dagster resources, a dictionary of Dagster jobs, and a 
+        dictionary of Dagster loggers.
+
     """
     logger = get_dagster_logger()
 

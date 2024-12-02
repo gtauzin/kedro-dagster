@@ -1,16 +1,21 @@
-from pathlib import PurePosixPath
+"""Dagster io manager definitons from Kedro catalog."""
 
-from dagster import Config, ConfigurableIOManager, InputContext, OutputContext, get_dagster_logger
+from pathlib import PurePosixPath
+from pluggy import PluginManager
+
+from dagster import Config, ConfigurableIOManager, InputContext, IOManagerDefinition, OutputContext, ResourceDefinition, get_dagster_logger
 from kedro.io import DataCatalog, MemoryDataset
 from kedro.pipeline import Pipeline
 from pydantic import ConfigDict
 
+from kedro_dagster.config import KedroMlflowConfig
 from kedro_dagster.utils import _create_pydantic_model_from_dict
 
 
-def get_mlflow_resource_from_config(mlflow_config):
+def get_mlflow_resource_from_config(mlflow_config: KedroMlflowConfig) -> ResourceDefinition:
     from dagster_mlflow import mlflow_tracking
 
+    # TODO: Define custom mlflow resource
     mlflow_resource = mlflow_tracking.configured({
         "experiment_name": mlflow_config.tracking.experiment.name,
         "mlflow_tracking_uri": mlflow_config.server.mlflow_tracking_uri,
@@ -27,15 +32,22 @@ def get_mlflow_resource_from_config(mlflow_config):
     return {"mlflow": mlflow_resource}
 
 
-def load_io_managers_from_kedro_datasets(default_pipeline: Pipeline, catalog: DataCatalog, hook_manager):
+def load_io_managers_from_kedro_datasets(
+    default_pipeline: Pipeline, 
+    catalog: DataCatalog, 
+    hook_manager: PluginManager,
+) -> dict[str, IOManagerDefinition]:
     """
-    Get the IO managers for an environment.
+    Get the IO managers from Kedro datasets.
 
     Args:
-        env (str): The environment name.
+        default_pipeline: The Kedro default ``Pipeline``.
+        catalog: An implemented instance of ``CatalogProtocol`` 
+        from which to fetch data.
+        hook_manager: The ``PluginManager`` to activate hooks.
 
     Returns:
-        io_managers (dict): A dictionary of IO managers.
+        Dict[str, IOManagerDefinition]: A dictionary of DagsterIO managers.
 
     """
 
@@ -68,10 +80,6 @@ def load_io_managers_from_kedro_datasets(default_pipeline: Pipeline, catalog: Da
 
                 class ConfiguredDatasetIOManager(DatasetModel, ConfigurableIOManager):
                     f"""IO Manager for kedro dataset `{dataset_name}`."""
-                    # __name__ = f"{dataset_name}_io_manager"
-
-                    # def __call__(self):
-                    #     return self
 
                     def handle_output(self, context: OutputContext, obj):
                         op_name = context.op_def.name
@@ -113,10 +121,6 @@ def load_io_managers_from_kedro_datasets(default_pipeline: Pipeline, catalog: Da
                         return data
 
                 return ConfiguredDatasetIOManager(**dataset_config)
-                # IOManagerDefinition(
-                #     ConfiguredDatasetIOManager(**dataset_config),
-                #     description=f"IO Manager for kedro dataset `{dataset_name}`.",
-                # )
 
             io_managers[f"{dataset_name}_io_manager"] = get_io_manager_definition(dataset, dataset_name)
 

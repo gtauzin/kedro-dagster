@@ -1,8 +1,8 @@
-"""Define Dagster assets from Kedro nodes."""
+"""Dagster asset definitons from Kedro nodes."""
 
-from collections.abc import Callable
-
+from pluggy import PluginManager
 from dagster import (
+    AssetsDefinition,
     AssetIn,
     AssetOut,
     AssetSpec,
@@ -24,18 +24,23 @@ def _define_node_multi_asset(
     node: Node,
     pipeline_name: str,
     catalog: DataCatalog,
-    hook_manager,
+    hook_manager: PluginManager,
     session_id: str,
-) -> Callable:
+) -> AssetsDefinition:
     """Wrap a kedro Node inside a Dagster multi asset.
 
     Args:
-        node: Kedro node for which a Prefect task is being created.
+        node: The Kedro ``Node`` for which a Dagster multi asset is 
+        being created.
         pipeline_name: Name of the pipeline that the node belongs to.
-        catalog: DataCatalog object that contains the datasets used by the node.
-        session_id: ID of the Kedro session that the node will be executed in.
+        catalog: An implemented instance of ``CatalogProtocol`` 
+        from which to fetch data.
+        hook_manager: The ``PluginManager`` to activate hooks.
+        session_id: A string representing Kedro session ID.
 
-    Returns: Dagster multi assset function that wraps the Kedro node.
+    Returns: 
+        AssetsDefinition: Dagster multi assset definition that wraps the 
+        Kedro ``Node``.
     """
     ins, params = {}, {}
     for asset_name in node.inputs:
@@ -138,9 +143,10 @@ def _get_node_pipeline_name(pipelines, node):
 
     Args:
         pipelines: Dictionary of Kedro pipelines.
-        node: Kedro node for which the pipeline name is being retrieved.
+        node: The Kedro ``Node`` for which the pipeline name is being retrieved.
 
-    Returns: Name of the pipeline that the node belongs to.
+    Returns: 
+        str: Name of the ``Pipeline`` that the ``Node`` belongs to.
     """
     for pipeline_name, pipeline in pipelines.items():
         if pipeline_name != "__default__":
@@ -149,15 +155,23 @@ def _get_node_pipeline_name(pipelines, node):
                     return pipeline_name
 
 
-def load_assets_from_kedro_nodes(default_pipeline: Pipeline, catalog: DataCatalog, hook_manager, session_id: str):
+def load_assets_from_kedro_nodes(
+    default_pipeline: Pipeline, 
+    catalog: DataCatalog, 
+    hook_manager:PluginManager, 
+    session_id: str,
+) -> list[AssetsDefinition]:
     """Load Kedro assets from a pipeline into Dagster.
 
     Args:
-        catalog: A Kedro DataCatalog.
+        default_pipeline: The Kedro default ``Pipeline``.
+        catalog: An implemented instance of ``CatalogProtocol`` 
+        from which to fetch data.
+        hook_manager: The ``PluginManager`` to activate hooks.
         session_id: A string representing Kedro session ID.
 
     Returns:
-        List[AssetDefinition]: List of Dagster assets.
+        List[AssetsDefinition]: List of Dagster assets.
     """
     logger = get_dagster_logger()
 

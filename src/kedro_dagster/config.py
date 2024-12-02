@@ -1,3 +1,5 @@
+"""Configuration definitions for Kedro-Dagster."""
+
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Literal, Optional
@@ -5,6 +7,7 @@ from typing import Literal, Optional
 from dagster import get_dagster_logger
 from kedro.config import MissingConfigException
 from kedro.framework.startup import bootstrap_project
+from kedro.framework.context import KedroContext
 from kedro.utils import _find_kedro_project
 from pydantic import BaseModel
 
@@ -64,7 +67,15 @@ class KedroDagsterConfig(BaseModel):
         extra = "forbid"
 
 
-def get_dagster_config(context):
+def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
+    """Get the Dagster configuration from the `dagster.yml` file.
+
+    Args:
+        context: The ``KedroContext`` that was created.
+    
+    Returns:
+        KedroDagsterConfig: The Dagster configuration.
+    """
     try:
         if "dagster" not in context.config_loader.config_patterns.keys():
             context.config_loader.config_patterns.update({"dagster": ["dagster*", "dagster*/**", "**/dagster*"]})
@@ -89,7 +100,15 @@ def get_dagster_config(context):
     return dagster_config
 
 
-def get_mlflow_config(context):
+def get_mlflow_config(context: KedroContext) -> "KedroMlflowConfig":
+    """Get the MLFlow configuration from the `mlflow.yml` file.
+
+    Args:
+        context: The ``KedroContext`` that was created.
+    
+    Returns:
+        KedroMlflowConfig: The Mlflow configuration.
+    """
     from kedro_mlflow.config.kedro_mlflow_config import KedroMlflowConfig
 
     try:

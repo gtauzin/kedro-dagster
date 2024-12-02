@@ -1,0 +1,19 @@
+# SERVER CONFIGURATION -------------------
+
+dev:
+  log_level: "info"
+  log_format: "colored"
+  port: "3000"
+  host: "127.0.0.1"
+  live_data_poll_rate: "2000"
+
+# JOBS CONFIGURATION -------------------
+
+# jobs:
+#   data_processing:
+#     pipeline:
+#       pipeline_name: data_processing
+
+#   data_science:
+#     pipeline:
+#       pipeline_name: data_science
