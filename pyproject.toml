@@ -73,7 +73,7 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm.version]
-source = "vcs"
+source = "scm"
 fallback_version = "0.0.0"
 
 [tool.ruff]
