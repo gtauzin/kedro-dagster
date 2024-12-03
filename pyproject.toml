@@ -1,6 +1,7 @@
 [project]
 name = "kedro-dagster"
-dynamic = ["version"]
+version = "0.1.0"
+#dynamic = ["version"]
 authors = [
     { name = "Guillaume Tauzin", email = "gtauzin@protonmail.com" },
 ]
@@ -72,9 +73,9 @@ dagster = "src.kedro_dagster.cli:commands"
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
-[tool.pdm.version]
-source = "scm"
-fallback_version = "0.0.0"
+#[tool.pdm.version]
+#source = "scm"
+#fallback_version = "0.0.0"
 
 [tool.ruff]
 line-length = 120
