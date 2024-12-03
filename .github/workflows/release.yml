@@ -23,12 +23,13 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
-
-      - name: Install dependencies
-        run: uv sync
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build package
         run: uv build --python 3.13 --python-preference only-managed --sdist --wheel . --out-dir dist
+
+      - name: Check distributions
+        run: uvx twine check dist/*
 
       - name: Store the distribution packages
         uses: actions/upload-artifact@v4
@@ -41,10 +42,8 @@ jobs:
     needs:
       - build
     runs-on: ubuntu-latest
-    # Specifying a GitHub environment is optional, but strongly encouraged
     environment: pypi
     permissions:
-      # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
     steps:
       - name: Download all the dists
@@ -53,5 +52,8 @@ jobs:
           name: ${{ env.dists-artifact-name }}
           path: dist/
 
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.2
+        with:
+          attestations: true
+          verify-metadata: false

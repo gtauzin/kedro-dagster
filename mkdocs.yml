@@ -1,0 +1,65 @@
+site_name: Kedro-Dagster's documentation
+site_url: https://gtauzin.github.io/kedro-dagster/
+repo_name: gtauzin/kedro-dagster
+repo_url: https://github.com/gtauzin/kedro-dagster
+
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  custom_dir: docs/material/overrides
+
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.code.annotate
+    - content.code.copy
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.footer
+    - toc.follow
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+
+  favicon: images/favicon.png
+  logo: assets/logo.png
+
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/link
+        name: Switch to light mode
+
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off
+        name: Switch to system preference
+
+plugins:
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: date
+  - search:
+      separator: '[\s\u200b\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+
+extra:
+  version:
+    provider: mike
+
+copyright: Copyright &copy; 2024 - 2025 Guillaume Tauzin
