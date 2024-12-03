@@ -53,5 +53,7 @@ jobs:
           name: ${{ env.dists-artifact-name }}
           path: dist/
 
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.2
+        with:
+          attestations: true
