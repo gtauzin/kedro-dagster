@@ -1,3 +1,10 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+  "hatch-vcs>=0.4",
+  "hatchling>=1.25",
+]
+
 [project]
 name = "kedro-dagster"
 dynamic = ["version"]
@@ -68,13 +75,8 @@ test = [
 [project.entry-points."kedro.project_commands"]
 dagster = "src.kedro_dagster.cli:commands"
 
-[build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
-
-[tool.pdm.version]
-source = "scm"
-fallback_version = "0.0.0"
+[tool.hatch.version]
+source = "vcs"
 
 [tool.ruff]
 line-length = 120
