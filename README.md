@@ -10,7 +10,8 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
 [![License](https://img.shields.io/github/license/gtauzin/kedro-dagster)](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE)
 [![PyPI Version](https://img.shields.io/pypi/v/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
-
+[![Run tests and checks](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml/badge.svg)](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml)
+[![Slack Organisation](https://img.shields.io/badge/slack-chat-blueviolet.svg?label=Kedro%20Slack&logo=slack)](https://slack.kedro.org)
 
 ## What is Kedro-Dagster?
 
@@ -20,9 +21,9 @@ The Kedro-Dagster plugin enables seamless integration between [Kedro](https://ke
 ## What are the features of Kedro-Dagster?
 
 - **Dataset Translation**: Converts Kedro datasets into Dagster assets and IO managers, facilitating smooth data handling between the two frameworks.
-- **Pipeline Translation**: Transforms Kedro pipelines into Dagster jobs, enabling the execution of Kedro workflows within the Dagster environment.
+- **Pipeline Translation**: Transforms Kedro pipelines into Dagster jobs, enabling their execution and scheduling.
 - **Configuration-Driven Execution and Automation**: Utilizes Kedro's configuration to specify job executors and define schedules, allowing for flexible and dynamic pipeline management.
-- **Hook Support**: Preserves Kedro hooks within the Dagster context, ensuring that custom behaviors and extensions are maintained during pipeline execution.
+- **Hook Support**: Preserves Kedro hooks within the Dagster context, ensuring that custom behaviors and plugins are maintained during pipeline execution.
 - **Logger Integration**: Integrates Kedro's logging with Dagster's logging system, providing unified and comprehensive logging across both platforms.
 
 ## How to install Kedro-Dagster?
@@ -51,7 +52,7 @@ pip install kedro-dagster
    kedro dagster init --env <ENV_NAME>
    ```
 
-3. **Configure Job Executors and Schedules**:
+3. **Configure Jobs, Executors, and Schedules**:
 
    Define your job executors and schedules in the `dagster.yml` configuration file located in your Kedro project's `conf/<ENV_NAME>` directory. This file allows you to filter Kedro pipelines and assign specific executors and schedules to them.
 
@@ -63,6 +64,13 @@ pip install kedro-dagster
    executors:
      my_executor:
         retries: 3
+   jobs:
+     my_job:
+       pipeline_name: __default__
+
+       executor: my_executor
+       schedule: my_job_schedule
+
    ```
 
 4. **Launch the Dagster UI**:
@@ -72,6 +80,18 @@ pip install kedro-dagster
    ```bash
    kedro dagster dev
    ```
+
+## How do I use Kedro?
+
+The [Kedro-Dagster documentation](https://gtauzin.github.io/kedro-dagster/) will be available soon, stay tuned!
+
+## Can I contribute?
+
+Yes! We welcome all kinds of contributions. Check out our [guide to contributing to Kedro](https://github.com/kedro-org/kedro/wiki/Contribute-to-Kedro).
+
+## Where can I learn more?
+
+There is a growing community around the Kedro project. We encourage you to ask and answer technical questions on the Kedro [Slack](https://slack.kedro.org/) and bookmark the [Linen archive of past discussions](https://linen-slack.kedro.org/).
 
 ## License
 

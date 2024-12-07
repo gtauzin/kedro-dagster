@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Slack workspace
+    about: Come chat with the Kedro community!
+    url: https://slack.kedro.org
+  - name: Documentation
+    url: https://gtauzin.github.io/kedro-dagster/
+    about: To learn more about how Kedro-Dagster works

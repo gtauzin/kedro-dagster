@@ -1,0 +1,65 @@
+# Inspired from https://github.com/tox-dev/tox/
+requires = ["tox>=4.21", "tox-uv>=1.13"]
+env_list = ["fix", "3.10", "3.11", "3.12", "pkg_meta", "dev"]
+skip_missing_interpreters = true
+
+[env_run_base]
+description = "run the tests with pytest under {env_name}"
+use_develop = true
+package = "wheel"
+wheel_build_env = ".pkg"
+dependency_groups = ["test"]
+pass_env = ["PYTEST_*", "SSL_CERT_FILE", "SSH_AUTH_SOCK"]
+set_env.COVERAGE_FILE = { replace = "env", name = "COVERAGE_FILE", default = "{work_dir}{/}.coverage.{env_name}" }
+set_env.COVERAGE_FILECOVERAGE_PROCESS_START = "{tox_root}{/}pyproject.toml"
+commands = [
+  # Run behavior tests
+  ["behave"],
+  # Run unit tests
+  [
+    "pytest",
+    "--cov=src/kedro-dagster",  # Specify the source directory to measure coverage
+    "--cov-report=html:{env_tmp_dir}{/}htmlcov",  # Generate an HTML report
+    "--cov-report=xml:{work_dir}{/}coverage.{env_name}.xml",  # Generate an XML report
+    "--junitxml={work_dir}{/}junit.{env_name}.xml",  # Generate a JUnit XML report
+    "--durations=15",  # Show the 15 slowest test durations
+    "-n", "{env:PYTEST_XDIST_AUTO_NUM_WORKERS:auto}",  # Run tests in parallel using pytest-xdist
+    "tests",  # Directory containing your test files
+    { replace = "posargs", extend = true },  # Allow additional arguments to be passed from the command line
+  ],
+  [
+    "diff-cover",
+    "--compare-branch",
+    { replace = "env", name = "DIFF_AGAINST", default = "origin/main" },
+    "{work_dir}{/}coverage.{env_name}.xml",
+  ],
+]
+
+[env.fix]
+description = "format the code base to adhere to our styles, and complain about what we cannot do automatically"
+skip_install = true
+dependency_groups = ["fix"]
+pass_env = [{ replace = "ref", of = ["env_run_base", "pass_env"], extend = true }, "PROGRAMDATA", "DISABLE_PRE_COMMIT_UV_PATCH"]
+commands = [["pre-commit", "run", "--all-files", "--show-diff-on-failure", { replace = "posargs", extend = true }]]
+
+[env.pkg_meta]
+description = "check that the long description is valid"
+skip_install = true
+deps = ["check-wheel-contents>=0.6", "twine>=5.1.1", "uv>=0.4.17"]
+commands = [
+  [ "uv", "build", "--sdist", "--wheel", "--out-dir", "{env_tmp_dir}", "."],
+  [ "twine", "check", "{env_tmp_dir}{/}*" ],
+  [ "check-wheel-contents", "--no-config", "{env_tmp_dir}" ],
+]
+
+[env.dev]
+description = "dev environment with all deps at {envdir}"
+package = "editable"
+dependency_groups = ["dev"]
+commands = [["uv", "pip", "list", "--format=columns"], ["python", "-c", 'print(r"{env_python}")']]
+uv_seed = true
+
+[gh.python]
+"3.12" = ["fix", "dev", "pkg_meta", "3.12"]
+"3.11" = ["3.11"]
+"3.10" = ["3.10"]
