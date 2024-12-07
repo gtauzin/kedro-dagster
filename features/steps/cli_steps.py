@@ -23,6 +23,8 @@ def create_configuration_file(context):
     context.project_name = "project-dummy"
 
     root_project_dir = context.temp_dir / context.project_name
+    root_project_dir.mkdir(parents=True, exist_ok=True)
+
     context.root_project_dir = root_project_dir
     config = {
         "project_name": context.project_name,
@@ -54,7 +56,6 @@ def create_project_from_config_file(context, starter_name):
 
     # add a consent file to prevent telemetry from prompting for input during e2e test
     telemetry_file = context.root_project_dir / ".telemetry"
-    telemetry_file.parent.mkdir(parents=True, exist_ok=True)
     telemetry_file.write_text("consent: false", encoding="utf-8")
 
     # override base logging configuration to simplify assertions
