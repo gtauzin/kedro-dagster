@@ -14,10 +14,11 @@ set_env.COVERAGE_FILE = { replace = "env", name = "COVERAGE_FILE", default = "{w
 set_env.COVERAGE_FILECOVERAGE_PROCESS_START = "{tox_root}{/}pyproject.toml"
 commands = [
   # Run behavior tests
-  ["behave"],
+  ["behave", "-vv"],
   # Run unit tests
   [
     "pytest",
+    "-vv", # Verbose output
     "--cov=src/kedro-dagster",  # Specify the source directory to measure coverage
     "--cov-branch",
     "--cov-report=html:{env_tmp_dir}{/}htmlcov",  # Generate an HTML report
@@ -28,6 +29,7 @@ commands = [
     "tests",  # Directory containing your test files
     { replace = "posargs", extend = true },  # Allow additional arguments to be passed from the command line
   ],
+  # Run coverage diff
   [
     "diff-cover",
     "--compare-branch",
