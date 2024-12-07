@@ -57,9 +57,28 @@ plugins:
       type: date
   - search:
       separator: '[\s\u200b\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            docstring_style: google
+            merge_init_into_class: true
+            docstring_section_style: list
+            separate_signature: true
+            #   filters: ["!^_"]
+            show_root_heading: true
+            docstring_options:
+              ignore_init_summary: true
+              warn_unknown_params: false
+              returns_named_value: false
+          paths: [src]
 
 extra:
   version:
     provider: mike
 
 copyright: Copyright &copy; 2024 - 2025 Guillaume Tauzin
+
+nav:
+    - Home: index.md

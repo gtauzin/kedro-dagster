@@ -14,13 +14,12 @@ from dagster import (
 from kedro.io import DataCatalog, MemoryDataset
 from kedro.pipeline import Pipeline
 from pluggy import PluginManager
-from pydantic import ConfigDict
+from pydantic import BaseModel, ConfigDict
 
-from kedro_dagster.config import KedroMlflowConfig
 from kedro_dagster.utils import _create_pydantic_model_from_dict
 
 
-def get_mlflow_resource_from_config(mlflow_config: KedroMlflowConfig) -> ResourceDefinition:
+def get_mlflow_resource_from_config(mlflow_config: BaseModel) -> ResourceDefinition:
     from dagster_mlflow import mlflow_tracking
 
     # TODO: Define custom mlflow resource

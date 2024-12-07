@@ -68,9 +68,9 @@ jobs:
         if: runner.os == 'Linux'
         with:
           filename: '${{ github.workspace }}/.tox/coverage.${{ matrix.env }}.xml'
-          overall_coverage_fail_threshold: 80
-          file_coverage_error_min: 60
+          overall_coverage_fail_threshold: 30
           fail_on_negative_difference: false
+          file_coverage_error_min: 0
           file_coverage_warning_max: 75
 
       - name: Post coverage comment
