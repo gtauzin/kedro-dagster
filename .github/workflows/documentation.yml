@@ -1,4 +1,4 @@
-name: Documentation
+name: Build and publish documentation
 on:
   push:
     branches:
@@ -36,7 +36,7 @@ jobs:
           restore-keys: |
             mkdocs-material-
 
-      - name: Configure Git Credentials
+      - name: Configure git credentials
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
