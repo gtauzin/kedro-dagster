@@ -88,7 +88,7 @@ def create_project_from_config_file(context, starter_name):
         )
     )
 
-    raise ValueError(res.stderr) if res.returncode != OK_EXIT_CODE else None
+    print(res.stderr)
 
     assert res.returncode == OK_EXIT_CODE
 
