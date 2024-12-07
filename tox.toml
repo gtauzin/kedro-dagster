@@ -27,12 +27,12 @@ commands = [
     "tests",  # Directory containing your test files
     { replace = "posargs", extend = true },  # Allow additional arguments to be passed from the command line
   ],
-#   [
-#     "diff-cover",
-#     "--compare-branch",
-#     { replace = "env", name = "DIFF_AGAINST", default = "origin/main" },
-#     "{work_dir}{/}coverage.{env_name}.xml",
-#   ],
+  [
+    "diff-cover",
+    "--compare-branch",
+    { replace = "env", name = "DIFF_AGAINST", default = "origin/main" },
+    "{work_dir}{/}coverage.{env_name}.xml",
+  ],
 ]
 
 [env.fix]
