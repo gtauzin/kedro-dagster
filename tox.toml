@@ -19,6 +19,7 @@ commands = [
   [
     "pytest",
     "--cov=src/kedro-dagster",  # Specify the source directory to measure coverage
+    "--cov-branch",
     "--cov-report=html:{env_tmp_dir}{/}htmlcov",  # Generate an HTML report
     "--cov-report=xml:{work_dir}{/}coverage.{env_name}.xml",  # Generate an XML report
     "--junitxml={work_dir}{/}junit.{env_name}.xml",  # Generate a JUnit XML report
