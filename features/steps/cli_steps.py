@@ -88,8 +88,6 @@ def create_project_from_config_file(context, starter_name):
         )
     )
 
-    raise ValueError(res)
-
     assert res.returncode == 0
 
 
