@@ -88,7 +88,7 @@ def create_project_from_config_file(context, starter_name):
         )
     )
 
-    assert res.returncode == 0
+    assert res.returncode == OK_EXIT_CODE
 
 
 @given('I have executed the kedro command "{command}"')
