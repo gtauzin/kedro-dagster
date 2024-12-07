@@ -1,6 +1,6 @@
 # Inspired from https://github.com/tox-dev/tox/
 requires = ["tox>=4.21", "tox-uv>=1.13"]
-env_list = ["fix", "3.10", "3.11", "3.12", "3.13", "pkg_meta", "dev"]
+env_list = ["fix", "3.10", "3.11", "3.12", "pkg_meta", "dev"]
 skip_missing_interpreters = true
 
 [env_run_base]
@@ -60,7 +60,6 @@ commands = [["uv", "pip", "list", "--format=columns"], ["python", "-c", 'print(r
 uv_seed = true
 
 [gh.python]
-"3.13" = ["3.13"]
 "3.12" = ["3.12", "fix", "dev", "pkg_meta"]
 "3.11" = ["3.11"]
 "3.10" = ["3.10"]
