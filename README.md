@@ -66,7 +66,8 @@ pip install kedro-dagster
         retries: 3
    jobs:
      my_job:
-       pipeline_name: __default__
+       pipeline:
+         pipeline_name: __default__
 
        executor: my_executor
        schedule: my_job_schedule
@@ -81,17 +82,17 @@ pip install kedro-dagster
    kedro dagster dev
    ```
 
-## How do I use Kedro?
+## How do I use Kedro-Dagster?
 
 The [Kedro-Dagster documentation](https://gtauzin.github.io/kedro-dagster/) will be available soon, stay tuned!
 
 ## Can I contribute?
 
-Yes! We welcome all kinds of contributions. Check out our [guide to contributing to Kedro](https://github.com/kedro-org/kedro/wiki/Contribute-to-Kedro).
+Yes! We welcome all kinds of contributions. Check out our [guide to contributing]([https://github.com/kedro-org/kedro/wiki/Contribute-to-Kedro](https://github.com/gtauzin/kedro-dagster/blob/main/CONTRIBUTING.md).
 
 ## Where can I learn more?
 
-There is a growing community around the Kedro project. We encourage you to ask and answer technical questions on the Kedro [Slack](https://slack.kedro.org/) and bookmark the [Linen archive of past discussions](https://linen-slack.kedro.org/).
+There is a growing community around the Kedro project and we encourage you to become part of it. To ask and answer technical questions on the Kedro [Slack](https://slack.kedro.org/) and bookmark the [Linen archive of past discussions](https://linen-slack.kedro.org/). For questions related specifically to Kedro-Dagster, you can also open a [discussion](https://github.com/gtauzin/kedro-dagster/discussions).
 
 ## License
 
@@ -99,4 +100,4 @@ This project is licensed under the terms of the [Apache 2.0 License](https://git
 
 ## Acknowledgements
 
-This plugin is inspired by existing Kedro plugins such as [kedro-kubeflow](https://github.com/getindata/kedro-kubeflow) and [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow).
+This plugin is inspired by existing Kedro plugins such as the [official Kedro plugins](https://github.com/kedro-org/kedro-plugins), [kedro-kubeflow](https://github.com/getindata/kedro-kubeflow), [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow).
