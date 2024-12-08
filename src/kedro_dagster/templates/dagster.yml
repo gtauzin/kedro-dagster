@@ -9,11 +9,11 @@ dev:
 
 # JOBS CONFIGURATION -------------------
 
-# jobs:
+jobs:
 #   data_processing:
 #     pipeline:
 #       pipeline_name: data_processing
 
-#   data_science:
-#     pipeline:
-#       pipeline_name: data_science
+  default:
+    pipeline:
+      pipeline_name: __default__
