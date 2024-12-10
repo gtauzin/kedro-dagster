@@ -9,7 +9,7 @@ from kedro.config import MissingConfigException
 from kedro.framework.context import KedroContext
 from kedro.framework.startup import bootstrap_project
 from kedro.utils import _find_kedro_project
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 LOGGER = get_dagster_logger()
 
@@ -49,16 +49,56 @@ class PipelineOptions(BaseModel):
         extra = "forbid"
 
 
-class JobsOptions(BaseModel):
+class JobOptions(BaseModel):
     pipeline: PipelineOptions
 
     class Config:
         extra = "forbid"
 
 
+class BaseExecutorOptions(BaseModel):
+    type: str = Field(..., description="Type of the executor, e.g., 'multiprocess', 'k8s_job_executor'.")
+
+
+# TODO: Map all dagster executors
+class InprocessExecutorOptions(BaseExecutorOptions):
+    type: str = Field("in_process", const=True)
+
+
+class MultiprocessExecutorOptions(BaseExecutorOptions):
+    type: str = Field("multiprocess", const=True)
+    max_concurrent: int
+    retries: dict[str, bool | None] | None = None
+
+
+class DockerExecutorOptions(BaseExecutorOptions):
+    type: str = Field("docker_executor", const=True)
+    registry: str | None = None
+    network: str | None = None
+    networks: list[str] | None = None
+    container_kwargs: dict[str, str | int | float | bool | None] | None = None
+
+
+class K8sExecutorOptions(BaseExecutorOptions):
+    type: str = Field("k8s_job_executor", const=True)
+    job_namespace: str
+    image_pull_policy: str | None = None
+    image_pull_secrets: list[str] | None = None
+    service_account_name: str | None = None
+    env_config_maps: list[str] | None = None
+    env_secrets: list[str] | None = None
+    env_vars: dict[str, str] | None = None
+    job_image: str | None = None
+    max_concurrent: int | None = None
+
+
+ExecutorOptions = InprocessExecutorOptions | MultiprocessExecutorOptions | DockerExecutorOptions | K8sExecutorOptions
+
+
 class KedroDagsterConfig(BaseModel):
     dev: DevOptions | None = None
-    jobs: dict[str, JobsOptions] | None = None
+    executors: dict[str, ExecutorOptions] | None = None
+    jobs: dict[str, JobOptions] | None = None
 
     class Config:
         # force triggering type control when setting value instead of init
