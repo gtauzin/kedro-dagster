@@ -5,13 +5,14 @@ from typing import Any
 from dagster import (
     AssetKey,
     AssetSpec,
-    DependencyDefinition,
     ExecutorDefinition,
-    GraphDefinition,
     HookContext,
     In,
     JobDefinition,
+    Nothing,
     failure_hook,
+    get_dagster_logger,
+    graph,
     op,
 )
 from kedro import __version__ as kedro_version
@@ -55,7 +56,7 @@ def get_job_from_pipeline(
         name=f"{job_name}_before_pipeline_run_hook",
         description="Hook to be executed before a pipeline run.",
     )
-    def before_pipeline_run_hook():
+    def before_pipeline_run_hook() -> Nothing:
         hook_manager.hook.before_pipeline_run(
             run_params=run_params,
             pipeline=pipeline,
@@ -91,47 +92,59 @@ def get_job_from_pipeline(
             catalog=catalog,
         )
 
-    def get_node_def(name):
-        if name in multi_asset_node_dict:
-            return multi_asset_node_dict[name].node_def
-
-        return op_node_dict[name]
-
-    pipeline_node_defs = [before_pipeline_run_hook, after_pipeline_run_hook] + [
-        get_node_def(node.name) for node in pipeline.nodes
-    ]
-
-    output_node_map = {
-        asset_name: [node for node in pipeline.nodes if asset_name in node.outputs][0]
-        for asset_name in pipeline.all_outputs()
-    }
-
-    pipeline_dependencies = {
-        f"{job_name}_before_pipeline_run_hook": {},
-        f"{job_name}_after_pipeline_run_hook": {
-            asset_name: DependencyDefinition(output_node_map[asset_name].name, asset_name)
-            for asset_name in pipeline.outputs()
-        },
-    }
-    for node in pipeline.nodes:
-        pipeline_dependencies |= {
-            node.name: {
-                "before_pipeline_run_hook_result": DependencyDefinition(f"{job_name}_before_pipeline_run_hook"),
-            }
-            | {
-                asset_name: DependencyDefinition(output_node_map[asset_name].name, asset_name)
-                for asset_name in node.inputs
-                if asset_name not in pipeline.inputs()
-            }
-        }
-
-    # TODO: Why does the graph not appear on Dagster UI?
-    pipeline_graph = GraphDefinition(
+    @graph(
         name=job_name,
         description=f"Graph derived from pipeline associated to the `{job_name}` job.",
-        node_defs=pipeline_node_defs,
-        dependencies=pipeline_dependencies,
+        # ins=ins,
+        out=None,
     )
+    def pipeline_graph():
+        before_pipeline_run_hook_result = before_pipeline_run_hook()
+
+        materialized_assets = {
+            "before_pipeline_run_hook_result": before_pipeline_run_hook_result,
+        }
+
+        for layer in pipeline.grouped_nodes:
+            for node in layer:
+                if node.name in multi_asset_node_dict:
+                    if len(node.outputs):
+                        op = multi_asset_node_dict[node.name]
+                    else:
+                        op = op_node_dict[node.name]
+
+                    node_inputs = node.inputs
+                    node_inputs.append("before_pipeline_run_hook_result")
+
+                    materialized_input_assets = {
+                        input_name: asset_input_dict[input_name]
+                        for input_name in node_inputs
+                        if input_name in asset_input_dict
+                    }
+
+                    materialized_input_assets |= {
+                        input_name: materialized_assets[input_name]
+                        for input_name in node_inputs
+                        if input_name in materialized_assets
+                    }
+
+                    get_dagster_logger().info(materialized_input_assets.keys())
+
+                    materialized_outputs = op(**materialized_input_assets)
+
+                    if len(node.outputs) == 1:
+                        materialized_output_assets = {materialized_outputs.output_name: materialized_outputs}
+                    elif len(node.outputs) > 1:
+                        materialized_output_assets = {
+                            materialized_output.output_name: materialized_output
+                            for materialized_output in materialized_outputs
+                        }
+
+                    materialized_assets |= materialized_output_assets
+
+        run_results = {asset_name: materialized_assets[asset_name] for asset_name in pipeline.outputs()}
+
+        after_pipeline_run_hook(**run_results)
 
     job = JobDefinition(
         name=job_name,

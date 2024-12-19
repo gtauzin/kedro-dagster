@@ -45,7 +45,7 @@ def _define_node_op(
             params[asset_name] = catalog.load(asset_name)
 
     ins["before_pipeline_run_hook_result"] = In(
-        asset_key=AssetKey("before_pipeline_run_hook_result"),
+        # asset_key=AssetKey("before_pipeline_run_hook_result"),
         dagster_type=Nothing,
     )
 

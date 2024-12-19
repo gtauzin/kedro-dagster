@@ -6,7 +6,6 @@ from dagster import (
     AssetsDefinition,
     AssetSpec,
     Config,
-    Nothing,
     get_dagster_logger,
     multi_asset,
 )
@@ -52,10 +51,10 @@ def _define_node_multi_asset(
         else:
             params[asset_name] = catalog.load(asset_name)
 
-    ins[f"{node.name}_before_pipeline_run_hook"] = AssetIn(
-        key=f"{node.name}_before_pipeline_run_hook",
-        dagster_type=Nothing,
-    )
+    # ins["before_pipeline_run_hook"] = AssetIn(
+    #     key="before_pipeline_run_hook",
+    #     dagster_type=Nothing,
+    # )
 
     outs = {}
     for asset_name in node.outputs:
@@ -93,7 +92,11 @@ def _define_node_multi_asset(
         required_resource_keys={"mlflow"} if _include_mlflow() else None,
         op_tags=node.tags,
     )
-    def dagster_asset(config: NodeParametersConfig, **inputs):
+    def dagster_asset(
+        config: NodeParametersConfig,
+        # before_pipeline_run_hook_result: Nothing,
+        **inputs,
+    ):
         # Logic to execute the Kedro node
 
         inputs |= config.model_dump()

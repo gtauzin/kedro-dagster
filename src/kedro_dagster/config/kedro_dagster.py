@@ -1,103 +1,23 @@
 """Configuration definitions for Kedro-Dagster."""
 
-from collections.abc import Iterable
-from pathlib import Path
-from typing import Literal
-
 from dagster import get_dagster_logger
 from kedro.config import MissingConfigException
 from kedro.framework.context import KedroContext
-from kedro.framework.startup import bootstrap_project
-from kedro.utils import _find_kedro_project
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, model_validator
+
+from .automation import ScheduleOptions, SensorOptions
+from .dev import DevOptions
+from .execution import EXECUTOR_MAP, ExecutorOptions
+from .job import JobOptions
 
 LOGGER = get_dagster_logger()
-
-
-class DevOptions(BaseModel):
-    log_level: Literal["critical", "error", "warning", "info", "debug"] = "info"
-    log_format: Literal["colored", "json", "rich"] = "colored"
-    port: str = "3000"
-    host: str = "127.0.0.1"
-    live_data_poll_rate: str = "2000"
-
-    @property
-    def python_file(self):
-        project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
-        project_metadata = bootstrap_project(project_path)
-        package_name = project_metadata.package_name
-        definitions_py = "definitions.py"
-        definitions_py_path = project_path / "src" / package_name / definitions_py
-
-        return definitions_py_path
-
-    class Config:
-        extra = "forbid"
-
-
-class PipelineOptions(BaseModel):
-    pipeline_name: str | None = None
-    from_nodes: Iterable[str] | None = None
-    to_nodes: Iterable[str] | None = None
-    node_names: Iterable[str] | None = None
-    from_inputs: Iterable[str] | None = None
-    to_outputs: Iterable[str] | None = None
-    namespace: str | None = None
-    tags: Iterable[str] | None = None
-
-    class Config:
-        extra = "forbid"
-
-
-class JobOptions(BaseModel):
-    pipeline: PipelineOptions
-
-    class Config:
-        extra = "forbid"
-
-
-class BaseExecutorOptions(BaseModel):
-    type: str = Field(..., description="Type of the executor, e.g., 'multiprocess', 'k8s_job_executor'.")
-
-
-# TODO: Map all dagster executors
-class InprocessExecutorOptions(BaseExecutorOptions):
-    type: str = Field("in_process", const=True)
-
-
-class MultiprocessExecutorOptions(BaseExecutorOptions):
-    type: str = Field("multiprocess", const=True)
-    max_concurrent: int
-    retries: dict[str, bool | None] | None = None
-
-
-class DockerExecutorOptions(BaseExecutorOptions):
-    type: str = Field("docker_executor", const=True)
-    registry: str | None = None
-    network: str | None = None
-    networks: list[str] | None = None
-    container_kwargs: dict[str, str | int | float | bool | None] | None = None
-
-
-class K8sExecutorOptions(BaseExecutorOptions):
-    type: str = Field("k8s_job_executor", const=True)
-    job_namespace: str
-    image_pull_policy: str | None = None
-    image_pull_secrets: list[str] | None = None
-    service_account_name: str | None = None
-    env_config_maps: list[str] | None = None
-    env_secrets: list[str] | None = None
-    env_vars: dict[str, str] | None = None
-    job_image: str | None = None
-    max_concurrent: int | None = None
-
-
-ExecutorOptions = InprocessExecutorOptions | MultiprocessExecutorOptions | DockerExecutorOptions | K8sExecutorOptions
 
 
 class KedroDagsterConfig(BaseModel):
     dev: DevOptions | None = None
     executors: dict[str, ExecutorOptions] | None = None
+    schedules: dict[str, ScheduleOptions] | None = None
+    sensors: dict[str, SensorOptions] | None = None
     jobs: dict[str, JobOptions] | None = None
 
     class Config:
@@ -105,6 +25,31 @@ class KedroDagsterConfig(BaseModel):
         validate_assignment = True
         # raise an error if an unknown key is passed to the constructor
         extra = "forbid"
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_executors(cls, values):
+        executors = values.get("executors", {})
+        parsed_executors = {}
+
+        for name, executor_config in executors.items():
+            if "in_process" in executor_config:
+                executor_name = "in_process"
+            elif "in_process" in executor_config:
+                executor_name = "multiprocess"
+            elif "k8s_job_executor" in executor_config:
+                executor_name = "k8s_job_executor"
+            elif "docker_executor" in executor_config:
+                executor_name = "docker_executor"
+            else:
+                raise ValueError(f"Unknown executor type in {name}")
+
+            executor_options_class = EXECUTOR_MAP[executor_name]
+            executor_options_params = executor_config[executor_name] or {}
+            parsed_executors[name] = {executor_name: executor_options_class(**executor_options_params)}
+
+        values["executors"] = parsed_executors
+        return values
 
 
 def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
@@ -140,6 +85,7 @@ def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
     return dagster_config
 
 
+# TODO: Use kedro-mlflow directly
 def get_mlflow_config(context: KedroContext) -> BaseModel:
     """Get the MLFlow configuration from the `mlflow.yml` file.
 
