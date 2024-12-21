@@ -13,6 +13,8 @@
 [![Run tests and checks](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml/badge.svg)](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml)
 [![Slack Organisation](https://img.shields.io/badge/slack-chat-blueviolet.svg?label=Kedro%20Slack&logo=slack)](https://slack.kedro.org)
 
+> **Important**: This package is under active development but is not yet ready for production.
+
 ## What is Kedro-Dagster?
 
 The Kedro-Dagster plugin enables seamless integration between [Kedro](https://kedro.readthedocs.io/), a framework for creating reproducible and maintainable data science code, and [Dagster](https://dagster.io/), a data orchestrator for machine learning and data pipelines. This plugin makes use of Dagster's orchestration capabilities to automate and monitor Kedro pipelines effectively.
