@@ -6,6 +6,7 @@ from dagster import (
     AssetsDefinition,
     AssetSpec,
     Config,
+    Nothing,
     get_dagster_logger,
     multi_asset,
 )
@@ -51,10 +52,9 @@ def _define_node_multi_asset(
         else:
             params[asset_name] = catalog.load(asset_name)
 
-    # ins["before_pipeline_run_hook"] = AssetIn(
-    #     key="before_pipeline_run_hook",
-    #     dagster_type=Nothing,
-    # )
+    ins["before_pipeline_run_hook_result"] = AssetIn(
+        key="before_pipeline_run_hook_result",
+    )
 
     outs = {}
     for asset_name in node.outputs:
@@ -94,7 +94,7 @@ def _define_node_multi_asset(
     )
     def dagster_asset(
         config: NodeParametersConfig,
-        # before_pipeline_run_hook_result: Nothing,
+        before_pipeline_run_hook_result: Nothing,
         **inputs,
     ):
         # Logic to execute the Kedro node
