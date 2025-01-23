@@ -54,6 +54,7 @@ def _define_node_multi_asset(
 
     ins["before_pipeline_run_hook_result"] = AssetIn(
         key="before_pipeline_run_hook_result",
+        dagster_type=Nothing,
     )
 
     outs = {}
@@ -94,7 +95,6 @@ def _define_node_multi_asset(
     )
     def dagster_asset(
         config: NodeParametersConfig,
-        before_pipeline_run_hook_result: Nothing,
         **inputs,
     ):
         # Logic to execute the Kedro node

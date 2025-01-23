@@ -80,7 +80,7 @@ def translate_kedro(
     )
     op_node_dict = load_ops_from_kedro_nodes(default_pipeline, catalog, hook_manager, session_id)
     executors = load_executors_from_kedro_config(dagster_config)
-    jobs = load_jobs_from_kedro_config(
+    jobs, before_pipeline_run_hook = load_jobs_from_kedro_config(
         dagster_config,
         asset_input_dict,
         multi_asset_node_dict,
@@ -92,7 +92,7 @@ def translate_kedro(
         project_path,
         env,
     )
-    # assets.append(before_pipeline_run_hook)
+    assets.append(before_pipeline_run_hook)
     loggers = get_kedro_loggers(project_metadata.package_name)
     io_managers = load_io_managers_from_kedro_datasets(default_pipeline, catalog, hook_manager)
     resources |= io_managers

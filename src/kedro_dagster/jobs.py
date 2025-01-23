@@ -238,4 +238,26 @@ def load_jobs_from_kedro_config(
 
         jobs.append(job)
 
-    return jobs
+    from dagster import AssetOut, multi_asset
+
+    @multi_asset(
+        name="before_pipeline_run_hook",
+        group_name="hooks",
+        description="Hook to be executed before a pipeline run.",
+        outs={
+            "before_pipeline_run_hook_result": AssetOut(
+                key="before_pipeline_run_hook_result",
+                description="Untangible asset for the `before_pipeline_run` hook.",
+                dagster_type=Nothing,
+                is_required=False,
+            )
+        },
+    )
+    def before_pipeline_run_hook():
+        hook_manager.hook.before_pipeline_run(
+            run_params=run_params,
+            pipeline=pipeline,
+            catalog=catalog,
+        )
+
+    return jobs, before_pipeline_run_hook
