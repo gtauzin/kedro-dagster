@@ -4,8 +4,4 @@ from pydantic import BaseModel
 
 
 class ScheduleOptions(BaseModel):
-    pass
-
-
-class SensorOptions(BaseModel):
-    pass
+    cron_schedule: str

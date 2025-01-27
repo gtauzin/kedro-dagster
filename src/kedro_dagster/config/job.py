@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from .automation import ScheduleOptions, SensorOptions
+from .automation import ScheduleOptions
 from .execution import ExecutorOptions
 
 
@@ -35,7 +35,6 @@ class JobOptions(BaseModel):
     pipeline: PipelineOptions
     executor: ExecutorOptions | str | None = None
     schedule: ScheduleOptions | str | None = None
-    sensor: SensorOptions | str | None = None
     config: dict[str, Any] | None = None  # TODO: Can contain general config or associated to node?
 
     class Config:

@@ -5,7 +5,7 @@ from kedro.config import MissingConfigException
 from kedro.framework.context import KedroContext
 from pydantic import BaseModel, model_validator
 
-from .automation import ScheduleOptions, SensorOptions
+from .automation import ScheduleOptions
 from .dev import DevOptions
 from .execution import EXECUTOR_MAP, ExecutorOptions
 from .job import JobOptions
@@ -17,7 +17,6 @@ class KedroDagsterConfig(BaseModel):
     dev: DevOptions | None = None
     executors: dict[str, ExecutorOptions] | None = None
     schedules: dict[str, ScheduleOptions] | None = None
-    sensors: dict[str, SensorOptions] | None = None
     jobs: dict[str, JobOptions] | None = None
 
     class Config:
