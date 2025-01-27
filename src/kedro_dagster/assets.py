@@ -62,7 +62,7 @@ def _define_node_multi_asset(
         metadata, description = None, None
         if asset_name in catalog.list():
             dataset = catalog._get_dataset(asset_name)
-            metadata = dataset.metadata or {}
+            metadata = getattr(dataset, "metadata", None) or {}
             description = metadata.pop("description", "")
 
         io_manager_key = "io_manager"
@@ -185,7 +185,7 @@ def load_assets_from_kedro_nodes(
     for external_asset_name in default_pipeline.inputs():
         if not external_asset_name.startswith("params:"):
             dataset = catalog._get_dataset(external_asset_name)
-            metadata = dataset.metadata or {}
+            metadata = getattr(dataset, "metadata", None) or {}
             description = metadata.pop("description", "")
             asset = AssetSpec(
                 external_asset_name,

@@ -94,7 +94,7 @@ def get_job_from_pipeline(
         for external_asset_name in pipeline.inputs():
             if not external_asset_name.startswith("params:"):
                 dataset = catalog._get_dataset(external_asset_name)
-                metadata = dataset.metadata or {}
+                metadata = getattr(dataset, "metadata", None) or {}
                 description = metadata.pop("description", "")
                 materialized_assets[external_asset_name] = dg.AssetSpec(
                     external_asset_name,

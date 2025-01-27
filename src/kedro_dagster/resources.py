@@ -72,11 +72,11 @@ def load_io_managers_from_kedro_datasets(
                 continue
 
             def get_io_manager_definition(dataset, dataset_name):
-                # TODO: Figure out why thisConfigDict does not allow to see the config of the io managers in dagit
+                # TODO: Figure out why this ConfigDict does not allow to see the config of the io managers in dagit
                 dataset_config = {
                     key: val if not isinstance(val, PurePosixPath) else str(val)
                     for key, val in dataset._describe().items()
-                    if key not in ["version"]
+                    if key not in ["version"] and val is not None  # TODO: Why are those condition necessary?
                 }  # | {"dataset": dataset}
 
                 DatasetModel = _create_pydantic_model_from_dict(
