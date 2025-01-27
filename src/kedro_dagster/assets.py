@@ -180,7 +180,6 @@ def load_assets_from_kedro_nodes(
 
     logger.info("Building asset list...")
     assets = []
-    asset_input_dict = {}
     # Assets that are not generated through dagster are external and
     # registered with AssetSpec
     for external_asset_name in default_pipeline.inputs():
@@ -195,7 +194,6 @@ def load_assets_from_kedro_nodes(
                 metadata=metadata,
             ).with_io_manager_key(io_manager_key=f"{external_asset_name}_io_manager")
             assets.append(asset)
-            asset_input_dict[external_asset_name] = asset
 
     multi_asset_node_dict = {}
     for node in default_pipeline.nodes:
@@ -212,4 +210,4 @@ def load_assets_from_kedro_nodes(
             assets.append(asset)
             multi_asset_node_dict[node.name] = asset
 
-    return assets, multi_asset_node_dict, asset_input_dict
+    return assets, multi_asset_node_dict

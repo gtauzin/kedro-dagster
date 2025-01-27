@@ -4,6 +4,7 @@ from typing import Any
 
 from dagster import (
     AssetKey,
+    AssetOut,
     AssetSpec,
     ExecutorDefinition,
     HookContext,
@@ -11,8 +12,8 @@ from dagster import (
     JobDefinition,
     Nothing,
     failure_hook,
-    get_dagster_logger,
     graph,
+    multi_asset,
     op,
 )
 from kedro import __version__ as kedro_version
@@ -25,7 +26,6 @@ from kedro_dagster.utils import _include_mlflow
 
 
 def get_job_from_pipeline(
-    asset_input_dict: dict[str, AssetSpec],
     multi_asset_node_dict: dict[str, Any],
     op_node_dict: dict[str, Any],
     pipeline: Pipeline,
@@ -95,7 +95,6 @@ def get_job_from_pipeline(
     @graph(
         name=job_name,
         description=f"Graph derived from pipeline associated to the `{job_name}` job.",
-        # ins=ins,
         out=None,
     )
     def pipeline_graph():
@@ -105,45 +104,48 @@ def get_job_from_pipeline(
             "before_pipeline_run_hook_result": before_pipeline_run_hook_result,
         }
 
+        for external_asset_name in pipeline.inputs():
+            if not external_asset_name.startswith("params:"):
+                dataset = catalog._get_dataset(external_asset_name)
+                metadata = dataset.metadata or {}
+                description = metadata.pop("description", "")
+                materialized_assets[external_asset_name] = AssetSpec(
+                    external_asset_name,
+                    description=description,
+                    metadata=metadata,
+                ).with_io_manager_key(io_manager_key=f"{external_asset_name}_io_manager")
+
         for layer in pipeline.grouped_nodes:
             for node in layer:
-                if node.name in multi_asset_node_dict:
-                    if len(node.outputs):
-                        op = multi_asset_node_dict[node.name]
-                    else:
-                        op = op_node_dict[node.name]
+                if len(node.outputs):
+                    op = multi_asset_node_dict[node.name]
+                else:
+                    op = op_node_dict[node.name]
 
-                    node_inputs = node.inputs
-                    node_inputs.append("before_pipeline_run_hook_result")
+                node_inputs = node.inputs
+                node_inputs.append("before_pipeline_run_hook_result")
 
-                    materialized_input_assets = {
-                        input_name: asset_input_dict[input_name]
-                        for input_name in node_inputs
-                        if input_name in asset_input_dict
+                materialized_input_assets = {
+                    input_name: materialized_assets[input_name]
+                    for input_name in node_inputs
+                    if input_name in materialized_assets
+                }
+
+                materialized_outputs = op(**materialized_input_assets)
+
+                if len(node.outputs) == 1:
+                    materialized_output_assets = {materialized_outputs.output_name: materialized_outputs}
+                elif len(node.outputs) > 1:
+                    materialized_output_assets = {
+                        materialized_output.output_name: materialized_output
+                        for materialized_output in materialized_outputs
                     }
 
-                    materialized_input_assets |= {
-                        input_name: materialized_assets[input_name]
-                        for input_name in node_inputs
-                        if input_name in materialized_assets
-                    }
-
-                    get_dagster_logger().info(materialized_input_assets.keys())
-
-                    materialized_outputs = op(**materialized_input_assets)
-
-                    if len(node.outputs) == 1:
-                        materialized_output_assets = {materialized_outputs.output_name: materialized_outputs}
-                    elif len(node.outputs) > 1:
-                        materialized_output_assets = {
-                            materialized_output.output_name: materialized_output
-                            for materialized_output in materialized_outputs
-                        }
-
-                    materialized_assets |= materialized_output_assets
+                materialized_assets |= materialized_output_assets
 
         run_results = {asset_name: materialized_assets[asset_name] for asset_name in pipeline.outputs()}
 
+        # TODO: If pipeline has ops as last steps, run_results is empty and after_pipeline_run_hook runs first
         after_pipeline_run_hook(**run_results)
 
     job = JobDefinition(
@@ -158,7 +160,6 @@ def get_job_from_pipeline(
 
 def load_jobs_from_kedro_config(
     dagster_config: KedroDagsterConfig,
-    asset_input_dict: dict,
     multi_asset_node_dict: dict,
     op_node_dict: dict,
     executors: dict[str, ExecutorDefinition],
@@ -172,7 +173,6 @@ def load_jobs_from_kedro_config(
 
     Args:
         dagster_config : The Dagster configuration.
-        asset_input_dict: A dictionary of asset inputs.
         multi_asset_node_dict: A dictionary of multi-asset nodes.
         op_node_dict: A dictionary of operation nodes.
         executors: A dictionary of executors.
@@ -225,7 +225,6 @@ def load_jobs_from_kedro_config(
                 raise ValueError("")
 
         job = get_job_from_pipeline(
-            asset_input_dict=asset_input_dict,
             multi_asset_node_dict=multi_asset_node_dict,
             op_node_dict=op_node_dict,
             pipeline=pipeline,
@@ -237,8 +236,6 @@ def load_jobs_from_kedro_config(
         )
 
         jobs.append(job)
-
-    from dagster import AssetOut, multi_asset
 
     @multi_asset(
         name="before_pipeline_run_hook",
