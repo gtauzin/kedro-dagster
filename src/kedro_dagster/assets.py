@@ -52,8 +52,8 @@ def _define_node_multi_asset(
         else:
             params[asset_name] = catalog.load(asset_name)
 
-    ins["before_pipeline_run_hook_result"] = AssetIn(
-        key="before_pipeline_run_hook_result",
+    ins["before_pipeline_run_hook_output"] = AssetIn(
+        key="before_pipeline_run_hook_output",
         dagster_type=Nothing,
     )
 

@@ -58,7 +58,7 @@ def get_job_from_pipeline(
             for asset_name in list(pipeline.all_inputs()) + list(pipeline.all_outputs())
             if not asset_name.startswith("params:")
         }
-        | {"result": dg.In(dagster_type=dg.Nothing)},
+        | {"after_pipeline_run_hook_input": dg.In(dagster_type=dg.Nothing)},
     )
     def after_pipeline_run_hook(**materialized_assets) -> dg.Nothing:
         run_results = {asset_name: materialized_assets[asset_name] for asset_name in pipeline.outputs()}
@@ -92,10 +92,10 @@ def get_job_from_pipeline(
         out=None,
     )
     def pipeline_graph():
-        before_pipeline_run_hook_result = before_pipeline_run_hook()
+        before_pipeline_run_hook_output = before_pipeline_run_hook()
 
         materialized_assets = {
-            "before_pipeline_run_hook_result": before_pipeline_run_hook_result,
+            "before_pipeline_run_hook_output": before_pipeline_run_hook_output,
         }
 
         for external_asset_name in pipeline.inputs():
@@ -117,7 +117,7 @@ def get_job_from_pipeline(
                     op = op_node_dict[node.name]
 
                 node_inputs = node.inputs
-                node_inputs.append("before_pipeline_run_hook_result")
+                node_inputs.append("before_pipeline_run_hook_output")
 
                 materialized_input_assets = {
                     input_name: materialized_assets[input_name]
@@ -140,7 +140,7 @@ def get_job_from_pipeline(
         materialized_assets = {
             asset_name: asset
             for asset_name, asset in materialized_assets.items()
-            if asset_name not in ["before_pipeline_run_hook_result"]
+            if asset_name not in ["before_pipeline_run_hook_output"]
         }
 
         after_pipeline_run_hook(**materialized_assets)
@@ -239,8 +239,8 @@ def load_jobs_from_kedro_config(
         group_name="hooks",
         description="Hook to be executed before a pipeline run.",
         outs={
-            "before_pipeline_run_hook_result": dg.AssetOut(
-                key="before_pipeline_run_hook_result",
+            "before_pipeline_run_hook_output": dg.AssetOut(
+                key="before_pipeline_run_hook_output",
                 description="Untangible asset for the `before_pipeline_run` hook.",
                 dagster_type=dg.Nothing,
                 is_required=False,

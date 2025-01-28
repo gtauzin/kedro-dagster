@@ -36,8 +36,8 @@ def _define_node_op(
         else:
             params[asset_name] = catalog.load(asset_name)
 
-    ins["before_pipeline_run_hook_result"] = dg.In(
-        asset_key=dg.AssetKey("before_pipeline_run_hook_result"),
+    ins["before_pipeline_run_hook_output"] = dg.In(
+        asset_key=dg.AssetKey("before_pipeline_run_hook_output"),
         dagster_type=dg.Nothing,
     )
 
@@ -54,7 +54,7 @@ def _define_node_op(
         name=node.name,
         description=f"Kedro node {node.name} wrapped as a Dagster op.",
         ins=ins,
-        out=dg.Out(dagster_type=dg.Nothing),
+        out={"after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
         required_resource_keys={"mlflow"} if _include_mlflow() else None,
         # tags=node.tags,
     )
