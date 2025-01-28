@@ -76,7 +76,9 @@ def load_io_managers_from_kedro_datasets(
                 dataset_config = {
                     key: val if not isinstance(val, PurePosixPath) else str(val)
                     for key, val in dataset._describe().items()
-                    if key not in ["version"] and val is not None  # TODO: Why are those condition necessary?
+                    if key not in ["version"]
+                    and val
+                    is not None  # TODO: Why are those condition necessary? We could want to edit them on launchpad
                 }  # | {"dataset": dataset}
 
                 DatasetModel = _create_pydantic_model_from_dict(

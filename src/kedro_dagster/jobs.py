@@ -41,7 +41,7 @@ def get_job_from_pipeline(
 
     @dg.op(
         name=f"{job_name}_before_pipeline_run_hook",
-        description="Hook to be executed before a pipeline run.",
+        description=f"Hook to be executed before the `{job_name}` pipeline run.",
     )
     def before_pipeline_run_hook() -> dg.Nothing:
         hook_manager.hook.before_pipeline_run(
@@ -53,9 +53,16 @@ def get_job_from_pipeline(
     @dg.op(
         name=f"{job_name}_after_pipeline_run_hook",
         description=f"Hook to be executed after the `{job_name}` pipeline run.",
-        ins={asset_name: dg.In(asset_key=dg.AssetKey(asset_name)) for asset_name in pipeline.outputs()},
+        ins={
+            asset_name: dg.In(asset_key=dg.AssetKey(asset_name))
+            for asset_name in list(pipeline.all_inputs()) + list(pipeline.all_outputs())
+            if not asset_name.startswith("params:")
+        }
+        | {"result": dg.In(dagster_type=dg.Nothing)},
     )
-    def after_pipeline_run_hook(**run_results):
+    def after_pipeline_run_hook(**materialized_assets) -> dg.Nothing:
+        run_results = {asset_name: materialized_assets[asset_name] for asset_name in pipeline.outputs()}
+
         hook_manager.hook.after_pipeline_run(
             run_params=run_params,
             run_result=run_results,
@@ -120,7 +127,7 @@ def get_job_from_pipeline(
 
                 materialized_outputs = op(**materialized_input_assets)
 
-                if len(node.outputs) == 1:
+                if len(node.outputs) <= 1:
                     materialized_output_assets = {materialized_outputs.output_name: materialized_outputs}
                 elif len(node.outputs) > 1:
                     materialized_output_assets = {
@@ -130,10 +137,13 @@ def get_job_from_pipeline(
 
                 materialized_assets |= materialized_output_assets
 
-        run_results = {asset_name: materialized_assets[asset_name] for asset_name in pipeline.outputs()}
+        materialized_assets = {
+            asset_name: asset
+            for asset_name, asset in materialized_assets.items()
+            if asset_name not in ["before_pipeline_run_hook_result"]
+        }
 
-        # TODO: If pipeline has ops as last steps, run_results is empty and after_pipeline_run_hook runs first
-        after_pipeline_run_hook(**run_results)
+        after_pipeline_run_hook(**materialized_assets)
 
     job = dg.JobDefinition(
         name=job_name,

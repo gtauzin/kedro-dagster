@@ -1,14 +1,6 @@
 """Dagster op definitons from Kedro nodes."""
 
-from dagster import (
-    AssetKey,
-    Config,
-    In,
-    Nothing,
-    OpDefinition,
-    get_dagster_logger,
-    op,
-)
+import dagster as dg
 from kedro.io import DataCatalog
 from kedro.pipeline import Pipeline
 from kedro.pipeline.node import Node
@@ -23,7 +15,7 @@ def _define_node_op(
     catalog: DataCatalog,
     hook_manager: PluginManager,
     session_id: str,
-) -> OpDefinition:
+) -> dg.OpDefinition:
     """Wrap a kedro Node inside a Dagster op.
 
     Args:
@@ -40,32 +32,33 @@ def _define_node_op(
     ins, params = {}, {}
     for asset_name in node.inputs:
         if not asset_name.startswith("params:"):
-            ins[asset_name] = In(asset_key=AssetKey(asset_name))
+            ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_name))
         else:
             params[asset_name] = catalog.load(asset_name)
 
-    ins["before_pipeline_run_hook_result"] = In(
-        asset_key=AssetKey("before_pipeline_run_hook_result"),
-        dagster_type=Nothing,
+    ins["before_pipeline_run_hook_result"] = dg.In(
+        asset_key=dg.AssetKey("before_pipeline_run_hook_result"),
+        dagster_type=dg.Nothing,
     )
 
     # Node parameters are mapped to Dagster configs
     NodeParametersConfig = _create_pydantic_model_from_dict(
         params,
-        __base__=Config,
+        __base__=dg.Config,
         __config__=ConfigDict(extra="allow", frozen=False),
     )
 
     # Define an op from a Kedro node
     # TODO: dagster tags are dicts
-    @op(
+    @dg.op(
         name=node.name,
         description=f"Kedro node {node.name} wrapped as a Dagster op.",
         ins=ins,
+        out=dg.Out(dagster_type=dg.Nothing),
         required_resource_keys={"mlflow"} if _include_mlflow() else None,
         # tags=node.tags,
     )
-    def dagster_op(config: NodeParametersConfig, **inputs):
+    def dagster_op(config: NodeParametersConfig, **inputs) -> dg.Nothing:
         # Logic to execute the Kedro node
 
         inputs |= config.model_dump()
@@ -101,6 +94,8 @@ def _define_node_op(
             session_id=session_id,
         )
 
+        return None
+
     return dagster_op
 
 
@@ -109,7 +104,7 @@ def load_ops_from_kedro_nodes(
     catalog: DataCatalog,
     hook_manager: PluginManager,
     session_id: str,
-) -> dict[str, OpDefinition]:
+) -> dict[str, dg.OpDefinition]:
     """Load Kedro ops from a pipeline into Dagster.
 
     Args:
@@ -122,7 +117,7 @@ def load_ops_from_kedro_nodes(
     Returns:
         Dict[str, OpDefinition]: Dictionary of Dagster ops.
     """
-    logger = get_dagster_logger()
+    logger = dg.get_dagster_logger()
 
     logger.info("Building op list...")
     # Assets that are not generated through dagster are external and
