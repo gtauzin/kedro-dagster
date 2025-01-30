@@ -2,12 +2,12 @@
 
 import logging
 
-from dagster import InitLoggerContext, LoggerDefinition
+import dagster as dg
 from kedro.framework.project import pipelines
 
 
 # TODO: Allow logger customization
-def get_kedro_loggers(package_name: str) -> dict[str, LoggerDefinition]:
+def get_kedro_loggers(package_name: str) -> dict[str, dg.LoggerDefinition]:
     """Get Kedro loggers for Dagster.
 
     Args:
@@ -22,10 +22,10 @@ def get_kedro_loggers(package_name: str) -> dict[str, LoggerDefinition]:
         if pipeline_name != "__default__":
 
             def get_logger_definition(package_name, pipeline_name):
-                def pipeline_logger(context: InitLoggerContext):
+                def pipeline_logger(context: dg.InitLoggerContext):
                     return logging.getLogger(f"{package_name}.pipelines.{pipeline_name}.nodes")
 
-                return LoggerDefinition(
+                return dg.LoggerDefinition(
                     pipeline_logger,
                     description=f"Logger for pipeline`{pipeline_name}` of package `{package_name}`.",
                 )

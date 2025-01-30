@@ -2,14 +2,7 @@
 
 from pathlib import PurePosixPath
 
-from dagster import (
-    Config,
-    ConfigurableIOManager,
-    InputContext,
-    IOManagerDefinition,
-    OutputContext,
-    get_dagster_logger,
-)
+import dagster as dg
 from kedro.io import DataCatalog, MemoryDataset
 from kedro.pipeline import Pipeline
 from pluggy import PluginManager
@@ -22,7 +15,7 @@ def load_io_managers_from_kedro_datasets(
     default_pipeline: Pipeline,
     catalog: DataCatalog,
     hook_manager: PluginManager,
-) -> dict[str, IOManagerDefinition]:
+) -> dict[str, dg.IOManagerDefinition]:
     """
     Get the IO managers from Kedro datasets.
 
@@ -37,7 +30,7 @@ def load_io_managers_from_kedro_datasets(
 
     """
 
-    logger = get_dagster_logger()
+    logger = dg.get_dagster_logger()
 
     node_dict = {node.name: node for node in default_pipeline.nodes}
 
@@ -62,14 +55,14 @@ def load_io_managers_from_kedro_datasets(
 
                 DatasetModel = _create_pydantic_model_from_dict(
                     dataset_config,
-                    __base__=Config,
+                    __base__=dg.Config,
                     __config__=ConfigDict(arbitrary_types_allowed=True),
                 )
 
-                class ConfiguredDatasetIOManager(DatasetModel, ConfigurableIOManager):
+                class ConfiguredDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):
                     f"""IO Manager for kedro dataset `{dataset_name}`."""
 
-                    def handle_output(self, context: OutputContext, obj):
+                    def handle_output(self, context: dg.OutputContext, obj):
                         op_name = context.op_def.name
                         if not op_name.endswith("after_pipeline_run_hook"):
                             node = node_dict[op_name]
@@ -88,7 +81,7 @@ def load_io_managers_from_kedro_datasets(
                                 node=node,
                             )
 
-                    def load_input(self, context: InputContext):
+                    def load_input(self, context: dg.InputContext):
                         op_name = context.op_def.name
                         if not op_name.endswith("after_pipeline_run_hook"):
                             node = node_dict[op_name]

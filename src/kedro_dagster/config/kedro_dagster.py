@@ -1,6 +1,6 @@
 """Configuration definitions for Kedro-Dagster."""
 
-from dagster import get_dagster_logger
+import dagster as dg
 from kedro.config import MissingConfigException
 from kedro.framework.context import KedroContext
 from pydantic import BaseModel, model_validator
@@ -10,7 +10,7 @@ from .dev import DevOptions
 from .execution import EXECUTOR_MAP, ExecutorOptions
 from .job import JobOptions
 
-LOGGER = get_dagster_logger()
+LOGGER = dg.get_dagster_logger()
 
 
 class KedroDagsterConfig(BaseModel):

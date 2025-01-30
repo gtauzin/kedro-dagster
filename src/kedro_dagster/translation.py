@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from dagster import AssetsDefinition, JobDefinition, LoggerDefinition, ResourceDefinition, get_dagster_logger
+import dagster as dg
 from kedro.framework.project import pipelines
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
@@ -21,10 +21,10 @@ from kedro_dagster.schedules import load_schedules_from_kedro_config
 def translate_kedro(
     env: str | None = None,
 ) -> tuple[
-    list[AssetsDefinition],
-    dict[str, ResourceDefinition],
-    dict[str, JobDefinition],
-    dict[str, LoggerDefinition],
+    list[dg.AssetsDefinition],
+    dict[str, dg.ResourceDefinition],
+    dict[str, dg.JobDefinition],
+    dict[str, dg.LoggerDefinition],
 ]:
     """Translate Kedro project into Dagster.
 
@@ -43,7 +43,7 @@ def translate_kedro(
         dictionary of Dagster loggers.
 
     """
-    logger = get_dagster_logger()
+    logger = dg.get_dagster_logger()
 
     logger.info("Initializing Kedro...")
     project_path = _find_kedro_project(Path.cwd()) or Path.cwd()

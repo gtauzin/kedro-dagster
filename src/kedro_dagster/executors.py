@@ -1,6 +1,6 @@
 """Dagster executor definitons from Kedro pipelines."""
 
-from dagster import ExecutorDefinition
+import dagster as dg
 
 from kedro_dagster.config import KedroDagsterConfig
 from kedro_dagster.config.execution import InProcessExecutorOptions, K8sJobExecutorOptions, MultiprocessExecutorOptions
@@ -10,7 +10,7 @@ from kedro_dagster.config.execution import InProcessExecutorOptions, K8sJobExecu
 # TODO: Allow for custom executors?
 def load_executors_from_kedro_config(
     dagster_config: KedroDagsterConfig,
-) -> dict[str, ExecutorDefinition]:
+) -> dict[str, dg.ExecutorDefinition]:
     """Loads executor definitions from the config file.
 
     Args:
