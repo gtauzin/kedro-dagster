@@ -17,7 +17,7 @@ from kedro.pipeline.node import Node
 from pluggy import PluginManager
 from pydantic import ConfigDict
 
-from kedro_dagster.utils import _create_pydantic_model_from_dict, _include_mlflow
+from kedro_dagster.utils import _create_pydantic_model_from_dict
 
 
 def _define_node_multi_asset(
@@ -90,7 +90,7 @@ def _define_node_multi_asset(
         group_name=pipeline_name,
         ins=ins,
         outs=outs,
-        required_resource_keys={"mlflow"} if _include_mlflow() else None,
+        required_resource_keys=None,
         op_tags=node.tags,
     )
     def dagster_asset(

@@ -82,39 +82,3 @@ def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
     context.__setattr__("dagster", dagster_config)
 
     return dagster_config
-
-
-# TODO: Use kedro-mlflow directly
-def get_mlflow_config(context: KedroContext) -> BaseModel:
-    """Get the MLFlow configuration from the `mlflow.yml` file.
-
-    Args:
-        context: The ``KedroContext`` that was created.
-
-    Returns:
-        KedroMlflowConfig: The Mlflow configuration.
-    """
-    from kedro_mlflow.config.kedro_mlflow_config import KedroMlflowConfig
-
-    try:
-        if "mlflow" not in context.config_loader.config_patterns.keys():
-            context.config_loader.config_patterns.update({"mlflow": ["mlflow*", "mlflow*/**", "**/mlflow*"]})
-        conf_mlflow_yml = context.config_loader["mlflow"]
-    except MissingConfigException:
-        LOGGER.warning(
-            "No 'mlflow.yml' config file found in environment. Default configuration will be used. "
-            "Use ``kedro mlflow init`` command in CLI to customize the configuration."
-        )
-        # we create an empty dict to have the same behaviour when the mlflow.yml
-        # is commented out. In this situation there is no MissingConfigException
-        # but we got an empty dict
-        conf_mlflow_yml = {}
-
-    mlflow_config = KedroMlflowConfig.model_validate({**conf_mlflow_yml})
-
-    # store in context for interactive use
-    # we use __setattr__ instead of context.mlflow because
-    # the class will become frozen in kedro>=0.19
-    context.__setattr__("mlflow", mlflow_config)
-
-    return mlflow_config

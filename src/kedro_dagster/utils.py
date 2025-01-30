@@ -53,16 +53,6 @@ def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:
         file_handler.write(parsed_template)
 
 
-def _include_mlflow():
-    try:
-        import dagster_mlflow  # noqa: F401
-        import kedro_mlflow  # noqa: F401
-        import mlflow  # noqa: F401
-    except ImportError:
-        return False
-    return True
-
-
 def _create_pydantic_model_from_dict(
     params: dict[str, Any], __base__, __config__: ConfigDict | None = None
 ) -> type[BaseModel]:

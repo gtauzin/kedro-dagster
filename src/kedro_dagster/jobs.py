@@ -9,7 +9,6 @@ from kedro.io import DataCatalog
 from kedro.pipeline import Pipeline
 
 from kedro_dagster.config import KedroDagsterConfig
-from kedro_dagster.utils import _include_mlflow
 
 
 def get_job_from_pipeline(
@@ -70,13 +69,9 @@ def get_job_from_pipeline(
             catalog=catalog,
         )
 
-    required_resource_keys = None
-    if _include_mlflow():
-        required_resource_keys = {"mlflow"}
-
     @dg.failure_hook(
         name=f"{job_name}_on_pipeline_error_hook",
-        required_resource_keys=required_resource_keys,
+        required_resource_keys=None,
     )
     def on_pipeline_error_hook(context: dg.HookContext):
         hook_manager.hook.on_pipeline_error(

@@ -7,7 +7,7 @@ from kedro.pipeline.node import Node
 from pluggy import PluginManager
 from pydantic import ConfigDict
 
-from kedro_dagster.utils import _create_pydantic_model_from_dict, _include_mlflow
+from kedro_dagster.utils import _create_pydantic_model_from_dict
 
 
 def _define_node_op(
@@ -55,7 +55,7 @@ def _define_node_op(
         description=f"Kedro node {node.name} wrapped as a Dagster op.",
         ins=ins,
         out={"after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
-        required_resource_keys={"mlflow"} if _include_mlflow() else None,
+        required_resource_keys=None,
         # tags=node.tags,
     )
     def dagster_op(config: NodeParametersConfig, **inputs) -> dg.Nothing:

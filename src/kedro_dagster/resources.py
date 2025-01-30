@@ -8,35 +8,14 @@ from dagster import (
     InputContext,
     IOManagerDefinition,
     OutputContext,
-    ResourceDefinition,
     get_dagster_logger,
 )
 from kedro.io import DataCatalog, MemoryDataset
 from kedro.pipeline import Pipeline
 from pluggy import PluginManager
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from kedro_dagster.utils import _create_pydantic_model_from_dict
-
-
-def get_mlflow_resource_from_config(mlflow_config: BaseModel) -> ResourceDefinition:
-    from dagster_mlflow import mlflow_tracking
-
-    # TODO: Define custom mlflow resource
-    mlflow_resource = mlflow_tracking.configured({
-        "experiment_name": mlflow_config.tracking.experiment.name,
-        "mlflow_tracking_uri": mlflow_config.server.mlflow_tracking_uri,
-        "parent_run_id": None,
-        "env": {
-            # "MLFLOW_S3_ENDPOINT_URL": "my_s3_endpoint",
-            # "AWS_ACCESS_KEY_ID": "my_aws_key_id",
-            # "AWS_SECRET_ACCESS_KEY": "my_secret",
-        },
-        "env_to_tag": [],
-        "extra_tags": {},
-    })
-
-    return {"mlflow": mlflow_resource}
 
 
 def load_io_managers_from_kedro_datasets(
