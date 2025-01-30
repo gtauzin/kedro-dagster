@@ -38,61 +38,13 @@ def get_job_from_pipeline(
         JobDefinition: A Dagster job.
     """
 
-    @dg.op(
-        name=f"{job_name}_before_pipeline_run_hook",
-        description=f"Hook to be executed before the `{job_name}` pipeline run.",
-    )
-    def before_pipeline_run_hook() -> dg.Nothing:
-        hook_manager.hook.before_pipeline_run(
-            run_params=run_params,
-            pipeline=pipeline,
-            catalog=catalog,
-        )
-
-    @dg.op(
-        name=f"{job_name}_after_pipeline_run_hook",
-        description=f"Hook to be executed after the `{job_name}` pipeline run.",
-        ins={
-            asset_name: dg.In(asset_key=dg.AssetKey(asset_name))
-            for asset_name in list(pipeline.all_inputs()) + list(pipeline.all_outputs())
-            if not asset_name.startswith("params:")
-        }
-        | {"after_pipeline_run_hook_input": dg.In(dagster_type=dg.Nothing)},
-    )
-    def after_pipeline_run_hook(**materialized_assets) -> dg.Nothing:
-        run_results = {asset_name: materialized_assets[asset_name] for asset_name in pipeline.outputs()}
-
-        hook_manager.hook.after_pipeline_run(
-            run_params=run_params,
-            run_result=run_results,
-            pipeline=pipeline,
-            catalog=catalog,
-        )
-
-    @dg.failure_hook(
-        name=f"{job_name}_on_pipeline_error_hook",
-        required_resource_keys=None,
-    )
-    def on_pipeline_error_hook(context: dg.HookContext):
-        hook_manager.hook.on_pipeline_error(
-            error=context.op_exception,
-            run_params=run_params,
-            pipeline=pipeline,
-            catalog=catalog,
-        )
-
     @dg.graph(
         name=job_name,
         description=f"Graph derived from pipeline associated to the `{job_name}` job.",
         out=None,
     )
     def pipeline_graph():
-        before_pipeline_run_hook_output = before_pipeline_run_hook()
-
-        materialized_assets = {
-            "before_pipeline_run_hook_output": before_pipeline_run_hook_output,
-        }
-
+        materialized_assets = {}
         for external_asset_name in pipeline.inputs():
             if not external_asset_name.startswith("params:"):
                 dataset = catalog._get_dataset(external_asset_name)
@@ -112,7 +64,6 @@ def get_job_from_pipeline(
                     op = op_node_dict[node.name]
 
                 node_inputs = node.inputs
-                node_inputs.append("before_pipeline_run_hook_output")
 
                 materialized_input_assets = {
                     input_name: materialized_assets[input_name]
@@ -132,19 +83,10 @@ def get_job_from_pipeline(
 
                 materialized_assets |= materialized_output_assets
 
-        materialized_assets = {
-            asset_name: asset
-            for asset_name, asset in materialized_assets.items()
-            if asset_name not in ["before_pipeline_run_hook_output"]
-        }
-
-        after_pipeline_run_hook(**materialized_assets)
-
     job = dg.JobDefinition(
         name=job_name,
         graph_def=pipeline_graph,
         executor_def=executor,
-        hook_defs={on_pipeline_error_hook},
     )
 
     return job
@@ -229,24 +171,4 @@ def load_jobs_from_kedro_config(
 
         job_dict[job_name] = job
 
-    @dg.multi_asset(
-        name="before_pipeline_run_hook",
-        group_name="hooks",
-        description="Hook to be executed before a pipeline run.",
-        outs={
-            "before_pipeline_run_hook_output": dg.AssetOut(
-                key="before_pipeline_run_hook_output",
-                description="Untangible asset for the `before_pipeline_run` hook.",
-                dagster_type=dg.Nothing,
-                is_required=False,
-            )
-        },
-    )
-    def before_pipeline_run_hook():
-        hook_manager.hook.before_pipeline_run(
-            run_params=run_params,
-            pipeline=pipeline,
-            catalog=catalog,
-        )
-
-    return job_dict, before_pipeline_run_hook
+    return job_dict

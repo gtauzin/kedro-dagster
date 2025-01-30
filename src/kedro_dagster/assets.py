@@ -43,11 +43,6 @@ def _define_node_multi_asset(
         else:
             params[asset_name] = catalog.load(asset_name)
 
-    ins["before_pipeline_run_hook_output"] = dg.AssetIn(
-        key="before_pipeline_run_hook_output",
-        dagster_type=dg.Nothing,
-    )
-
     outs = {}
     for asset_name in node.outputs:
         metadata, description = None, None

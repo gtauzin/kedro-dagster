@@ -36,11 +36,6 @@ def _define_node_op(
         else:
             params[asset_name] = catalog.load(asset_name)
 
-    ins["before_pipeline_run_hook_output"] = dg.In(
-        asset_key=dg.AssetKey("before_pipeline_run_hook_output"),
-        dagster_type=dg.Nothing,
-    )
-
     # Node parameters are mapped to Dagster configs
     NodeParametersConfig = _create_pydantic_model_from_dict(
         params,
@@ -54,7 +49,6 @@ def _define_node_op(
         name=node.name,
         description=f"Kedro node {node.name} wrapped as a Dagster op.",
         ins=ins,
-        out={"after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
         required_resource_keys=None,
         # tags=node.tags,
     )
@@ -93,8 +87,6 @@ def _define_node_op(
             is_async=False,
             session_id=session_id,
         )
-
-        return None
 
     return dagster_op
 
