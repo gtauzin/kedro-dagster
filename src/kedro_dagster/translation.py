@@ -16,7 +16,10 @@ from kedro_dagster.executors import load_executors_from_kedro_config
 from kedro_dagster.jobs import load_jobs_from_kedro_config
 from kedro_dagster.loggers import get_kedro_loggers
 from kedro_dagster.ops import load_ops_from_kedro_nodes
-from kedro_dagster.resources import load_io_managers_from_kedro_datasets
+from kedro_dagster.resources import (
+    load_io_managers_from_kedro_datasets,
+    load_pipeline_hook_translation,
+)
 from kedro_dagster.schedules import load_schedules_from_kedro_config
 
 LOGGER = getLogger(__name__)
@@ -77,6 +80,7 @@ def translate_kedro(
     assets, multi_asset_node_dict = load_assets_from_kedro_nodes(default_pipeline, catalog, hook_manager, session_id)
     op_node_dict = load_ops_from_kedro_nodes(default_pipeline, catalog, hook_manager, session_id)
     executors = load_executors_from_kedro_config(dagster_config)
+    io_managers = load_io_managers_from_kedro_datasets(default_pipeline, catalog, hook_manager)
     job_dict = load_jobs_from_kedro_config(
         dagster_config,
         multi_asset_node_dict,
@@ -87,13 +91,22 @@ def translate_kedro(
         session_id,
         project_path,
         env,
+        io_managers,
     )
     jobs = list(job_dict.values())
     schedules = load_schedules_from_kedro_config(dagster_config, job_dict)
     loggers = get_kedro_loggers(project_metadata.package_name)
-    io_managers = load_io_managers_from_kedro_datasets(default_pipeline, catalog, hook_manager)
     resources = io_managers
+
+    pipeline_hook_resource, on_pipeline_error_sensor = load_pipeline_hook_translation(
+        run_params={"session_id": session_id},
+        # pipeline=default_pipeline,
+        catalog=catalog,
+        hook_manager=hook_manager,
+    )
+    resources["pipeline_hook"] = pipeline_hook_resource
+    sensors = [on_pipeline_error_sensor]
 
     LOGGER.info("Kedro project translated into Dagster.")
 
-    return assets, resources, jobs, schedules, loggers, executors
+    return assets, resources, jobs, schedules, sensors, loggers, executors

@@ -4,7 +4,7 @@ from logging import getLogger
 
 import dagster as dg
 from kedro.framework.project import pipelines
-from kedro.io import DataCatalog, MemoryDataset
+from kedro.io import KedroDataCatalog, MemoryDataset
 from kedro.pipeline import Pipeline
 from kedro.pipeline.node import Node
 from pluggy import PluginManager
@@ -18,7 +18,7 @@ LOGGER = getLogger(__name__)
 def _define_node_multi_asset(
     node: Node,
     pipeline_name: str,
-    catalog: DataCatalog,
+    catalog: KedroDataCatalog,
     hook_manager: PluginManager,
     session_id: str,
 ) -> dg.AssetsDefinition:
@@ -80,10 +80,11 @@ def _define_node_multi_asset(
         group_name=pipeline_name,
         ins=ins,
         outs=outs,
-        required_resource_keys=None,
+        required_resource_keys={"pipeline_hook"},
         op_tags=node.tags,
     )
     def dagster_asset(
+        context,
         config: NodeParametersConfig,
         **inputs,
     ):
@@ -122,6 +123,9 @@ def _define_node_multi_asset(
             session_id=session_id,
         )
 
+        for output_asset_name, output_asset in outputs.items():
+            context.resources.pipeline_hook.add_run_results(output_asset_name, output_asset)
+
         if len(outputs) > 1:
             return tuple(outputs.values())
 
@@ -150,7 +154,7 @@ def _get_node_pipeline_name(pipelines, node):
 
 def load_assets_from_kedro_nodes(
     default_pipeline: Pipeline,
-    catalog: DataCatalog,
+    catalog: KedroDataCatalog,
     hook_manager: PluginManager,
     session_id: str,
 ) -> list[dg.AssetsDefinition]:

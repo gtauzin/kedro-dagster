@@ -3,7 +3,7 @@
 from logging import getLogger
 
 import dagster as dg
-from kedro.io import DataCatalog
+from kedro.io import KedroDataCatalog
 from kedro.pipeline import Pipeline
 from kedro.pipeline.node import Node
 from pluggy import PluginManager
@@ -16,7 +16,7 @@ LOGGER = getLogger(__name__)
 
 def _define_node_op(
     node: Node,
-    catalog: DataCatalog,
+    catalog: KedroDataCatalog,
     hook_manager: PluginManager,
     session_id: str,
 ) -> dg.OpDefinition:
@@ -53,10 +53,10 @@ def _define_node_op(
         name=node.name,
         description=f"Kedro node {node.name} wrapped as a Dagster op.",
         ins=ins,
-        required_resource_keys=None,
+        required_resource_keys={"pipeline_hook"},
         # tags=node.tags,
     )
-    def dagster_op(config: NodeParametersConfig, **inputs) -> dg.Nothing:
+    def dagster_op(context, config: NodeParametersConfig, **inputs) -> dg.Nothing:
         # Logic to execute the Kedro node
 
         inputs |= config.model_dump()
@@ -97,7 +97,7 @@ def _define_node_op(
 
 def load_ops_from_kedro_nodes(
     default_pipeline: Pipeline,
-    catalog: DataCatalog,
+    catalog: KedroDataCatalog,
     hook_manager: PluginManager,
     session_id: str,
 ) -> dict[str, dg.OpDefinition]:

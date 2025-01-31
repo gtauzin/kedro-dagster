@@ -5,7 +5,7 @@ from typing import Any
 import dagster as dg
 from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
-from kedro.io import DataCatalog
+from kedro.io import KedroDataCatalog
 from kedro.pipeline import Pipeline
 
 from kedro_dagster.config import KedroDagsterConfig
@@ -15,11 +15,12 @@ def get_job_from_pipeline(
     multi_asset_node_dict: dict[str, Any],
     op_node_dict: dict[str, Any],
     pipeline: Pipeline,
-    catalog: DataCatalog,
+    catalog: KedroDataCatalog,
     job_name: str,
     hook_manager,
     run_params: dict[str, Any],
     executor: dg.ExecutorDefinition,
+    io_managers,
 ) -> dg.JobDefinition:
     """Create a Dagster job from a Kedro ``Pipeline``.
 
@@ -37,6 +38,15 @@ def get_job_from_pipeline(
     Returns:
         JobDefinition: A Dagster job.
     """
+
+    from kedro_dagster.resources import load_pipeline_hook_translation
+
+    pipeline_hook_resource, _ = load_pipeline_hook_translation(
+        run_params=run_params,
+        # pipeline=pipeline,
+        catalog=catalog,
+        hook_manager=hook_manager,
+    )
 
     @dg.graph(
         name=job_name,
@@ -83,9 +93,9 @@ def get_job_from_pipeline(
 
                 materialized_assets |= materialized_output_assets
 
-    job = dg.JobDefinition(
+    job = pipeline_graph.to_job(
         name=job_name,
-        graph_def=pipeline_graph,
+        resource_defs=io_managers | {"pipeline_hook": pipeline_hook_resource},
         executor_def=executor,
     )
 
@@ -97,11 +107,12 @@ def load_jobs_from_kedro_config(
     multi_asset_node_dict: dict,
     op_node_dict: dict,
     executors: dict[str, dg.ExecutorDefinition],
-    catalog: DataCatalog,
+    catalog: KedroDataCatalog,
     hook_manager,
     session_id: str,
     project_path: str,
     env: str,
+    io_managers,
 ) -> list[dg.JobDefinition]:
     """Loads job definitions from a Kedro pipeline.
 
@@ -116,6 +127,7 @@ def load_jobs_from_kedro_config(
         session_id: A string representing Kedro session ID.
         project_path: The path to the Kedro project.
         env: A string representing the Kedro environment to use.
+        io_managers
 
     Returns:
         List[JobDefintion]: A list of dagster job definitions.
@@ -140,7 +152,7 @@ def load_jobs_from_kedro_config(
 
         run_params = filter_params | dict(
             session_id=session_id,
-            project_path=project_path,
+            project_path=str(project_path),
             env=env,
             kedro_version=kedro_version,
             pipeline_name=pipeline_name,
@@ -167,6 +179,7 @@ def load_jobs_from_kedro_config(
             job_name=job_name,
             run_params=run_params,
             executor=executor,
+            io_managers=io_managers,
         )
 
         job_dict[job_name] = job
