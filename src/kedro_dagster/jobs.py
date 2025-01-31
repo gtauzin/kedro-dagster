@@ -5,7 +5,7 @@ from typing import Any
 import dagster as dg
 from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
-from kedro.io import DataCatalog
+from kedro.io import KedroDataCatalog
 from kedro.pipeline import Pipeline
 
 from kedro_dagster.config import KedroDagsterConfig
@@ -15,11 +15,12 @@ def get_job_from_pipeline(
     multi_asset_node_dict: dict[str, Any],
     op_node_dict: dict[str, Any],
     pipeline: Pipeline,
-    catalog: DataCatalog,
+    catalog: KedroDataCatalog,
     job_name: str,
     hook_manager,
     run_params: dict[str, Any],
     executor: dg.ExecutorDefinition,
+    io_managers,
 ) -> dg.JobDefinition:
     """Create a Dagster job from a Kedro ``Pipeline``.
 
@@ -38,48 +39,14 @@ def get_job_from_pipeline(
         JobDefinition: A Dagster job.
     """
 
-    @dg.op(
-        name=f"{job_name}_before_pipeline_run_hook",
-        description=f"Hook to be executed before the `{job_name}` pipeline run.",
-    )
-    def before_pipeline_run_hook() -> dg.Nothing:
-        hook_manager.hook.before_pipeline_run(
-            run_params=run_params,
-            pipeline=pipeline,
-            catalog=catalog,
-        )
+    from kedro_dagster.resources import load_pipeline_hook_translation
 
-    @dg.op(
-        name=f"{job_name}_after_pipeline_run_hook",
-        description=f"Hook to be executed after the `{job_name}` pipeline run.",
-        ins={
-            asset_name: dg.In(asset_key=dg.AssetKey(asset_name))
-            for asset_name in list(pipeline.all_inputs()) + list(pipeline.all_outputs())
-            if not asset_name.startswith("params:")
-        }
-        | {"after_pipeline_run_hook_input": dg.In(dagster_type=dg.Nothing)},
+    pipeline_hook_resource, _ = load_pipeline_hook_translation(
+        run_params=run_params,
+        # pipeline=pipeline,
+        catalog=catalog,
+        hook_manager=hook_manager,
     )
-    def after_pipeline_run_hook(**materialized_assets) -> dg.Nothing:
-        run_results = {asset_name: materialized_assets[asset_name] for asset_name in pipeline.outputs()}
-
-        hook_manager.hook.after_pipeline_run(
-            run_params=run_params,
-            run_result=run_results,
-            pipeline=pipeline,
-            catalog=catalog,
-        )
-
-    @dg.failure_hook(
-        name=f"{job_name}_on_pipeline_error_hook",
-        required_resource_keys=None,
-    )
-    def on_pipeline_error_hook(context: dg.HookContext):
-        hook_manager.hook.on_pipeline_error(
-            error=context.op_exception,
-            run_params=run_params,
-            pipeline=pipeline,
-            catalog=catalog,
-        )
 
     @dg.graph(
         name=job_name,
@@ -87,12 +54,7 @@ def get_job_from_pipeline(
         out=None,
     )
     def pipeline_graph():
-        before_pipeline_run_hook_output = before_pipeline_run_hook()
-
-        materialized_assets = {
-            "before_pipeline_run_hook_output": before_pipeline_run_hook_output,
-        }
-
+        materialized_assets = {}
         for external_asset_name in pipeline.inputs():
             if not external_asset_name.startswith("params:"):
                 dataset = catalog._get_dataset(external_asset_name)
@@ -112,7 +74,6 @@ def get_job_from_pipeline(
                     op = op_node_dict[node.name]
 
                 node_inputs = node.inputs
-                node_inputs.append("before_pipeline_run_hook_output")
 
                 materialized_input_assets = {
                     input_name: materialized_assets[input_name]
@@ -132,19 +93,10 @@ def get_job_from_pipeline(
 
                 materialized_assets |= materialized_output_assets
 
-        materialized_assets = {
-            asset_name: asset
-            for asset_name, asset in materialized_assets.items()
-            if asset_name not in ["before_pipeline_run_hook_output"]
-        }
-
-        after_pipeline_run_hook(**materialized_assets)
-
-    job = dg.JobDefinition(
+    job = pipeline_graph.to_job(
         name=job_name,
-        graph_def=pipeline_graph,
+        resource_defs=io_managers | {"pipeline_hook": pipeline_hook_resource},
         executor_def=executor,
-        hook_defs={on_pipeline_error_hook},
     )
 
     return job
@@ -155,11 +107,12 @@ def load_jobs_from_kedro_config(
     multi_asset_node_dict: dict,
     op_node_dict: dict,
     executors: dict[str, dg.ExecutorDefinition],
-    catalog: DataCatalog,
+    catalog: KedroDataCatalog,
     hook_manager,
     session_id: str,
     project_path: str,
     env: str,
+    io_managers,
 ) -> list[dg.JobDefinition]:
     """Loads job definitions from a Kedro pipeline.
 
@@ -174,6 +127,7 @@ def load_jobs_from_kedro_config(
         session_id: A string representing Kedro session ID.
         project_path: The path to the Kedro project.
         env: A string representing the Kedro environment to use.
+        io_managers
 
     Returns:
         List[JobDefintion]: A list of dagster job definitions.
@@ -198,7 +152,7 @@ def load_jobs_from_kedro_config(
 
         run_params = filter_params | dict(
             session_id=session_id,
-            project_path=project_path,
+            project_path=str(project_path),
             env=env,
             kedro_version=kedro_version,
             pipeline_name=pipeline_name,
@@ -225,28 +179,9 @@ def load_jobs_from_kedro_config(
             job_name=job_name,
             run_params=run_params,
             executor=executor,
+            io_managers=io_managers,
         )
 
         job_dict[job_name] = job
 
-    @dg.multi_asset(
-        name="before_pipeline_run_hook",
-        group_name="hooks",
-        description="Hook to be executed before a pipeline run.",
-        outs={
-            "before_pipeline_run_hook_output": dg.AssetOut(
-                key="before_pipeline_run_hook_output",
-                description="Untangible asset for the `before_pipeline_run` hook.",
-                dagster_type=dg.Nothing,
-                is_required=False,
-            )
-        },
-    )
-    def before_pipeline_run_hook():
-        hook_manager.hook.before_pipeline_run(
-            run_params=run_params,
-            pipeline=pipeline,
-            catalog=catalog,
-        )
-
-    return job_dict, before_pipeline_run_hook
+    return job_dict
