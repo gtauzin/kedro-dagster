@@ -1,5 +1,7 @@
 """Translation function from Kedro to Dagtser."""
 
+import warnings
+from logging import getLogger
 from pathlib import Path
 
 import dagster as dg
@@ -16,6 +18,10 @@ from kedro_dagster.loggers import get_kedro_loggers
 from kedro_dagster.ops import load_ops_from_kedro_nodes
 from kedro_dagster.resources import load_io_managers_from_kedro_datasets
 from kedro_dagster.schedules import load_schedules_from_kedro_config
+
+LOGGER = getLogger(__name__)
+
+warnings.filterwarnings("ignore", category=dg.ExperimentalWarning)
 
 
 def translate_kedro(
@@ -43,14 +49,12 @@ def translate_kedro(
         dictionary of Dagster loggers.
 
     """
-    logger = dg.get_dagster_logger()
-
-    logger.info("Initializing Kedro...")
+    LOGGER.info("Initializing Kedro...")
     project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
 
-    logger.info("Bootstrapping project")
+    LOGGER.info("Bootstrapping project")
     project_metadata = bootstrap_project(project_path)
-    logger.info("Project name: %s", project_metadata.project_name)
+    LOGGER.info("Project name: %s", project_metadata.project_name)
 
     # bootstrap project within task / flow scope
     session = KedroSession.create(
@@ -59,11 +63,11 @@ def translate_kedro(
     )
     session_id = session.session_id
 
-    logger.info(
+    LOGGER.info(
         "Session created with ID %s",
     )
 
-    logger.info("Loading context...")
+    LOGGER.info("Loading context...")
     context = session.load_context()
     catalog = context.catalog
     dagster_config = get_dagster_config(context)
@@ -91,6 +95,6 @@ def translate_kedro(
     io_managers = load_io_managers_from_kedro_datasets(default_pipeline, catalog, hook_manager)
     resources = io_managers
 
-    logger.info("Kedro project translated into Dagster.")
+    LOGGER.info("Kedro project translated into Dagster.")
 
     return assets, resources, jobs, schedules, loggers, executors

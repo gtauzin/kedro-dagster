@@ -1,9 +1,10 @@
 """Configuration definitions for Kedro-Dagster."""
 
-from dagster import get_dagster_logger
+from logging import getLogger
+
 from pydantic import BaseModel, Field
 
-LOGGER = get_dagster_logger()
+LOGGER = getLogger(__name__)
 
 
 class InProcessExecutorOptions(BaseModel):

@@ -1,5 +1,7 @@
 """Dagster asset definitons from Kedro nodes."""
 
+from logging import getLogger
+
 import dagster as dg
 from kedro.framework.project import pipelines
 from kedro.io import DataCatalog, MemoryDataset
@@ -9,6 +11,8 @@ from pluggy import PluginManager
 from pydantic import ConfigDict
 
 from kedro_dagster.utils import _create_pydantic_model_from_dict
+
+LOGGER = getLogger(__name__)
 
 
 def _define_node_multi_asset(
@@ -167,9 +171,8 @@ def load_assets_from_kedro_nodes(
     Returns:
         List[AssetsDefinition]: List of Dagster assets.
     """
-    logger = dg.get_dagster_logger()
 
-    logger.info("Building asset list...")
+    LOGGER.info("Building asset list...")
     assets = []
     # Assets that are not generated through dagster are external and
     # registered with AssetSpec

@@ -1,5 +1,6 @@
 """Dagster io manager definitons from Kedro catalog."""
 
+from logging import getLogger
 from pathlib import PurePosixPath
 
 import dagster as dg
@@ -9,6 +10,8 @@ from pluggy import PluginManager
 from pydantic import ConfigDict
 
 from kedro_dagster.utils import _create_pydantic_model_from_dict
+
+LOGGER = getLogger(__name__)
 
 
 def load_io_managers_from_kedro_datasets(
@@ -30,11 +33,9 @@ def load_io_managers_from_kedro_datasets(
 
     """
 
-    logger = dg.get_dagster_logger()
-
     node_dict = {node.name: node for node in default_pipeline.nodes}
 
-    logger.info("Creating IO managers...")
+    LOGGER.info("Creating IO managers...")
     io_managers = {}
     for dataset_name in catalog.list():
         if not dataset_name.startswith("params:") and dataset_name != "parameters":
