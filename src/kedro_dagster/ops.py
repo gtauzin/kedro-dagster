@@ -1,5 +1,7 @@
 """Dagster op definitons from Kedro nodes."""
 
+from logging import getLogger
+
 import dagster as dg
 from kedro.io import DataCatalog
 from kedro.pipeline import Pipeline
@@ -8,6 +10,8 @@ from pluggy import PluginManager
 from pydantic import ConfigDict
 
 from kedro_dagster.utils import _create_pydantic_model_from_dict
+
+LOGGER = getLogger(__name__)
 
 
 def _define_node_op(
@@ -109,9 +113,8 @@ def load_ops_from_kedro_nodes(
     Returns:
         Dict[str, OpDefinition]: Dictionary of Dagster ops.
     """
-    logger = dg.get_dagster_logger()
 
-    logger.info("Building op list...")
+    LOGGER.info("Building op list...")
     # Assets that are not generated through dagster are external and
     # registered with AssetSpec
     op_node_dict = {}
