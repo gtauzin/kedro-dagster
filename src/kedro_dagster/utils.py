@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+import dagster as dg
 from jinja2 import Environment, FileSystemLoader
 from pydantic import BaseModel, ConfigDict, create_model
 
@@ -56,6 +57,16 @@ def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:
 def _create_pydantic_model_from_dict(
     params: dict[str, Any], __base__, __config__: ConfigDict | None = None
 ) -> type[BaseModel]:
+    """Create a Pydantic model from a dictionary.
+
+    Args:
+        params: The dictionary of parameters.
+        __base__: The base class for the model.
+        __config__: The configuration for the model.
+
+    Returns:
+        type[BaseModel]: The Pydantic model.
+    """
     fields = {}
     for param_name, param_value in params.items():
         if isinstance(param_value, dict):
@@ -75,3 +86,53 @@ def _create_pydantic_model_from_dict(
         model.config = __config__
 
     return model
+
+
+def _is_asset_name(dataset_name: str) -> bool:
+    """Check if a dataset name is an asset name.
+
+    Args:
+        dataset_name: The name of the dataset.
+
+    Returns:
+        bool: Whether the dataset is an asset.
+    """
+    return not dataset_name.startswith("params:") and dataset_name != "parameters"
+
+
+def _get_node_pipeline_name(pipelines, node):
+    """Return the name of the pipeline that a node belongs to.
+
+    Args:
+        pipelines: Dictionary of Kedro pipelines.
+        node: The Kedro ``Node`` for which the pipeline name is being retrieved.
+
+    Returns:
+        str: Name of the ``Pipeline`` that the ``Node`` belongs to.
+    """
+    for pipeline_name, pipeline in pipelines.items():
+        if pipeline_name != "__default__":
+            for pipeline_node in pipeline.nodes:
+                if node.name == pipeline_node.name:
+                    return pipeline_name
+
+
+class FilterParamsModel(dg.Config):
+    node_names: list[str] | None = None
+    from_nodes: list[str] | None = None
+    to_nodes: list[str] | None = None
+    from_inputs: list[str] | None = None
+    to_outputs: list[str] | None = None
+    node_namespace: str | None = None
+
+
+class RunParamsModel(FilterParamsModel):
+    session_id: str
+    project_path: str | None = None
+    env: str | None = None
+    kedro_version: str | None = None
+    pipeline_name: str | None = None
+    tags: list[str] | None = None
+    load_versions: dict[str, str] | None = None
+    extra_params: dict[str, Any] | None = None
+    runner: str | None = None
