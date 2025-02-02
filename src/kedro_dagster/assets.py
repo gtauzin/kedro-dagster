@@ -84,11 +84,19 @@ class AssetsCreator:
             config: NodeParametersConfig,
             **inputs,
         ):
-            self._named_nodes[node.name](
-                context=context,
-                config=config,
+            # TODO: Passing config does not work
+            outputs = self._named_nodes[node.name](
                 **inputs,
             )
+
+            for output_asset_name, output_asset in outputs.items():
+                context.resources.pipeline_hook.add_run_results(output_asset_name, output_asset)
+
+            if len(outputs) > 1:
+                return tuple(outputs.values())
+
+            elif len(outputs) == 1:
+                return list(outputs.values())[0]
 
         return node_asset
 

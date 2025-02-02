@@ -16,7 +16,7 @@ LOGGER = getLogger(__name__)
 class CatalogTranslator:
     """Translate Kedro datasets into Dagster IO managers."""
 
-    def _translate_catalog(self, dataset: Any, dataset_name: str) -> dg.IOManagerDefinition:
+    def _translate_dataset(self, dataset: Any, dataset_name: str) -> dg.IOManagerDefinition:
         """Create a Dagster IO manager from a Kedro dataset.
 
         Args:
@@ -42,13 +42,16 @@ class CatalogTranslator:
             __config__=ConfigDict(arbitrary_types_allowed=True),
         )
 
+        hook_manager = self._context._hook_manager
+        named_nodes = self._named_nodes
+
         class ConfiguredDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):
             f"""IO Manager for kedro dataset `{dataset_name}`."""
 
             def handle_output(self, context: dg.OutputContext, obj):
-                node_name = context.step_key  # TODO: op_def.name?
-                node = self._named_nodes[node_name]
-                self._context._hook_manager.hook.before_dataset_saved(
+                node_name = context.op_def.name
+                node = named_nodes[node_name]
+                hook_manager.hook.before_dataset_saved(
                     dataset_name=dataset_name,
                     data=obj,
                     node=node,
@@ -56,23 +59,23 @@ class CatalogTranslator:
 
                 dataset.save(obj)
 
-                self._context._hook_manager.hook.after_dataset_saved(
+                hook_manager.hook.after_dataset_saved(
                     dataset_name=dataset_name,
                     data=obj,
                     node=node,
                 )
 
             def load_input(self, context: dg.InputContext):
-                node_name = context.step_key  # TODO: op_def.name?
-                node = self._named_nodes[node_name]
-                self._context._hook_manager.hook.before_dataset_loaded(
+                node_name = context.op_def.name
+                node = named_nodes[node_name]
+                hook_manager.hook.before_dataset_loaded(
                     dataset_name=dataset_name,
                     node=node,
                 )
 
                 data = dataset.load()
 
-                self._context._hook_manager.hook.after_dataset_loaded(
+                hook_manager.hook.after_dataset_loaded(
                     dataset_name=dataset_name,
                     data=data,
                     node=node,
@@ -82,7 +85,7 @@ class CatalogTranslator:
 
         return ConfiguredDatasetIOManager(**dataset_config)
 
-    def create_io_managers(self) -> dict[str, dg.IOManagerDefinition]:
+    def translate_catalog(self) -> dict[str, dg.IOManagerDefinition]:
         """Get the IO managers from Kedro datasets.
 
         Returns:
@@ -96,7 +99,7 @@ class CatalogTranslator:
                 if isinstance(dataset, MemoryDataset):
                     continue
 
-                self.named_resources_[f"{dataset_name}_io_manager"] = self._create_io_manager_from_dataset(
+                self.named_resources_[f"{dataset_name}_io_manager"] = self._translate_dataset(
                     dataset,
                     dataset_name,
                 )

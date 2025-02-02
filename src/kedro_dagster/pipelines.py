@@ -7,34 +7,45 @@ from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
 
+from kedro_dagster.utils import FilterParamsModel, RunParamsModel
+
 
 class PipelineTranslator:
     @staticmethod
-    def _get_filter_params(pipeline_config) -> dict[str, Any]:
+    def _get_filter_params(pipeline_config: dict[str, Any] | None = None) -> FilterParamsModel:
         # TODO: Remove all defaults in get as the config takes care of default values
-        filter_params = dict(
-            tags=pipeline_config.get("tags", None),
-            from_nodes=pipeline_config.get("from_nodes", None),
-            to_nodes=pipeline_config.get("to_nodes", None),
-            node_names=pipeline_config.get("node_names", None),
-            from_inputs=pipeline_config.get("from_inputs", None),
-            to_outputs=pipeline_config.get("to_outputs", None),
-            node_namespace=pipeline_config.get("node_namespace", None),
-        )
+        filter_params = {}
+        if pipeline_config is not None:
+            filter_params = dict(
+                tags=pipeline_config.get("tags", None),
+                from_nodes=pipeline_config.get("from_nodes", None),
+                to_nodes=pipeline_config.get("to_nodes", None),
+                node_names=pipeline_config.get("node_names", None),
+                from_inputs=pipeline_config.get("from_inputs", None),
+                to_outputs=pipeline_config.get("to_outputs", None),
+                node_namespace=pipeline_config.get("node_namespace", None),
+            )
+
+        filter_params = FilterParamsModel(**filter_params)
         return filter_params
 
-    def _get_run_params(self, pipeline_config) -> dict[str, Any]:
-        # TODO: Remove all defaults in get as the config takes care of default values
-        run_params = self._get_filter_params(pipeline_config) | dict(
-            session_id=self._session.session_id,
+    def _get_run_params(self, pipeline_config: dict[str, Any] | None = None) -> RunParamsModel:
+        run_params = dict(
+            session_id=self._session_id,
             project_path=str(self._project_path),
             env=self.env,
             kedro_version=kedro_version,
-            pipeline_name=pipeline_config.get("pipeline_name"),
-            load_versions=pipeline_config.get("load_versions", None),
-            extra_params=pipeline_config.get("extra_params", None),
-            runner=pipeline_config.get("runner", None),
         )
+        if pipeline_config is not None:
+            run_params |= dict(
+                pipeline_name=pipeline_config.get("pipeline_name", None),
+                load_versions=pipeline_config.get("load_versions", None),
+                extra_params=pipeline_config.get("extra_params", None),
+                runner=pipeline_config.get("runner", None),
+            )
+
+        run_params = self._get_filter_params(pipeline_config).dict() | run_params
+        run_params = RunParamsModel(**run_params)
         return run_params
 
     def _translate_pipeline(
@@ -63,6 +74,8 @@ class PipelineTranslator:
         )
         def pipeline_graph():
             materialized_assets = {}
+
+            # TODO: Use named_assets instead of pasting this code
             for external_asset_name in pipeline.inputs():
                 if not external_asset_name.startswith("params:"):
                     dataset = self._context.catalog._get_dataset(external_asset_name)
@@ -76,7 +89,10 @@ class PipelineTranslator:
 
             for layer in pipeline.grouped_nodes:
                 for node in layer:
-                    op = self.named_ops_[node.name]
+                    if node.name in self.named_assets_:
+                        op = self.named_assets_[node.name]
+                    else:
+                        op = self._named_ops[node.name]
 
                     node_inputs = node.inputs
 
@@ -98,7 +114,9 @@ class PipelineTranslator:
 
                     materialized_assets |= materialized_output_assets
 
-        pipeline_hook_resource = self._create_pipeline_hook_resource(run_params=self._get_run_params(pipeline_config))
+        pipeline_hook_resource = self._create_pipeline_hook_resource(
+            run_params=self._get_run_params(pipeline_config)
+        )
 
         executor_config = job_config.executor
         if isinstance(executor_config, str):
@@ -122,10 +140,11 @@ class PipelineTranslator:
 
             pipeline_name = pipeline_config.get("pipeline_name")
             filter_params = self._get_filter_params(pipeline_config)
-            pipeline = pipelines.get(pipeline_name).filter(**filter_params)
+            pipeline = pipelines.get(pipeline_name).filter(**filter_params.dict())
 
             job = self._translate_pipeline(
                 pipeline=pipeline,
+                pipeline_config=pipeline_config,
                 job_name=job_name,
                 job_config=job_config,
             )

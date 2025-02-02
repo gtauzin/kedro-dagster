@@ -6,7 +6,11 @@ import dagster as dg
 from kedro.framework.project import pipelines
 from pydantic import BaseModel
 
-from kedro_dagster.config.execution import InProcessExecutorOptions, K8sJobExecutorOptions, MultiprocessExecutorOptions
+from kedro_dagster.config.execution import (
+    InProcessExecutorOptions,
+    K8sJobExecutorOptions,
+    MultiprocessExecutorOptions,
+)
 
 
 class ExecutorCreator:
@@ -16,7 +20,6 @@ class ExecutorCreator:
     _OPTION_EXECUTOR_MAP = {
         InProcessExecutorOptions: dg.in_process_executor,
         MultiprocessExecutorOptions: dg.multiprocess_executor,
-        K8sJobExecutorOptions: dg.k8s_job_executor,
     }
 
     def register_executor(self, executor_option: BaseModel, executor: dg.ExecutorDefinition) -> None:
@@ -37,8 +40,12 @@ class ExecutorCreator:
             Dict[str, ExecutorDefinition]: A dict of executor definitions.
 
         """
+        try:
+            from dagster_k8s import k8s_job_executor
+            self.register_executor(K8sJobExecutorOptions, k8s_job_executor)
+        except ImportError:
+            pass
 
-        executors = {}
         for executor_name, executor_config in self._dagster_config.executors.items():
             # Make use of the executor map to create the executor
             executor = self._OPTION_EXECUTOR_MAP.get(type(executor_config), None)
@@ -48,9 +55,7 @@ class ExecutorCreator:
                     "Please use one of the following executors: "
                     f"{', '.join([str(k) for k in self._OPTION_EXECUTOR_MAP.keys()])}"
                 )
-            executors[executor_name] = executor.configured(executor_config.model_dump())
-
-        return executors
+            self.named_executors_[executor_name] = executor.configured(executor_config.model_dump())
 
 
 class ScheduleCreator:

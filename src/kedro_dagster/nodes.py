@@ -39,7 +39,7 @@ class NodeTranslator:
             description=f"Kedro node {node.name} wrapped as a Dagster op.",
             ins=ins,
             required_resource_keys={"pipeline_hook"},
-            tags={"node_tags": node.tags},
+            tags={f"node_tag_{i+1}": tag for i, tag in enumerate(node.tags)},
         )
         def node_op(context, config: NodeParametersConfig, **inputs) -> dg.Nothing:
             # Logic to execute the Kedro node
@@ -51,7 +51,7 @@ class NodeTranslator:
                 catalog=self._context.catalog,
                 inputs=inputs,
                 is_async=False,
-                session_id=self._session.session_id,
+                session_id=self._session_id,
             )
 
             try:
@@ -64,7 +64,7 @@ class NodeTranslator:
                     catalog=self._context.catalog,
                     inputs=inputs,
                     is_async=False,
-                    session_id=self._session.session_id,
+                    session_id=self._session_id,
                 )
                 raise exc
 
@@ -74,7 +74,7 @@ class NodeTranslator:
                 inputs=inputs,
                 outputs=outputs,
                 is_async=False,
-                session_id=self._session.session_id,
+                session_id=self._session_id,
             )
 
             for output_asset_name, output_asset in outputs.items():

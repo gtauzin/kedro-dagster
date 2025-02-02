@@ -48,7 +48,7 @@ class KedroDagsterTranslator(
             directory is used.
 
     Attributes:
-        named_ops_: A dictionary of named Dagster operations.
+        _named_ops: A dictionary of named Dagster operations.
         named_assets_: A dictionary of named Dagster assets
         named_resources_: A dictionary of named Dagster resources.
         named_jobs_: A dictionary of named Dagster jobs.
@@ -78,7 +78,7 @@ class KedroDagsterTranslator(
         self._named_nodes = {node.name: node for node in pipelines.get("__default__").nodes}
 
     def initialialize_outputs(self):
-        self.named_ops_ = {}
+        self._named_ops = {}
         self.named_assets_ = {}
         self.named_resources_ = {}
         self.named_jobs_ = {}
@@ -105,7 +105,9 @@ class KedroDagsterTranslator(
             env=self.env,
             conf_source=self.conf_source,
         )
-        LOGGER.info(f"Session created with ID {self.self._session.session_id}")
+
+        self._session_id = self._session.session_id
+        LOGGER.info(f"Session created with ID {self._session_id}")
 
         self._context = self._session.load_context()
 
@@ -115,11 +117,12 @@ class KedroDagsterTranslator(
 
     def translate(self):
         LOGGER.info("Translating Kedro project into Dagster...")
+
         self.translate_nodes()
-        self.create_catalog()
+        self.translate_catalog()
         self.create_assets()
-        self.translate_pipeline_hook()
+        self.translate_pipeline_hook(run_params=self._get_run_params())
         self.create_executors()
-        self.create_schedules()
+        # self.create_schedules()
         self.translate_loggers()
         self.translate_pipelines()

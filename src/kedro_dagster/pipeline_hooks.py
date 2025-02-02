@@ -13,7 +13,19 @@ from kedro_dagster.utils import FilterParamsModel, RunParamsModel
 class PipelineHookTranslator:
     """Translator for Kedro pipeline hooks."""
 
-    def _create_pipeline_hook_resource(self, run_params: dict[str, Any]) -> dg.IOManagerDefinition:
+    def _create_pipeline_hook_resource(self, run_params: RunParamsModel) -> dg.ConfigurableResource:
+        """Create a Dagster resource for Kedro pipeline hooks.
+        
+        Args:
+            run_params: Parameters for the run.
+            
+        Returns:
+            PipelineHookResource: A Dagster resource for Kedro pipeline hooks.
+
+        """
+        catalog = self._context.catalog
+        hook_manager = self._context._hook_manager
+
         class PipelineHookResource(RunParamsModel, dg.ConfigurableResource):
             """Resource for kedro  `before_pipeline_run` and `after_pipeline_run` hooks."""
 
@@ -53,10 +65,10 @@ class PipelineHookTranslator:
 
                 self._pipeline = self.get_pipeline(filter_params)
 
-                self._context._hook_manager.hook.before_pipeline_run(
+                hook_manager.hook.before_pipeline_run(
                     run_params=self.dict() | filter_params,
                     pipeline=self._pipeline,
-                    catalog=self._context.catalog,
+                    catalog=catalog,
                 )
                 context.log.info("Pipelinke hook resource setup executed `before_pipeline_run` hook.")
 
@@ -66,20 +78,22 @@ class PipelineHookTranslator:
                 # Make sure `after_pipeline_run` is not called in case of an error
                 # Here we assume there is no error if all job outputs have
                 # been computed
-                output_asset_names = [asset_key.path for asset_key in context.dagster_run.asset_selection]
+                output_asset_names = []
+                if context.dagster_run.asset_selection is not None:
+                    output_asset_names = [asset_key.path for asset_key in context.dagster_run.asset_selection]
                 if set(output_asset_names) == set(self._run_results.keys()):
-                    self._context._hook_manager.hook.after_pipeline_run(
+                    hook_manager.hook.after_pipeline_run(
                         run_params=self.dict(),
                         run_result=self._run_results,
                         pipeline=self._pipeline,
-                        catalog=self._context.catalog,
+                        catalog=catalog,
                     )
                     context.log.info("Pipelinke hook resource teardown executed `after_pipeline_run` hook.")
 
                 else:
                     context.log.info("Pipelinke hook resource teardown did not execute `after_pipeline_run` hook.")
 
-        return PipelineHookResource(**run_params)
+        return PipelineHookResource(**run_params.dict())
 
     def translate_pipeline_hook(self, run_params: dict[str, Any]) -> dict[str, dg.IOManagerDefinition]:
         """Translate Kedro pipeline hooks to Dagster resource and sensor."""
