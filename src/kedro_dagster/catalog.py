@@ -42,7 +42,7 @@ class CatalogTranslator:
             __config__=ConfigDict(arbitrary_types_allowed=True),
         )
 
-        hook_manager = self._context._hook_manager
+        hook_manager = self._hook_manager
         named_nodes = self._named_nodes
 
         class ConfiguredDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):
@@ -92,9 +92,9 @@ class CatalogTranslator:
             Dict[str, IOManagerDefinition]: A dictionary of DagsterIO managers.
         """
         LOGGER.info("Creating IO managers...")
-        for dataset_name in self._context.catalog.list():
+        for dataset_name in self._catalog.list():
             if _is_asset_name(dataset_name):
-                dataset = self._context.catalog._get_dataset(dataset_name)
+                dataset = self._catalog._get_dataset(dataset_name)
 
                 if isinstance(dataset, MemoryDataset):
                     continue

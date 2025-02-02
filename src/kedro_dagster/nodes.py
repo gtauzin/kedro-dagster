@@ -37,19 +37,19 @@ class NodeTranslator:
                     # input_manager_key=f"{asset_name}_io_manager",
                 )
             else:
-                params[asset_name] = self._context.catalog.load(asset_name)
+                params[asset_name] = self._catalog.load(asset_name)
 
         outs = {}
         for asset_name in node.outputs:
             metadata, description = None, None
-            if asset_name in self._context.catalog.list():
-                dataset = self._context.catalog._get_dataset(asset_name)
+            if asset_name in self._catalog.list():
+                dataset = self._catalog._get_dataset(asset_name)
                 metadata = getattr(dataset, "metadata", None) or {}
                 description = metadata.pop("description", "")
 
             io_manager_key = "io_manager"
-            if asset_name in self._context.catalog.list() and not isinstance(
-                self._context.catalog._get_dataset(asset_name), MemoryDataset
+            if asset_name in self._catalog.list() and not isinstance(
+                self._catalog._get_dataset(asset_name), MemoryDataset
             ):
                 io_manager_key = f"{asset_name}_io_manager"
 
@@ -104,7 +104,7 @@ class NodeTranslator:
             if _is_asset_name(asset_name):
                 ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_name))
             else:
-                params[asset_name] = self._context.catalog.load(asset_name)
+                params[asset_name] = self._catalog.load(asset_name)
 
         # Node parameters are mapped to Dagster configs
         NodeParametersConfig = _create_pydantic_model_from_dict(
@@ -127,9 +127,9 @@ class NodeTranslator:
 
             inputs |= config.model_dump()
 
-            self._context._hook_manager.hook.before_node_run(
+            self._hook_manager.hook.before_node_run(
                 node=node,
-                catalog=self._context.catalog,
+                catalog=self._catalog,
                 inputs=inputs,
                 is_async=False,
                 session_id=self._session_id,
@@ -139,19 +139,19 @@ class NodeTranslator:
                 outputs = node.run(inputs)
 
             except Exception as exc:
-                self._context._hook_manager.hook.on_node_error(
+                self._hook_manager.hook.on_node_error(
                     error=exc,
                     node=node,
-                    catalog=self._context.catalog,
+                    catalog=self._catalog,
                     inputs=inputs,
                     is_async=False,
                     session_id=self._session_id,
                 )
                 raise exc
 
-            self._context._hook_manager.hook.after_node_run(
+            self._hook_manager.hook.after_node_run(
                 node=node,
-                catalog=self._context.catalog,
+                catalog=self._catalog,
                 inputs=inputs,
                 outputs=outputs,
                 is_async=False,
@@ -177,7 +177,7 @@ class NodeTranslator:
         # registered with AssetSpec
         for external_asset_name in default_pipeline.inputs():
             if _is_asset_name(external_asset_name):
-                dataset = self._context.catalog._get_dataset(external_asset_name)
+                dataset = self._catalog._get_dataset(external_asset_name)
                 metadata = getattr(dataset, "metadata", None) or {}
                 description = metadata.pop("description", "")
                 asset = dg.AssetSpec(

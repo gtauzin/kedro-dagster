@@ -23,8 +23,8 @@ class PipelineHookTranslator:
             PipelineHookResource: A Dagster resource for Kedro pipeline hooks.
 
         """
-        catalog = self._context.catalog
-        hook_manager = self._context._hook_manager
+        catalog = self._catalog
+        hook_manager = self._hook_manager
 
         class PipelineHookResource(RunParamsModel, dg.ConfigurableResource):
             """Resource for kedro  `before_pipeline_run` and `after_pipeline_run` hooks."""
@@ -117,11 +117,11 @@ class PipelineHookTranslator:
 
                 context.log.error(error_message)
 
-                self._context._hook_manager.hook.on_pipeline_error(
+                self._hook_manager.hook.on_pipeline_error(
                     error=error_class_name(error_message),
                     run_params=run_params,
                     pipeline=pipeline,
-                    catalog=self._context.catalog,
+                    catalog=self._catalog,
                 )
                 context.log.info("Pipeline hook sensor executed `on_pipeline_error` hook`.")
 

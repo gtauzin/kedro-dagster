@@ -108,6 +108,8 @@ class KedroDagsterTranslator(
         LOGGER.info(f"Session created with ID {self._session_id}")
 
         self._context = self._session.load_context()
+        self._catalog = self._context.catalog
+        self._hook_manager = self._context._hook_manager
 
     def load_config(self):
         LOGGER.info("Loading configuration...")
