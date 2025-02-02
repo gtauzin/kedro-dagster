@@ -10,7 +10,6 @@ from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 from kedro.utils import _find_kedro_project
 
-from kedro_dagster.assets import AssetsCreator
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import (
@@ -29,7 +28,6 @@ warnings.filterwarnings("ignore", category=dg.ExperimentalWarning)
 
 class KedroDagsterTranslator(
     NodeTranslator,
-    AssetsCreator,
     CatalogTranslator,
     PipelineHookTranslator,
     PipelineTranslator,
@@ -117,7 +115,6 @@ class KedroDagsterTranslator(
         LOGGER.info("Translating Kedro project into Dagster...")
         self.translate_nodes()
         self.create_catalog()
-        self.create_assets()
         self.translate_pipeline_hook()
         self.create_executors()
         self.create_schedules()

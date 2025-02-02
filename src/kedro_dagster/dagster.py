@@ -63,26 +63,28 @@ class ScheduleCreator:
             Dict[str, ScheduleDefinition]: A dict of schedule definitions.
 
         """
+        named_schedule_config = {}
+        if self._dagster_config.schedules is not None:
+            for schedule_name, schedule_config in self._dagster_config.schedules.items():
+                named_schedule_config[schedule_name] = schedule_config.model_dump()
 
-        schedules = []
         for job_name, job_config in self._dagster_config.jobs.items():
             schedule_config = job_config.schedule
             if isinstance(schedule_config, str):
-                if schedule_config in self._schedule_dict:
+                schedule_name = schedule_config
+                if schedule_name in named_schedule_config:
                     schedule = dg.ScheduleDefinition(
-                        name=f"{job_name}_{schedule_config}_schedule",
+                        name=f"{job_name}_{schedule_name}_schedule",
                         job=self._job_dict[job_name],
-                        **self._schedule_dict[schedule_config],
+                        **named_schedule_config[schedule_name],
                     )
                 else:
                     raise ValueError(
-                        f"Schedule {schedule_config} not found. "
+                        f"Schedule defined by {schedule_config} not found. "
                         "Please make sure the schedule is defined in the configuration."
                     )
 
-                schedules.append(schedule)
-
-        return schedules
+                self.named_schedule[job_name] = schedule
 
 
 # TODO: Allow logger customization
