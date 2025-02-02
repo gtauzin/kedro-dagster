@@ -113,7 +113,6 @@ class NodeTranslator:
             __config__=ConfigDict(extra="allow", frozen=False),
         )
 
-        # TODO: dagster tags are dicts
         # TODO: Should is_async be False?
         # TODO: Should I define outs?
         @dg.op(

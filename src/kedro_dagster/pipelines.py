@@ -69,23 +69,15 @@ class PipelineTranslator:
 
         @dg.graph(
             name=job_name,
-            description=f"Graph derived from pipeline associated to the `{job_name}` job.",
+            description=f"Job derived from pipeline associated to `{job_name}`.",
             out=None,
         )
         def pipeline_graph():
-            materialized_assets = {}
-
-            # TODO: Use named_assets instead of pasting this code
-            for external_asset_name in pipeline.inputs():
-                if not external_asset_name.startswith("params:"):
-                    dataset = self._context.catalog._get_dataset(external_asset_name)
-                    metadata = getattr(dataset, "metadata", None) or {}
-                    description = metadata.pop("description", "")
-                    materialized_assets[external_asset_name] = dg.AssetSpec(
-                        external_asset_name,
-                        description=description,
-                        metadata=metadata,
-                    ).with_io_manager_key(io_manager_key=f"{external_asset_name}_io_manager")
+            # Fil up materialized_assets with external assets
+            materialized_assets = {
+                asset_name: asset for asset_name, asset in self.named_assets_.items()
+                if asset_name in pipeline.inputs() and isinstance(asset, dg.AssetSpec)
+            }
 
             for layer in pipeline.grouped_nodes:
                 for node in layer:
@@ -124,10 +116,12 @@ class PipelineTranslator:
                 executor = self.named_executors_[executor_config]
             else:
                 raise ValueError(f"Executor `{executor_config}` not found.")
+
         # Overrides the pipeline_hook resource with the one created for the job
         resource_defs = self.named_resources_ | {"pipeline_hook": pipeline_hook_resource}
         job = pipeline_graph.to_job(
             name=job_name,
+
             resource_defs=resource_defs,
             executor_def=executor,
         )

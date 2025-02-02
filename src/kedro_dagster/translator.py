@@ -116,10 +116,10 @@ class KedroDagsterTranslator(
     def translate(self):
         LOGGER.info("Translating Kedro project into Dagster...")
 
+        self.translate_loggers()
         self.translate_nodes()
         self.translate_catalog()
         self.translate_pipeline_hook(run_params=self._get_run_params())
         self.create_executors()
-        self.create_schedules()
-        self.translate_loggers()
         self.translate_pipelines()
+        self.create_schedules()

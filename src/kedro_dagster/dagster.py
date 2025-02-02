@@ -80,7 +80,7 @@ class ScheduleCreator:
                 if schedule_name in named_schedule_config:
                     schedule = dg.ScheduleDefinition(
                         name=f"{job_name}_{schedule_name}_schedule",
-                        job=self._job_dict[job_name],
+                        job=self.named_jobs_[job_name],
                         **named_schedule_config[schedule_name],
                     )
                 else:
@@ -89,7 +89,7 @@ class ScheduleCreator:
                         "Please make sure the schedule is defined in the configuration."
                     )
 
-                self.named_schedule[job_name] = schedule
+                self.named_schedules_[job_name] = schedule
 
 
 # TODO: Allow logger customization
