@@ -2,16 +2,27 @@
 
 For full documentation visit [mkdocs.org](https://www.mkdocs.org).
 
-## Commands
+## Getting Started
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+- [Installation](pages/getting-started/installation.md)
+- [Quickstart](pages/getting-started/quickstart.md)
 
-## Project layout
+## Tutorials
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+- [Setting up](pages/tutorials/setting-up.md)
+
+## Technical Documentation
+
+- [Catalog](pages/technical/catalog.md)
+- [Nodes](pages/technical/nodes.md)
+- [Pipelines](pages/technical/pipelines.md)
+- [Hooks](pages/technical/hooks.md)
+
+## API Reference
+
+- [kedro_dagster](pages/api/kedro-dagster.md)
+
+## Contributing
+
+- [Code of Conduct](pages/contributing/code-of-conduct.md)
+- [Contributing Guide](pages/contributing/guide.md)
