@@ -75,7 +75,8 @@ class PipelineTranslator:
         def pipeline_graph():
             # Fil up materialized_assets with external assets
             materialized_assets = {
-                asset_name: asset for asset_name, asset in self.named_assets_.items()
+                asset_name: asset
+                for asset_name, asset in self.named_assets_.items()
                 if asset_name in pipeline.inputs() and isinstance(asset, dg.AssetSpec)
             }
 
@@ -106,9 +107,7 @@ class PipelineTranslator:
 
                     materialized_assets |= materialized_output_assets
 
-        pipeline_hook_resource = self._create_pipeline_hook_resource(
-            run_params=self._get_run_params(pipeline_config)
-        )
+        pipeline_hook_resource = self._create_pipeline_hook_resource(run_params=self._get_run_params(pipeline_config))
 
         executor_config = job_config.executor
         if isinstance(executor_config, str):
@@ -121,7 +120,6 @@ class PipelineTranslator:
         resource_defs = self.named_resources_ | {"pipeline_hook": pipeline_hook_resource}
         job = pipeline_graph.to_job(
             name=job_name,
-
             resource_defs=resource_defs,
             executor_def=executor,
         )

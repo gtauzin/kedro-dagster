@@ -15,10 +15,10 @@ class PipelineHookTranslator:
 
     def _create_pipeline_hook_resource(self, run_params: RunParamsModel) -> dg.ConfigurableResource:
         """Create a Dagster resource for Kedro pipeline hooks.
-        
+
         Args:
             run_params: Parameters for the run.
-            
+
         Returns:
             PipelineHookResource: A Dagster resource for Kedro pipeline hooks.
 

@@ -42,6 +42,7 @@ class ExecutorCreator:
         """
         try:
             from dagster_k8s import k8s_job_executor
+
             self.register_executor(K8sJobExecutorOptions, k8s_job_executor)
         except ImportError:
             pass

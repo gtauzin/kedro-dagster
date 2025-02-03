@@ -120,7 +120,7 @@ class NodeTranslator:
             description=f"Kedro node {node.name} wrapped as a Dagster op.",
             ins=ins,
             required_resource_keys={"pipeline_hook"},
-            tags={f"node_tag_{i+1}": tag for i, tag in enumerate(node.tags)},
+            tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
         )
         def node_op(context, config: NodeParametersConfig, **inputs) -> dg.Nothing:
             # Logic to execute the Kedro node
