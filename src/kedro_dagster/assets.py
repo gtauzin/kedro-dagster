@@ -1,32 +1,27 @@
 """Dagster asset definitons from Kedro nodes."""
 
-from dagster import (
-    AssetIn,
-    AssetOut,
-    AssetsDefinition,
-    AssetSpec,
-    Config,
-    Nothing,
-    get_dagster_logger,
-    multi_asset,
-)
+from logging import getLogger
+
+import dagster as dg
 from kedro.framework.project import pipelines
-from kedro.io import DataCatalog, MemoryDataset
+from kedro.io import KedroDataCatalog, MemoryDataset
 from kedro.pipeline import Pipeline
 from kedro.pipeline.node import Node
 from pluggy import PluginManager
 from pydantic import ConfigDict
 
-from kedro_dagster.utils import _create_pydantic_model_from_dict, _include_mlflow
+from kedro_dagster.utils import _create_pydantic_model_from_dict
+
+LOGGER = getLogger(__name__)
 
 
 def _define_node_multi_asset(
     node: Node,
     pipeline_name: str,
-    catalog: DataCatalog,
+    catalog: KedroDataCatalog,
     hook_manager: PluginManager,
     session_id: str,
-) -> AssetsDefinition:
+) -> dg.AssetsDefinition:
     """Wrap a kedro Node inside a Dagster multi asset.
 
     Args:
@@ -45,31 +40,26 @@ def _define_node_multi_asset(
     ins, params = {}, {}
     for asset_name in node.inputs:
         if not asset_name.startswith("params:"):
-            ins[asset_name] = AssetIn(
+            ins[asset_name] = dg.AssetIn(
                 key=asset_name,
                 # input_manager_key=f"{asset_name}_io_manager",
             )
         else:
             params[asset_name] = catalog.load(asset_name)
 
-    ins[f"{node.name}_before_pipeline_run_hook"] = AssetIn(
-        key=f"{node.name}_before_pipeline_run_hook",
-        dagster_type=Nothing,
-    )
-
     outs = {}
     for asset_name in node.outputs:
         metadata, description = None, None
         if asset_name in catalog.list():
             dataset = catalog._get_dataset(asset_name)
-            metadata = dataset.metadata or {}
+            metadata = getattr(dataset, "metadata", None) or {}
             description = metadata.pop("description", "")
 
         io_manager_key = "io_manager"
         if asset_name in catalog.list() and not isinstance(catalog._get_dataset(asset_name), MemoryDataset):
             io_manager_key = f"{asset_name}_io_manager"
 
-        outs[asset_name] = AssetOut(
+        outs[asset_name] = dg.AssetOut(
             key=asset_name,
             description=description,
             metadata=metadata,
@@ -79,21 +69,25 @@ def _define_node_multi_asset(
     # Node parameters are mapped to Dagster configs
     NodeParametersConfig = _create_pydantic_model_from_dict(
         params,
-        __base__=Config,
+        __base__=dg.Config,
         __config__=ConfigDict(extra="allow", frozen=False),
     )
 
     # Define a multi_asset from a Kedro node
-    @multi_asset(
+    @dg.multi_asset(
         name=node.name,
         description=f"Kedro node {node.name} wrapped as a Dagster multi asset.",
         group_name=pipeline_name,
         ins=ins,
         outs=outs,
-        required_resource_keys={"mlflow"} if _include_mlflow() else None,
+        required_resource_keys={"pipeline_hook"},
         op_tags=node.tags,
     )
-    def dagster_asset(config: NodeParametersConfig, **inputs):
+    def dagster_asset(
+        context,
+        config: NodeParametersConfig,
+        **inputs,
+    ):
         # Logic to execute the Kedro node
 
         inputs |= config.model_dump()
@@ -129,6 +123,9 @@ def _define_node_multi_asset(
             session_id=session_id,
         )
 
+        for output_asset_name, output_asset in outputs.items():
+            context.resources.pipeline_hook.add_run_results(output_asset_name, output_asset)
+
         if len(outputs) > 1:
             return tuple(outputs.values())
 
@@ -157,10 +154,10 @@ def _get_node_pipeline_name(pipelines, node):
 
 def load_assets_from_kedro_nodes(
     default_pipeline: Pipeline,
-    catalog: DataCatalog,
+    catalog: KedroDataCatalog,
     hook_manager: PluginManager,
     session_id: str,
-) -> list[AssetsDefinition]:
+) -> list[dg.AssetsDefinition]:
     """Load Kedro assets from a pipeline into Dagster.
 
     Args:
@@ -173,26 +170,23 @@ def load_assets_from_kedro_nodes(
     Returns:
         List[AssetsDefinition]: List of Dagster assets.
     """
-    logger = get_dagster_logger()
 
-    logger.info("Building asset list...")
+    LOGGER.info("Building asset list...")
     assets = []
-    asset_input_dict = {}
     # Assets that are not generated through dagster are external and
     # registered with AssetSpec
     for external_asset_name in default_pipeline.inputs():
         if not external_asset_name.startswith("params:"):
             dataset = catalog._get_dataset(external_asset_name)
-            metadata = dataset.metadata or {}
+            metadata = getattr(dataset, "metadata", None) or {}
             description = metadata.pop("description", "")
-            asset = AssetSpec(
+            asset = dg.AssetSpec(
                 external_asset_name,
                 group_name="external",
                 description=description,
                 metadata=metadata,
             ).with_io_manager_key(io_manager_key=f"{external_asset_name}_io_manager")
             assets.append(asset)
-            asset_input_dict[external_asset_name] = asset
 
     multi_asset_node_dict = {}
     for node in default_pipeline.nodes:
@@ -209,4 +203,4 @@ def load_assets_from_kedro_nodes(
             assets.append(asset)
             multi_asset_node_dict[node.name] = asset
 
-    return assets, multi_asset_node_dict, asset_input_dict
+    return assets, multi_asset_node_dict

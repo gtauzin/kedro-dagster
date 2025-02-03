@@ -35,13 +35,6 @@ dependencies = [
     "dagster-webserver>=1.9,<2.0",
 ]
 
-[optional-dependencies]
-mlflow = [
-  "mlflow>=2.17.2",
-  "kedro-mlflow>=0.13.3",
-  "dagster-mlflow>=0.25.2",
-]
-
 [dependency-groups]
 dev = [
   { include-group = "docs" },
@@ -72,6 +65,10 @@ dagster = "kedro_dagster.cli:commands"
 
 [tool.hatch.version]
 source = "vcs"
+fallback-version = "0.0.0"
+
+[tool.hatch.metadata.hooks.vcs.urls]
+source_archive = "https://github.com/gtauzin/kedro-dagster/archive/{commit_hash}.zip"
 
 [tool.ruff]
 line-length = 120

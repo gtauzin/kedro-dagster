@@ -1,29 +1,39 @@
 """Translation function from Kedro to Dagtser."""
 
+import warnings
+from logging import getLogger
 from pathlib import Path
 
-from dagster import AssetsDefinition, JobDefinition, LoggerDefinition, ResourceDefinition, get_dagster_logger
+import dagster as dg
 from kedro.framework.project import pipelines
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 from kedro.utils import _find_kedro_project
 
 from kedro_dagster.assets import load_assets_from_kedro_nodes
-from kedro_dagster.config import get_dagster_config, get_mlflow_config
+from kedro_dagster.config import get_dagster_config
+from kedro_dagster.executors import load_executors_from_kedro_config
 from kedro_dagster.jobs import load_jobs_from_kedro_config
 from kedro_dagster.loggers import get_kedro_loggers
 from kedro_dagster.ops import load_ops_from_kedro_nodes
-from kedro_dagster.resources import get_mlflow_resource_from_config, load_io_managers_from_kedro_datasets
-from kedro_dagster.utils import _include_mlflow
+from kedro_dagster.resources import (
+    load_io_managers_from_kedro_datasets,
+    load_pipeline_hook_translation,
+)
+from kedro_dagster.schedules import load_schedules_from_kedro_config
+
+LOGGER = getLogger(__name__)
+
+warnings.filterwarnings("ignore", category=dg.ExperimentalWarning)
 
 
 def translate_kedro(
     env: str | None = None,
 ) -> tuple[
-    list[AssetsDefinition],
-    dict[str, ResourceDefinition],
-    dict[str, JobDefinition],
-    dict[str, LoggerDefinition],
+    list[dg.AssetsDefinition],
+    dict[str, dg.ResourceDefinition],
+    dict[str, dg.JobDefinition],
+    dict[str, dg.LoggerDefinition],
 ]:
     """Translate Kedro project into Dagster.
 
@@ -42,14 +52,12 @@ def translate_kedro(
         dictionary of Dagster loggers.
 
     """
-    logger = get_dagster_logger()
-
-    logger.info("Initializing Kedro...")
+    LOGGER.info("Initializing Kedro...")
     project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
 
-    logger.info("Bootstrapping project")
+    LOGGER.info("Bootstrapping project")
     project_metadata = bootstrap_project(project_path)
-    logger.info("Project name: %s", project_metadata.project_name)
+    LOGGER.info("Project name: %s", project_metadata.project_name)
 
     # bootstrap project within task / flow scope
     session = KedroSession.create(
@@ -58,42 +66,47 @@ def translate_kedro(
     )
     session_id = session.session_id
 
-    logger.info(
+    LOGGER.info(
         "Session created with ID %s",
     )
 
-    logger.info("Loading context...")
+    LOGGER.info("Loading context...")
     context = session.load_context()
     catalog = context.catalog
     dagster_config = get_dagster_config(context)
     hook_manager = context._hook_manager
     default_pipeline = pipelines.get("__default__")
 
-    kedro_resources = {}
-    if _include_mlflow():
-        mlflow_config = get_mlflow_config(context)
-        kedro_resources = {"mlflow": get_mlflow_resource_from_config(mlflow_config)}
-
-    kedro_assets, multi_asset_node_dict, asset_input_dict = load_assets_from_kedro_nodes(
-        default_pipeline, catalog, hook_manager, session_id
-    )
+    assets, multi_asset_node_dict = load_assets_from_kedro_nodes(default_pipeline, catalog, hook_manager, session_id)
     op_node_dict = load_ops_from_kedro_nodes(default_pipeline, catalog, hook_manager, session_id)
-    kedro_jobs, before_pipeline_run_hook = load_jobs_from_kedro_config(
+    executors = load_executors_from_kedro_config(dagster_config)
+    io_managers = load_io_managers_from_kedro_datasets(default_pipeline, catalog, hook_manager)
+    job_dict = load_jobs_from_kedro_config(
         dagster_config,
-        asset_input_dict,
         multi_asset_node_dict,
         op_node_dict,
+        executors,
         catalog,
         hook_manager,
         session_id,
         project_path,
         env,
+        io_managers,
     )
-    kedro_assets.append(before_pipeline_run_hook)
-    kedro_loggers = get_kedro_loggers(project_metadata.package_name)
-    kedro_io_managers = load_io_managers_from_kedro_datasets(default_pipeline, catalog, hook_manager)
-    kedro_resources |= kedro_io_managers
+    jobs = list(job_dict.values())
+    schedules = load_schedules_from_kedro_config(dagster_config, job_dict)
+    loggers = get_kedro_loggers(project_metadata.package_name)
+    resources = io_managers
 
-    logger.info("Kedro project translated into Dagster.")
+    pipeline_hook_resource, on_pipeline_error_sensor = load_pipeline_hook_translation(
+        run_params={"session_id": session_id},
+        # pipeline=default_pipeline,
+        catalog=catalog,
+        hook_manager=hook_manager,
+    )
+    resources["pipeline_hook"] = pipeline_hook_resource
+    sensors = [on_pipeline_error_sensor]
 
-    return kedro_assets, kedro_resources, kedro_jobs, kedro_loggers
+    LOGGER.info("Kedro project translated into Dagster.")
+
+    return assets, resources, jobs, schedules, sensors, loggers, executors
