@@ -33,8 +33,8 @@ class PipelineHookTranslator:
             _pipeline: Pipeline = PrivateAttr()
 
             def filter_params_dict(self) -> dict:
-                filter_params = FilterParamsModel.__fields__.keys()
-                return {key: val for key, val in self.dict().items() if key in filter_params}
+                filter_params = FilterParamsModel.model_fields.keys()
+                return {key: val for key, val in self.model_dump().items() if key in filter_params}
 
             def get_pipeline(self, filter_params):
                 pipeline = pipelines.get("__default__")
@@ -66,7 +66,7 @@ class PipelineHookTranslator:
                 self._pipeline = self.get_pipeline(filter_params)
 
                 hook_manager.hook.before_pipeline_run(
-                    run_params=self.dict() | filter_params,
+                    run_params=self.model_dump() | filter_params,
                     pipeline=self._pipeline,
                     catalog=catalog,
                 )
@@ -80,7 +80,12 @@ class PipelineHookTranslator:
                 # been computed
                 output_asset_names = []
                 if context.dagster_run.asset_selection is not None:
-                    output_asset_names = [asset_key.path for asset_key in context.dagster_run.asset_selection]
+                    for asset_key in context.dagster_run.asset_selection:
+                        if isinstance(asset_key, list):
+                            output_asset_names.extend(asset_key)
+                        else:
+                            output_asset_names.append(asset_key)
+
                 if set(output_asset_names) == set(self._run_results.keys()):
                     hook_manager.hook.after_pipeline_run(
                         run_params=self.dict(),
@@ -93,7 +98,7 @@ class PipelineHookTranslator:
                 else:
                     context.log.info("Pipelinke hook resource teardown did not execute `after_pipeline_run` hook.")
 
-        return PipelineHookResource(**run_params.dict())
+        return PipelineHookResource(**run_params.model_dump())
 
     def translate_pipeline_hook(self, run_params: dict[str, Any]) -> dict[str, dg.IOManagerDefinition]:
         """Translate Kedro pipeline hooks to Dagster resource and sensor."""

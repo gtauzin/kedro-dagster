@@ -18,7 +18,13 @@ LOGGER = getLogger(__name__)
 
 
 class NodeTranslator:
-    def _create_asset(self, node: Node):
+    def create_asset(
+        self,
+        node: Node,
+        partition_def: dg.PartitionsDefinition | None = None,
+        backfill_policy: dg.BackfillPolicy | None = None,
+        retry_policy: dg.RetryPolicy | None = None,
+    ):
         """Create a Dagster asset from a Kedro node.
 
         Args:
@@ -75,7 +81,10 @@ class NodeTranslator:
             ins=ins,
             outs=outs,
             required_resource_keys={"pipeline_hook"},
-            op_tags=node.tags,  # T)DO: Does this work?
+            op_tags=node.tags,  # TODO: Does this work?
+            partitions_def=partition_def,
+            backfill_policy=backfill_policy,
+            retry_policy=retry_policy,
         )
         def node_asset(
             context,
@@ -83,7 +92,9 @@ class NodeTranslator:
             **inputs,
         ):
             # TODO: Passing config does not work
-            outputs = self._named_nodes[node.name](
+            outputs = self._named_ops[node.name](
+                context=context.op_execution_context,
+                config=config,
                 **inputs,
             )
 
@@ -98,7 +109,7 @@ class NodeTranslator:
 
         return node_asset
 
-    def _create_op(self, node: Node):
+    def create_op(self, node: Node, retry_policy: dg.RetryPolicy | None = None):
         ins, params = {}, {}
         for asset_name in node.inputs:
             if _is_asset_name(asset_name):
@@ -114,13 +125,14 @@ class NodeTranslator:
         )
 
         # TODO: Should is_async be False?
-        # TODO: Should I define outs?
+        # TODO: Should I define out?
         @dg.op(
             name=node.name,
             description=f"Kedro node {node.name} wrapped as a Dagster op.",
             ins=ins,
             required_resource_keys={"pipeline_hook"},
             tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
+            retry_policy=retry_policy,
         )
         def node_op(context, config: NodeParametersConfig, **inputs) -> dg.Nothing:
             # Logic to execute the Kedro node
@@ -190,9 +202,9 @@ class NodeTranslator:
 
         # Create assets from Kedro nodes that have outputs
         for node in default_pipeline.nodes:
+            op = self.create_op(node)
+            self._named_ops[node.name] = op
+
             if len(node.outputs):
-                asset = self._create_asset(node)
+                asset = self.create_asset(node)
                 self.named_assets_[node.name] = asset
-            else:
-                op = self._create_op(node)
-                self._named_ops[node.name] = op

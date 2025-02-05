@@ -48,12 +48,15 @@ class PipelineTranslator:
         run_params = RunParamsModel(**run_params)
         return run_params
 
-    def _translate_pipeline(
+    def translate_pipeline(
         self,
         pipeline: Pipeline,
         pipeline_config: dict[str, Any],
         job_name: str,
-        job_config: dict[str, Any],
+        executor_def: dg.ExecutorDefinition | None = None,
+        partitions_def: dg.PartitionsDefinition | None = None,
+        op_retry_policy: dg.RetryPolicy | None = None,
+        logger_defs: dict[str, dg.LoggerDefinition] | None = None,
     ) -> dg.JobDefinition:
         """Translate a Kedro pipeline into a Dagster job.
 
@@ -109,19 +112,15 @@ class PipelineTranslator:
 
         pipeline_hook_resource = self._create_pipeline_hook_resource(run_params=self._get_run_params(pipeline_config))
 
-        executor_config = job_config.executor
-        if isinstance(executor_config, str):
-            if executor_config in self.named_executors_:
-                executor = self.named_executors_[executor_config]
-            else:
-                raise ValueError(f"Executor `{executor_config}` not found.")
-
         # Overrides the pipeline_hook resource with the one created for the job
         resource_defs = self.named_resources_ | {"pipeline_hook": pipeline_hook_resource}
         job = pipeline_graph.to_job(
             name=job_name,
             resource_defs=resource_defs,
-            executor_def=executor,
+            executor_def=executor_def,
+            partitions_def=partitions_def,
+            op_retry_policy=op_retry_policy,
+            logger_defs=logger_defs,
         )
 
         return job
@@ -134,11 +133,18 @@ class PipelineTranslator:
             filter_params = self._get_filter_params(pipeline_config)
             pipeline = pipelines.get(pipeline_name).filter(**filter_params.dict())
 
-            job = self._translate_pipeline(
+            executor_config = job_config.executor
+            if isinstance(executor_config, str):
+                if executor_config in self.named_executors_:
+                    executor_def = self.named_executors_[executor_config]
+                else:
+                    raise ValueError(f"Executor `{executor_config}` not found.")
+
+            job = self.translate_pipeline(
                 pipeline=pipeline,
                 pipeline_config=pipeline_config,
                 job_name=job_name,
-                job_config=job_config,
+                executor_def=executor_def,
             )
 
             self.named_jobs_[job_name] = job
