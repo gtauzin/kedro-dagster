@@ -20,6 +20,7 @@ from kedro_dagster.dagster import (
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipeline_hooks import PipelineHookTranslator
 from kedro_dagster.pipelines import PipelineTranslator
+from kedro_dagster.utils import get_mlflow_resource_from_config, is_mlflow_enabled
 
 LOGGER = getLogger(__name__)
 
@@ -119,6 +120,9 @@ class KedroDagsterTranslator(
 
     def translate(self):
         LOGGER.info("Translating Kedro project into Dagster...")
+
+        if is_mlflow_enabled():
+            self.named_resources_["mlflow"] = get_mlflow_resource_from_config(self._context.mlflow)
 
         self.translate_loggers()
         self.translate_nodes()

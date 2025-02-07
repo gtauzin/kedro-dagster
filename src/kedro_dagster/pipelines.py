@@ -7,7 +7,7 @@ from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
 
-from kedro_dagster.utils import FilterParamsModel, RunParamsModel, _is_asset_name
+from kedro_dagster.utils import FilterParamsModel, RunParamsModel, _is_asset_name, is_mlflow_enabled
 
 
 class PipelineTranslator:
@@ -72,14 +72,24 @@ class PipelineTranslator:
 
         run_params = self._get_run_params(pipeline_config).model_dump()
 
-        # TODO: Set up run_params as a config resources that provides a way to access
-        # pipeline?
+        required_resource_keys = None
+        if is_mlflow_enabled():
+            required_resource_keys = {"mlflow"}
+
+        # TODO: Set up KedroResource as a config resources that provides a way to access
+        # pipeline and run_params
         @dg.op(
             name=f"before_pipeline_run_hook_{job_name}",
             description=f"Hook to be executed before the `{job_name}` pipeline run.",
             out={"before_pipeline_run_hook_output": dg.Out(dagster_type=dg.Nothing)},
+            required_resource_keys=required_resource_keys,
         )
         def before_pipeline_run_hook() -> dg.Nothing:
+            # TODO: MlFlowHook needs this => Put it in its own node?
+            # Or do somehting specific for mlflow?
+            self._context._hook_manager.hook.after_context_created(
+                context=self._context,
+            )
             self._context._hook_manager.hook.before_pipeline_run(
                 run_params=run_params,
                 pipeline=pipeline,
@@ -97,6 +107,7 @@ class PipelineTranslator:
                 for asset_name in pipeline.all_outputs()
                 if not asset_name.startswith("params:")
             },
+            required_resource_keys=required_resource_keys,
         )
         def after_pipeline_run_hook(**materialized_assets) -> dg.Nothing:
             run_results = {asset_name: materialized_assets[asset_name] for asset_name in pipeline.outputs()}
@@ -162,6 +173,9 @@ class PipelineTranslator:
             for asset_name in pipeline.all_inputs() | pipeline.all_outputs()
             if f"{asset_name}_io_manager" in self.named_resources_
         }
+
+        if is_mlflow_enabled():
+            resource_defs |= {"mlflow": self.named_resources_["mlflow"]}
 
         # Overrides the pipeline_hook resource with the one created for the job
         # pipeline_hook_resource = self._create_pipeline_hook_resource(run_params=run_params)

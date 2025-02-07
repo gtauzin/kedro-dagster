@@ -99,8 +99,9 @@ class PipelineHookTranslator:
     def translate_pipeline_hook(self, run_params: dict[str, Any]) -> dict[str, dg.IOManagerDefinition]:
         """Translate Kedro pipeline hooks to Dagster resource and sensor."""
 
-        self.named_resources_["pipeline_hook"] = self._create_pipeline_hook_resource(run_params)
-
+        # TODO: Create a KedroResource that maps pipeline and run params and
+        # make use of it here instead of pipeline_hook and in the before/after
+        # pipeline hooks
         @dg.run_failure_sensor(
             name="on_pipeline_error_sensor",
             description="Sensor for kedro `on_pipeline_error` hook.",
@@ -108,8 +109,6 @@ class PipelineHookTranslator:
             default_status=dg.DefaultSensorStatus.RUNNING,
         )
         def on_pipeline_error_sensor(context: dg.RunFailureSensorContext):
-            # TODO: Remove pipeline_hook and check if you can get run_params
-            # from the config of the before_pipeline_run_hook!
             if "pipeline_hook" in context.resource_defs:
                 pipeline_hook_resource = context.resource_defs["pipeline_hook"]
                 pipeline = pipeline_hook_resource._pipeline
@@ -129,7 +128,3 @@ class PipelineHookTranslator:
                 context.log.info("Pipeline hook sensor executed `on_pipeline_error` hook`.")
 
         self.named_sensors_["on_pipeline_error_sensor"] = on_pipeline_error_sensor
-
-
-# TODO: Re-add dagster-mlflow base don the mlflow config
-# Note config should be accessible from context!

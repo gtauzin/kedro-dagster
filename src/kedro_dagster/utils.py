@@ -54,6 +54,7 @@ def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:
         file_handler.write(parsed_template)
 
 
+# TODO: Improve
 def _create_pydantic_model_from_dict(
     params: dict[str, Any], __base__, __config__: ConfigDict | None = None
 ) -> type[BaseModel]:
@@ -86,6 +87,16 @@ def _create_pydantic_model_from_dict(
         model.config = __config__
 
     return model
+
+
+def is_mlflow_enabled() -> bool:
+    try:
+        import kedro_mlflow  # NOQA
+        import mlflow  # NOQA
+
+        return True
+    except ImportError:
+        return False
 
 
 def _is_asset_name(dataset_name: str) -> bool:
@@ -136,3 +147,15 @@ class RunParamsModel(FilterParamsModel):
     load_versions: dict[str, str] | None = None
     extra_params: dict[str, Any] | None = None
     runner: str | None = None
+
+
+def get_mlflow_resource_from_config(mlflow_config: BaseModel) -> dg.ResourceDefinition:
+    from dagster_mlflow import mlflow_tracking
+
+    mlflow_resource = mlflow_tracking.configured({
+        "experiment_name": mlflow_config.tracking.experiment.name,
+        "mlflow_tracking_uri": mlflow_config.server.mlflow_tracking_uri,
+        "parent_run_id": None,
+    })
+
+    return mlflow_resource

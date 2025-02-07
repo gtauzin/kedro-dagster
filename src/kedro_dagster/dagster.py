@@ -16,7 +16,7 @@ from kedro_dagster.config.execution import (
 class ExecutorCreator:
     """Creates Dagster executor definitions from Kedro configuration."""
 
-    # TODO: Map more executors
+    # TODO: Map all dagster executors
     _OPTION_EXECUTOR_MAP = {
         InProcessExecutorOptions: dg.in_process_executor,
         MultiprocessExecutorOptions: dg.multiprocess_executor,

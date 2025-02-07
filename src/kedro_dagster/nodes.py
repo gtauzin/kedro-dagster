@@ -12,6 +12,7 @@ from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
     _is_asset_name,
+    is_mlflow_enabled,
 )
 
 LOGGER = getLogger(__name__)
@@ -73,12 +74,16 @@ class NodeTranslator:
             elif len(outputs) > 1:
                 return tuple(outputs.values())
 
+        required_resource_keys = None
+        if is_mlflow_enabled():
+            required_resource_keys = {"mlflow"}
+
         @dg.op(
             name=f"{node.name}_graph",
             description=f"Kedro node {node.name} wrapped as a Dagster op.",
             ins=ins | {"before_pipeline_run_hook_output": dg.In(dagster_type=dg.Nothing)},
-            out=out
-            | {f"{node.name}_after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing, is_required=False)},
+            out=out | {f"{node.name}_after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
+            required_resource_keys=required_resource_keys,
             tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
             retry_policy=retry_policy,
         )
@@ -124,7 +129,10 @@ class NodeTranslator:
             for output_asset_name in node.outputs:
                 context.log_event(dg.AssetMaterialization(asset_key=output_asset_name))
 
-            return tuple(outputs.values()) + (None,)
+            if len(outputs) > 0:
+                return tuple(outputs.values()) + (None,)
+
+            return None
 
         return node_asset_op, node_graph_op
 

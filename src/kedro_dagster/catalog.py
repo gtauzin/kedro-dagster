@@ -26,7 +26,6 @@ class CatalogTranslator:
         Returns:
             IOManagerDefinition: A Dagster IO manager.
         """
-        # TODO: Figure out why this ConfigDict does not allow to see the config of the io managers in dagit
         dataset_config = {
             key: val if not isinstance(val, PurePosixPath) else str(val)
             for key, val in dataset._describe().items()
