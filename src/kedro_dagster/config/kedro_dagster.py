@@ -35,7 +35,7 @@ class KedroDagsterConfig(BaseModel):
         for name, executor_config in executors.items():
             if "in_process" in executor_config:
                 executor_name = "in_process"
-            elif "in_process" in executor_config:
+            elif "multiprocess" in executor_config:
                 executor_name = "multiprocess"
             elif "k8s_job_executor" in executor_config:
                 executor_name = "k8s_job_executor"
@@ -46,7 +46,7 @@ class KedroDagsterConfig(BaseModel):
 
             executor_options_class = EXECUTOR_MAP[executor_name]
             executor_options_params = executor_config[executor_name] or {}
-            parsed_executors[name] = {executor_name: executor_options_class(**executor_options_params)}
+            parsed_executors[name] = executor_options_class(**executor_options_params)
 
         values["executors"] = parsed_executors
         return values

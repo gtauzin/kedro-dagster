@@ -50,36 +50,42 @@ class CatalogTranslator:
 
             def handle_output(self, context: dg.OutputContext, obj):
                 node_name = context.op_def.name
-                node = named_nodes[node_name]
-                hook_manager.hook.before_dataset_saved(
-                    dataset_name=dataset_name,
-                    data=obj,
-                    node=node,
-                )
+                if node_name in named_nodes:
+                    node = named_nodes[node_name]
+                    hook_manager.hook.before_dataset_saved(
+                        dataset_name=dataset_name,
+                        data=obj,
+                        node=node,
+                    )
 
                 dataset.save(obj)
 
-                hook_manager.hook.after_dataset_saved(
-                    dataset_name=dataset_name,
-                    data=obj,
-                    node=node,
-                )
+                if node_name in named_nodes:
+                    hook_manager.hook.after_dataset_saved(
+                        dataset_name=dataset_name,
+                        data=obj,
+                        node=node,
+                    )
 
             def load_input(self, context: dg.InputContext):
+                # When defining the op, we have named them either with
+                # a trailing "_graph" or with a trailing "_asset"
                 node_name = context.op_def.name
-                node = named_nodes[node_name]
-                hook_manager.hook.before_dataset_loaded(
-                    dataset_name=dataset_name,
-                    node=node,
-                )
+                if node_name in named_nodes:
+                    node = named_nodes[node_name]
+                    hook_manager.hook.before_dataset_loaded(
+                        dataset_name=dataset_name,
+                        node=node,
+                    )
 
                 data = dataset.load()
 
-                hook_manager.hook.after_dataset_loaded(
-                    dataset_name=dataset_name,
-                    data=data,
-                    node=node,
-                )
+                if node_name in named_nodes:
+                    hook_manager.hook.after_dataset_loaded(
+                        dataset_name=dataset_name,
+                        data=data,
+                        node=node,
+                    )
 
                 return data
 

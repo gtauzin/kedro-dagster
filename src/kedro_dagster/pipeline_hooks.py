@@ -38,6 +38,7 @@ class PipelineHookTranslator:
 
             def get_pipeline(self, filter_params):
                 pipeline = pipelines.get("__default__")
+                # TODO: Is pipeline_name set?
                 if self.pipeline_name is not None:
                     pipeline = pipelines.get(self.pipeline_name)
 
@@ -56,13 +57,16 @@ class PipelineHookTranslator:
                 # the pipeline to correspond to the actual nodes ran by dagster
                 node_names = None
                 if all(filter_param is None for filter_param in self.filter_params_dict().values()):
-                    node_names = context.dagster_run.step_keys_to_execute
+                    node_names = [
+                        "_".join(step_key.split("_")[:-1]) for step_key in context.dagster_run.step_keys_to_execute
+                    ]
 
                 filter_params = self.filter_params_dict()
 
                 if node_names is not None:
                     filter_params |= {"node_names": node_names}
 
+                context.log.info(filter_params)
                 self._pipeline = self.get_pipeline(filter_params)
 
                 hook_manager.hook.before_pipeline_run(
@@ -70,33 +74,25 @@ class PipelineHookTranslator:
                     pipeline=self._pipeline,
                     catalog=catalog,
                 )
-                context.log.info("Pipelinke hook resource setup executed `before_pipeline_run` hook.")
-
-                context.log.info(self.filter_params_dict())
+                context.log.info("Pipeline hook resource setup executed `before_pipeline_run` hook.")
 
             def teardown_after_execution(self, context: dg.InitResourceContext):
                 # Make sure `after_pipeline_run` is not called in case of an error
                 # Here we assume there is no error if all job outputs have
                 # been computed
-                output_asset_names = []
-                if context.dagster_run.asset_selection is not None:
-                    for asset_key in context.dagster_run.asset_selection:
-                        if isinstance(asset_key, list):
-                            output_asset_names.extend(asset_key)
-                        else:
-                            output_asset_names.append(asset_key)
+                output_asset_names = self._pipeline.all_outputs()
 
                 if set(output_asset_names) == set(self._run_results.keys()):
                     hook_manager.hook.after_pipeline_run(
-                        run_params=self.dict(),
+                        run_params=self.model_dump(),
                         run_result=self._run_results,
                         pipeline=self._pipeline,
                         catalog=catalog,
                     )
-                    context.log.info("Pipelinke hook resource teardown executed `after_pipeline_run` hook.")
+                    context.log.info("Pipeline hook resource teardown executed `after_pipeline_run` hook.")
 
                 else:
-                    context.log.info("Pipelinke hook resource teardown did not execute `after_pipeline_run` hook.")
+                    context.log.info("Pipeline hook resource teardown did not execute `after_pipeline_run` hook.")
 
         return PipelineHookResource(**run_params.model_dump())
 
@@ -108,10 +104,12 @@ class PipelineHookTranslator:
         @dg.run_failure_sensor(
             name="on_pipeline_error_sensor",
             description="Sensor for kedro `on_pipeline_error` hook.",
-            monitored_jobs=None,
+            monitored_jobs=None,  # TODO: Only for pipeline jobs!
             default_status=dg.DefaultSensorStatus.RUNNING,
         )
         def on_pipeline_error_sensor(context: dg.RunFailureSensorContext):
+            # TODO: Remove pipeline_hook and check if you can get run_params
+            # from the config of the before_pipeline_run_hook!
             if "pipeline_hook" in context.resource_defs:
                 pipeline_hook_resource = context.resource_defs["pipeline_hook"]
                 pipeline = pipeline_hook_resource._pipeline
@@ -131,3 +129,7 @@ class PipelineHookTranslator:
                 context.log.info("Pipeline hook sensor executed `on_pipeline_error` hook`.")
 
         self.named_sensors_["on_pipeline_error_sensor"] = on_pipeline_error_sensor
+
+
+# TODO: Re-add dagster-mlflow base don the mlflow config
+# Note config should be accessible from context!

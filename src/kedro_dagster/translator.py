@@ -73,9 +73,11 @@ class KedroDagsterTranslator(
         self.load_context()
         self.load_config()
 
-        self._named_nodes = {node.name: node for node in pipelines.get("__default__").nodes}
+        default_pipeline = pipelines.get("__default__")
+        self._named_nodes = {node.name: node for node in default_pipeline.nodes}
 
     def initialialize_outputs(self):
+        self._named_graph_ops = {}
         self._named_ops = {}
         self.named_assets_ = {}
         self.named_resources_ = {}

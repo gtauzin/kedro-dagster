@@ -7,7 +7,7 @@ from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
 
-from kedro_dagster.utils import FilterParamsModel, RunParamsModel
+from kedro_dagster.utils import FilterParamsModel, RunParamsModel, _is_asset_name
 
 
 class PipelineTranslator:
@@ -70,39 +70,82 @@ class PipelineTranslator:
 
         """
 
+        run_params = self._get_run_params(pipeline_config).model_dump()
+
+        # TODO: Set up run_params as a config resources that provides a way to access
+        # pipeline?
+        @dg.op(
+            name=f"before_pipeline_run_hook_{job_name}",
+            description=f"Hook to be executed before the `{job_name}` pipeline run.",
+            out={"before_pipeline_run_hook_output": dg.Out(dagster_type=dg.Nothing)},
+        )
+        def before_pipeline_run_hook() -> dg.Nothing:
+            self._context._hook_manager.hook.before_pipeline_run(
+                run_params=run_params,
+                pipeline=pipeline,
+                catalog=self._catalog,
+            )
+
+        @dg.op(
+            name=f"after_pipeline_run_hook_{job_name}",
+            description=f"Hook to be executed after the `{job_name}` pipeline run.",
+            ins={
+                f"{node.name}_after_pipeline_run_hook_input": dg.In(dagster_type=dg.Nothing) for node in pipeline.nodes
+            }
+            | {
+                asset_name: dg.In(asset_key=dg.AssetKey(asset_name))
+                for asset_name in pipeline.all_outputs()
+                if not asset_name.startswith("params:")
+            },
+        )
+        def after_pipeline_run_hook(**materialized_assets) -> dg.Nothing:
+            run_results = {asset_name: materialized_assets[asset_name] for asset_name in pipeline.outputs()}
+
+            self._context._hook_manager.hook.after_pipeline_run(
+                run_params=run_params,
+                run_result=run_results,
+                pipeline=pipeline,
+                catalog=self._catalog,
+            )
+
         @dg.graph(
             name=job_name,
             description=f"Job derived from pipeline associated to `{job_name}`.",
             out=None,
         )
         def pipeline_graph():
-            # Fil up materialized_assets with external assets
-            materialized_assets = {
-                asset_name: asset
-                for asset_name, asset in self.named_assets_.items()
-                if asset_name in pipeline.inputs() and isinstance(asset, dg.AssetSpec)
-            }
+            before_pipeline_run_hook_output = before_pipeline_run_hook()
+
+            # Fil up materialized_assets with pipeline input assets
+            materialized_assets = {}
+            for asset_name in pipeline.inputs():
+                if _is_asset_name(asset_name):
+                    # First, we account for external assets
+                    if asset_name in self.named_assets_:
+                        materialized_assets[asset_name] = self.named_assets_[asset_name]
+                    else:
+                        materialized_assets[asset_name] = dg.AssetSpec(
+                            asset_name,
+                        ).with_io_manager_key(f"{asset_name}_io_manager")
 
             for layer in pipeline.grouped_nodes:
                 for node in layer:
-                    if node.name in self.named_assets_:
-                        op = self.named_assets_[node.name]
-                    else:
-                        op = self._named_ops[node.name]
-
-                    node_inputs = node.inputs
+                    op = self._named_ops[f"{node.name}_graph"]
 
                     materialized_input_assets = {
                         input_name: materialized_assets[input_name]
-                        for input_name in node_inputs
+                        for input_name in node.inputs
                         if input_name in materialized_assets
                     }
 
-                    materialized_outputs = op(**materialized_input_assets)
+                    materialized_outputs = op(
+                        before_pipeline_run_hook_output=before_pipeline_run_hook_output,
+                        **materialized_input_assets,
+                    )
 
-                    if len(node.outputs) <= 1:
+                    if len(node.outputs) == 0:
                         materialized_output_assets = {materialized_outputs.output_name: materialized_outputs}
-                    elif len(node.outputs) > 1:
+                    elif len(node.outputs) > 0:
                         materialized_output_assets = {
                             materialized_output.output_name: materialized_output
                             for materialized_output in materialized_outputs
@@ -110,10 +153,20 @@ class PipelineTranslator:
 
                     materialized_assets |= materialized_output_assets
 
-        pipeline_hook_resource = self._create_pipeline_hook_resource(run_params=self._get_run_params(pipeline_config))
+            after_pipeline_run_hook(
+                **materialized_assets,
+            )
+
+        resource_defs = {
+            f"{asset_name}_io_manager": self.named_resources_[f"{asset_name}_io_manager"]
+            for asset_name in pipeline.all_inputs() | pipeline.all_outputs()
+            if f"{asset_name}_io_manager" in self.named_resources_
+        }
 
         # Overrides the pipeline_hook resource with the one created for the job
-        resource_defs = self.named_resources_ | {"pipeline_hook": pipeline_hook_resource}
+        # pipeline_hook_resource = self._create_pipeline_hook_resource(run_params=run_params)
+        # resource_defs |= {"pipeline_hook": pipeline_hook_resource}
+
         job = pipeline_graph.to_job(
             name=job_name,
             resource_defs=resource_defs,

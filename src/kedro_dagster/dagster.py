@@ -56,7 +56,8 @@ class ExecutorCreator:
                     "Please use one of the following executors: "
                     f"{', '.join([str(k) for k in self._OPTION_EXECUTOR_MAP.keys()])}"
                 )
-            self.named_executors_[executor_name] = executor.configured(executor_config.model_dump())
+            executor = executor.configured(executor_config.model_dump())
+            self.named_executors_[executor_name] = executor
 
 
 class ScheduleCreator:
