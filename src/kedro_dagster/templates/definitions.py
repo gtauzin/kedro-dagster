@@ -30,5 +30,5 @@ defs = dg.Definitions(
     jobs=jobs,
     schedules=schedules,
     loggers=loggers,
-    executor=executors["my_exec"],  # TODO: Clarify
+    executor=dg.multiprocess_executor(max_concurrent=2),
 )

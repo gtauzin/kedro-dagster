@@ -35,7 +35,6 @@ class JobOptions(BaseModel):
     pipeline: PipelineOptions
     executor: ExecutorOptions | str | None = None
     schedule: ScheduleOptions | str | None = None
-    config: dict[str, Any] | None = None  # TODO: Can contain general config or associated to node?
 
     class Config:
         extra = "forbid"
