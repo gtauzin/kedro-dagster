@@ -20,7 +20,7 @@ from kedro_dagster.dagster import (
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipeline_hooks import PipelineHookTranslator
 from kedro_dagster.pipelines import PipelineTranslator
-from kedro_dagster.utils import get_mlflow_resource_from_config, is_mlflow_enabled
+from kedro_dagster.utils import dagster_format, get_mlflow_resource_from_config, is_mlflow_enabled
 
 LOGGER = getLogger(__name__)
 
@@ -75,7 +75,7 @@ class KedroDagsterTranslator(
         self.load_config()
 
         default_pipeline = pipelines.get("__default__")
-        self._named_nodes = {node.name: node for node in default_pipeline.nodes}
+        self._named_nodes = {dagster_format(node.name): node for node in default_pipeline.nodes}
 
     def initialialize_outputs(self):
         self._named_graph_ops = {}

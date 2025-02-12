@@ -35,6 +35,13 @@ dependencies = [
     "dagster-webserver>=1.9,<2.0",
 ]
 
+[project.optional-dependencies]
+mlflow = [
+  "kedro-mlflow>=0.13",
+  "mlflow>=2.20",
+  "dagster-mlflow",
+]
+
 [dependency-groups]
 dev = [
   { include-group = "docs" },

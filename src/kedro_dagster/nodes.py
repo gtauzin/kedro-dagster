@@ -12,6 +12,7 @@ from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
     _is_asset_name,
+    dagster_format,
     is_mlflow_enabled,
 )
 
@@ -21,14 +22,16 @@ LOGGER = getLogger(__name__)
 class NodeTranslator:
     def create_op(self, node: Node, retry_policy: dg.RetryPolicy | None = None):
         ins, params = {}, {}
-        for asset_name in node.inputs:
+        for dataset_name in node.inputs:
+            asset_name = dagster_format(dataset_name)
             if _is_asset_name(asset_name):
                 ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_name))
             else:
-                params[asset_name] = self._catalog.load(asset_name)
+                params[asset_name] = self._catalog.load(dataset_name)
 
         out = {}
-        for asset_name in node.outputs:
+        for dataset_name in node.outputs:
+            asset_name = dagster_format(dataset_name)
             metadata, description = None, None
             io_manager_key = "io_manager"
 
@@ -53,8 +56,10 @@ class NodeTranslator:
             __config__=ConfigDict(extra="allow", frozen=False),
         )
 
+        op_name = dagster_format(node.name)
+
         @dg.op(
-            name=f"{node.name}_asset",
+            name=f"{op_name}_asset",
             description=f"Kedro node {node.name} wrapped as a Dagster op.",
             ins=ins,
             out=out,
@@ -79,10 +84,10 @@ class NodeTranslator:
             required_resource_keys = {"mlflow"}
 
         @dg.op(
-            name=f"{node.name}_graph",
+            name=f"{op_name}_graph",
             description=f"Kedro node {node.name} wrapped as a Dagster op.",
             ins=ins | {"before_pipeline_run_hook_output": dg.In(dagster_type=dg.Nothing)},
-            out=out | {f"{node.name}_after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
+            out=out | {f"{op_name}_after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
             required_resource_keys=required_resource_keys,
             tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
             retry_policy=retry_policy,
@@ -153,12 +158,14 @@ class NodeTranslator:
             AssetDefinition: A Dagster asset.
         """
         keys_by_input_name = {}
-        for asset_name in node.inputs:
+        for dataset_name in node.inputs:
+            asset_name = dagster_format(dataset_name)
             if _is_asset_name(asset_name):
                 keys_by_input_name[asset_name] = dg.AssetKey(asset_name)
 
         keys_by_output_name = {}
-        for asset_name in node.outputs:
+        for dataset_name in node.outputs:
+            asset_name = dagster_format(dataset_name)
             keys_by_output_name[asset_name] = dg.AssetKey(asset_name)
 
         node_asset = dg.AssetsDefinition.from_op(
@@ -179,7 +186,8 @@ class NodeTranslator:
 
         # Assets that are not generated through dagster are external and
         # registered with AssetSpec
-        for external_asset_name in default_pipeline.inputs():
+        for external_dataset_name in default_pipeline.inputs():
+            external_asset_name = dagster_format(external_dataset_name)
             if _is_asset_name(external_asset_name):
                 dataset = self._catalog._get_dataset(external_asset_name)
                 metadata = getattr(dataset, "metadata", None) or {}
@@ -199,9 +207,10 @@ class NodeTranslator:
 
         # Create assets from Kedro nodes that have outputs
         for node in default_pipeline.nodes:
+            op_name = dagster_format(node.name)
             asset_op, graph_op = self.create_op(node)
-            self._named_ops[f"{node.name}_graph"] = graph_op
+            self._named_ops[f"{op_name}_graph"] = graph_op
 
             if len(node.outputs):
                 asset = self.create_asset(node, asset_op)
-                self.named_assets_[node.name] = asset
+                self.named_assets_[op_name] = asset

@@ -54,6 +54,10 @@ def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:
         file_handler.write(parsed_template)
 
 
+def dagster_format(name):
+    return name.replace(".", "__")
+
+
 # TODO: Improve
 def _create_pydantic_model_from_dict(
     params: dict[str, Any], __base__, __config__: ConfigDict | None = None
@@ -78,7 +82,10 @@ def _create_pydantic_model_from_dict(
             fields[param_name] = (nested_model, ...)
         else:
             # Use the type of the value as the field type
-            fields[param_name] = (type(param_value), param_value)
+            param_type = type(param_value)
+            if param_type is type(None):
+                param_type = dg.Any
+            fields[param_name] = (param_type, param_value)
 
     if __base__ is None:
         model = create_model("ParametersConfig", __config__=__config__, **fields)
@@ -125,6 +132,9 @@ def _get_node_pipeline_name(pipelines, node):
         if pipeline_name != "__default__":
             for pipeline_node in pipeline.nodes:
                 if node.name == pipeline_node.name:
+                    if "." in node.name:
+                        namespace = ".".join(node.name.split(".")[:-1])
+                        return dagster_format(f"{namespace}.{pipeline_name}")
                     return pipeline_name
 
 

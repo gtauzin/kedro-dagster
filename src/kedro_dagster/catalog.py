@@ -8,7 +8,7 @@ import dagster as dg
 from kedro.io import MemoryDataset
 from pydantic import ConfigDict
 
-from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_asset_name
+from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_asset_name, dagster_format
 
 LOGGER = getLogger(__name__)
 
@@ -98,13 +98,14 @@ class CatalogTranslator:
         """
         LOGGER.info("Creating IO managers...")
         for dataset_name in self._catalog.list():
-            if _is_asset_name(dataset_name):
+            asset_name = dagster_format(dataset_name)
+            if _is_asset_name(asset_name):
                 dataset = self._catalog._get_dataset(dataset_name)
 
                 if isinstance(dataset, MemoryDataset):
                     continue
 
-                self.named_resources_[f"{dataset_name}_io_manager"] = self._translate_dataset(
+                self.named_resources_[f"{asset_name}_io_manager"] = self._translate_dataset(
                     dataset,
                     dataset_name,
                 )

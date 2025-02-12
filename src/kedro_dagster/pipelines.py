@@ -7,7 +7,7 @@ from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
 
-from kedro_dagster.utils import FilterParamsModel, RunParamsModel, _is_asset_name, is_mlflow_enabled
+from kedro_dagster.utils import FilterParamsModel, RunParamsModel, _is_asset_name, dagster_format, is_mlflow_enabled
 
 
 class PipelineTranslator:
@@ -96,21 +96,26 @@ class PipelineTranslator:
                 catalog=self._catalog,
             )
 
+        after_pipeline_run_hook_ins = {
+            f"{dagster_format(node.name)}_after_pipeline_run_hook_input": dg.In(dagster_type=dg.Nothing)
+            for node in pipeline.nodes
+        }
+        for dataset_name in pipeline.all_outputs():
+            asset_name = dagster_format(dataset_name)
+            if _is_asset_name(asset_name):
+                after_pipeline_run_hook_ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_name))
+
         @dg.op(
             name=f"after_pipeline_run_hook_{job_name}",
             description=f"Hook to be executed after the `{job_name}` pipeline run.",
-            ins={
-                f"{node.name}_after_pipeline_run_hook_input": dg.In(dagster_type=dg.Nothing) for node in pipeline.nodes
-            }
-            | {
-                asset_name: dg.In(asset_key=dg.AssetKey(asset_name))
-                for asset_name in pipeline.all_outputs()
-                if not asset_name.startswith("params:")
-            },
+            ins=after_pipeline_run_hook_ins,
             required_resource_keys=required_resource_keys,
         )
         def after_pipeline_run_hook(**materialized_assets) -> dg.Nothing:
-            run_results = {asset_name: materialized_assets[asset_name] for asset_name in pipeline.outputs()}
+            run_results = {}
+            for dataset_name in pipeline.outputs():
+                asset_name = dagster_format(dataset_name)
+                run_results[dataset_name] = materialized_assets[asset_name]
 
             self._context._hook_manager.hook.after_pipeline_run(
                 run_params=run_params,
@@ -129,7 +134,8 @@ class PipelineTranslator:
 
             # Fil up materialized_assets with pipeline input assets
             materialized_assets = {}
-            for asset_name in pipeline.inputs():
+            for dataset_name in pipeline.inputs():
+                asset_name = dagster_format(dataset_name)
                 if _is_asset_name(asset_name):
                     # First, we account for external assets
                     if asset_name in self.named_assets_:
@@ -141,7 +147,8 @@ class PipelineTranslator:
 
             for layer in pipeline.grouped_nodes:
                 for node in layer:
-                    op = self._named_ops[f"{node.name}_graph"]
+                    op_name = dagster_format(node.name)
+                    op = self._named_ops[f"{op_name}_graph"]
 
                     materialized_input_assets = {
                         input_name: materialized_assets[input_name]
@@ -168,11 +175,11 @@ class PipelineTranslator:
                 **materialized_assets,
             )
 
-        resource_defs = {
-            f"{asset_name}_io_manager": self.named_resources_[f"{asset_name}_io_manager"]
-            for asset_name in pipeline.all_inputs() | pipeline.all_outputs()
-            if f"{asset_name}_io_manager" in self.named_resources_
-        }
+        resource_defs = {}
+        for dataset_name in pipeline.all_inputs() | pipeline.all_outputs():
+            asset_name = dagster_format(dataset_name)
+            if f"{asset_name}_io_manager" in self.named_resources_:
+                resource_defs[f"{asset_name}_io_manager"] = self.named_resources_[f"{asset_name}_io_manager"]
 
         if is_mlflow_enabled():
             resource_defs |= {"mlflow": self.named_resources_["mlflow"]}
