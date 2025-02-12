@@ -29,9 +29,8 @@ class CatalogTranslator:
         dataset_config = {
             key: val if not isinstance(val, PurePosixPath) else str(val)
             for key, val in dataset._describe().items()
-            if key not in ["version"]
-            and val is not None  # TODO: Why are those condition necessary? We could want to edit them on launchpad
-        }  # | {"dataset": dataset}
+            if key not in ["version"]  # TODO: Not sure how versioned dataset would work
+        } | {"dataset": dataset.__class__.__name__}
 
         # TODO: Make use of KedroDataCatalog.to_config() to get the config of the dataset
 

@@ -58,6 +58,10 @@ def dagster_format(name):
     return name.replace(".", "__")
 
 
+def kedro_format(name):
+    return name.replace("__", ".")
+
+
 # TODO: Improve
 def _create_pydantic_model_from_dict(
     params: dict[str, Any], __base__, __config__: ConfigDict | None = None

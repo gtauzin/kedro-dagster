@@ -14,6 +14,7 @@ from kedro_dagster.utils import (
     _is_asset_name,
     dagster_format,
     is_mlflow_enabled,
+    kedro_format,
 )
 
 LOGGER = getLogger(__name__)
@@ -71,6 +72,7 @@ class NodeTranslator:
             context.log.info(f"Running node `{node.name}` in asset.")
 
             inputs |= config.model_dump()
+            inputs = {kedro_format(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()}
 
             outputs = node.run(inputs)
 
@@ -97,6 +99,7 @@ class NodeTranslator:
             context.log.info(f"Running node `{node.name}` in graph.")
 
             inputs |= config.model_dump()
+            inputs = {kedro_format(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()}
 
             # TODO: Should is_async be False?
             self._hook_manager.hook.before_node_run(
