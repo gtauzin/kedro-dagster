@@ -30,7 +30,6 @@ urls.Documentation = "https://github.com/gtauzin/kedro-dagster/"
 urls."Source Code" = "https://github.com/gtauzin/kedro-dagster"
 dependencies = [
     "kedro>=0.19.0",
-    "kedro-datasets",
     "dagster>=1.9,<2.0",
     "dagster-webserver>=1.9,<2.0",
 ]
