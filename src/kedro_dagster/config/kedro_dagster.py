@@ -30,8 +30,8 @@ class KedroDagsterConfig(BaseModel):
     @classmethod
     def validate_executors(cls, values):
         executors = values.get("executors", {})
-        parsed_executors = {}
 
+        parsed_executors = {}
         for name, executor_config in executors.items():
             if "in_process" in executor_config:
                 executor_name = "in_process"
@@ -50,6 +50,18 @@ class KedroDagsterConfig(BaseModel):
 
         values["executors"] = parsed_executors
         return values
+
+    # @model_validator(mode="before")
+    # @classmethod
+    # def validate_jobs(cls, values):
+    #     jobs = values.get("jobs", {})
+
+    #     parsed_jobs = {}
+    #     for name, job_config in jobs.items():
+    #         parsed_jobs[name] = JobOptions(**job_config)
+
+    #     values["jobs"] = parsed_jobs
+    #     return values
 
 
 def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:

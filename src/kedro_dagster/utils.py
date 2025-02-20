@@ -149,6 +149,13 @@ class FilterParamsModel(dg.Config):
     from_inputs: list[str] | None = None
     to_outputs: list[str] | None = None
     node_namespace: str | None = None
+    tags: list[str] | None = None
+
+    class Config:
+        # force triggering type control when setting value instead of init
+        validate_assignment = True
+        # raise an error if an unknown key is passed to the constructor
+        extra = "forbid"
 
 
 class RunParamsModel(FilterParamsModel):
@@ -157,10 +164,15 @@ class RunParamsModel(FilterParamsModel):
     env: str | None = None
     kedro_version: str | None = None
     pipeline_name: str | None = None
-    tags: list[str] | None = None
     load_versions: dict[str, str] | None = None
     extra_params: dict[str, Any] | None = None
     runner: str | None = None
+
+    class Config:
+        # force triggering type control when setting value instead of init
+        validate_assignment = True
+        # raise an error if an unknown key is passed to the constructor
+        extra = "forbid"
 
 
 def get_mlflow_resource_from_config(mlflow_config: BaseModel) -> dg.ResourceDefinition:

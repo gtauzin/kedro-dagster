@@ -13,20 +13,20 @@ from kedro_dagster.utils import FilterParamsModel, RunParamsModel, _is_asset_nam
 class PipelineTranslator:
     @staticmethod
     def _get_filter_params(pipeline_config: dict[str, Any] | None = None) -> FilterParamsModel:
-        # TODO: Remove all defaults in get as the config takes care of default values
         filter_params = {}
         if pipeline_config is not None:
             filter_params = dict(
-                tags=pipeline_config.get("tags", None),
-                from_nodes=pipeline_config.get("from_nodes", None),
-                to_nodes=pipeline_config.get("to_nodes", None),
-                node_names=pipeline_config.get("node_names", None),
-                from_inputs=pipeline_config.get("from_inputs", None),
-                to_outputs=pipeline_config.get("to_outputs", None),
-                node_namespace=pipeline_config.get("node_namespace", None),
+                tags=pipeline_config.get("tags"),
+                from_nodes=pipeline_config.get("from_nodes"),
+                to_nodes=pipeline_config.get("to_nodes"),
+                node_names=pipeline_config.get("node_names"),
+                from_inputs=pipeline_config.get("from_inputs"),
+                to_outputs=pipeline_config.get("to_outputs"),
+                node_namespace=pipeline_config.get("node_namespace"),
             )
 
         filter_params = FilterParamsModel(**filter_params)
+
         return filter_params
 
     def _get_run_params(self, pipeline_config: dict[str, Any] | None = None) -> RunParamsModel:
@@ -38,13 +38,13 @@ class PipelineTranslator:
         )
         if pipeline_config is not None:
             run_params |= dict(
-                pipeline_name=pipeline_config.get("pipeline_name", None),
-                load_versions=pipeline_config.get("load_versions", None),
-                extra_params=pipeline_config.get("extra_params", None),
-                runner=pipeline_config.get("runner", None),
+                pipeline_name=pipeline_config.get("pipeline_name"),
+                load_versions=pipeline_config.get("load_versions"),
+                extra_params=pipeline_config.get("extra_params"),
+                runner=pipeline_config.get("runner"),
             )
 
-        run_params = self._get_filter_params(pipeline_config).dict() | run_params
+        run_params = self._get_filter_params(pipeline_config).model_dump() | run_params
         run_params = RunParamsModel(**run_params)
         return run_params
 
@@ -87,9 +87,9 @@ class PipelineTranslator:
         def before_pipeline_run_hook() -> dg.Nothing:
             # TODO: MlFlowHook needs this => Put it in its own node?
             # Or do somehting specific for mlflow?
-            self._context._hook_manager.hook.after_context_created(
-                context=self._context,
-            )
+            # self._context._hook_manager.hook.after_context_created(
+            #     context=self._context,
+            # )
             self._context._hook_manager.hook.before_pipeline_run(
                 run_params=run_params,
                 pipeline=pipeline,
@@ -205,7 +205,7 @@ class PipelineTranslator:
 
             pipeline_name = pipeline_config.get("pipeline_name")
             filter_params = self._get_filter_params(pipeline_config)
-            pipeline = pipelines.get(pipeline_name).filter(**filter_params.dict())
+            pipeline = pipelines.get(pipeline_name).filter(**filter_params.model_dump())
 
             executor_config = job_config.executor
             if isinstance(executor_config, str):

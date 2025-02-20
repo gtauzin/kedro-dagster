@@ -5,7 +5,8 @@ from pathlib import PurePosixPath
 from typing import Any
 
 import dagster as dg
-from kedro.io import MemoryDataset
+from kedro.framework.project import pipelines
+from kedro.io import DatasetNotFoundError, MemoryDataset
 from pydantic import ConfigDict
 
 from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_asset_name, dagster_format
@@ -96,10 +97,18 @@ class CatalogTranslator:
             Dict[str, IOManagerDefinition]: A dictionary of DagsterIO managers.
         """
         LOGGER.info("Creating IO managers...")
-        for dataset_name in self._catalog.list():
+        for dataset_name in sum(pipelines.values()).datasets():
             asset_name = dagster_format(dataset_name)
             if _is_asset_name(asset_name):
-                dataset = self._catalog._get_dataset(dataset_name)
+                try:
+                    dataset = self._catalog._get_dataset(dataset_name)
+
+                except DatasetNotFoundError:
+                    LOGGER.debug(
+                        f"Dataset `{dataset_name}` not in catalog. It will be "
+                        "handled by default IO manager `io_manager`."
+                    )
+                    continue
 
                 if isinstance(dataset, MemoryDataset):
                     continue
