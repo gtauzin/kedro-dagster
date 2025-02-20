@@ -1,4 +1,4 @@
-"""Dagster io manager translation from Kedro catalog."""
+"""Translation of Kedro catalog's datasets into Dagster IO manager."""
 
 from logging import getLogger
 from pathlib import PurePosixPath
@@ -51,8 +51,11 @@ class CatalogTranslator:
 
         class ConfigurableDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):
             def handle_output(self, context: dg.OutputContext, obj):
+                # When defining the op, we have named them either with
+                # a trailing "_graph"
                 node_name = context.op_def.name
                 if node_name in named_nodes:
+                    # Hooks called only if op is not an asset
                     node = named_nodes[node_name]
                     hook_manager.hook.before_dataset_saved(
                         dataset_name=dataset_name,
@@ -63,6 +66,7 @@ class CatalogTranslator:
                 dataset.save(obj)
 
                 if node_name in named_nodes:
+                    # Hooks called only if op is not an asset
                     hook_manager.hook.after_dataset_saved(
                         dataset_name=dataset_name,
                         data=obj,
@@ -70,10 +74,11 @@ class CatalogTranslator:
                     )
 
             def load_input(self, context: dg.InputContext):
-                # When defining the op, we have named them either with
-                # a trailing "_graph" or with a trailing "_asset"
                 node_name = context.op_def.name
+                # When defining the op, we have named them either with
+                # a trailing "_graph"
                 if node_name in named_nodes:
+                    # Hooks called only if op is not an asset
                     node = named_nodes[node_name]
                     hook_manager.hook.before_dataset_loaded(
                         dataset_name=dataset_name,
@@ -83,6 +88,7 @@ class CatalogTranslator:
                 data = dataset.load()
 
                 if node_name in named_nodes:
+                    # Hooks called only if op is not an asset
                     hook_manager.hook.after_dataset_loaded(
                         dataset_name=dataset_name,
                         data=data,
