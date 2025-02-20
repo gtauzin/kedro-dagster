@@ -125,8 +125,8 @@ class KedroDagsterTranslator(
             self.named_resources_["mlflow"] = get_mlflow_resource_from_config(self._context.mlflow)
 
         self.translate_loggers()
-        self.translate_nodes()
         self.translate_catalog()
+        self.translate_nodes()
         self.translate_pipeline_hook(run_params=self._get_run_params())
         self.create_executors()
         self.translate_pipelines()

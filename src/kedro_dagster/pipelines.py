@@ -46,6 +46,7 @@ class PipelineTranslator:
 
         run_params = self._get_filter_params(pipeline_config).model_dump() | run_params
         run_params = RunParamsModel(**run_params)
+
         return run_params
 
     def translate_pipeline(
@@ -87,9 +88,9 @@ class PipelineTranslator:
         def before_pipeline_run_hook() -> dg.Nothing:
             # TODO: MlFlowHook needs this => Put it in its own node?
             # Or do somehting specific for mlflow?
-            # self._context._hook_manager.hook.after_context_created(
-            #     context=self._context,
-            # )
+            self._context._hook_manager.hook.after_context_created(
+                context=self._context,
+            )
             self._context._hook_manager.hook.before_pipeline_run(
                 run_params=run_params,
                 pipeline=pipeline,
@@ -133,46 +134,47 @@ class PipelineTranslator:
             before_pipeline_run_hook_output = before_pipeline_run_hook()
 
             # Fil up materialized_assets with pipeline input assets
-            materialized_assets = {}
+            materialized_input_assets = {}
             for dataset_name in pipeline.inputs():
                 asset_name = dagster_format(dataset_name)
                 if _is_asset_name(asset_name):
                     # First, we account for external assets
                     if asset_name in self.named_assets_:
-                        materialized_assets[asset_name] = self.named_assets_[asset_name]
+                        materialized_input_assets[asset_name] = self.named_assets_[asset_name]
                     else:
-                        materialized_assets[asset_name] = dg.AssetSpec(
+                        materialized_input_assets[asset_name] = dg.AssetSpec(
                             asset_name,
                         ).with_io_manager_key(f"{asset_name}_io_manager")
 
+            materialized_output_assets = {}
             for layer in pipeline.grouped_nodes:
                 for node in layer:
-                    op_name = dagster_format(node.name)
-                    op = self._named_ops[f"{op_name}_graph"]
+                    op_name = dagster_format(node.name) + "_graph"
+                    op = self._named_ops[op_name]
 
-                    materialized_input_assets = {
-                        input_name: materialized_assets[input_name]
-                        for input_name in node.inputs
-                        if input_name in materialized_assets
-                    }
+                    materialized_input_assets_op = {}
+                    for input_dataset_name in node.inputs:
+                        input_asset_name = dagster_format(input_dataset_name)
+                        if input_asset_name in materialized_input_assets:
+                            materialized_input_assets_op[input_asset_name] = materialized_input_assets[input_asset_name]
 
                     materialized_outputs = op(
                         before_pipeline_run_hook_output=before_pipeline_run_hook_output,
-                        **materialized_input_assets,
+                        **materialized_input_assets_op,
                     )
 
                     if len(node.outputs) == 0:
-                        materialized_output_assets = {materialized_outputs.output_name: materialized_outputs}
+                        materialized_output_assets_op = {materialized_outputs.output_name: materialized_outputs}
                     elif len(node.outputs) > 0:
-                        materialized_output_assets = {
+                        materialized_output_assets_op = {
                             materialized_output.output_name: materialized_output
                             for materialized_output in materialized_outputs
                         }
-
-                    materialized_assets |= materialized_output_assets
+                    materialized_input_assets |= materialized_output_assets_op
+                    materialized_output_assets |= materialized_output_assets_op
 
             after_pipeline_run_hook(
-                **materialized_assets,
+                **materialized_output_assets,
             )
 
         resource_defs = {}

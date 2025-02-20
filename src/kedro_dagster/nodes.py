@@ -1,4 +1,4 @@
-"""Dagster op definitons from Kedro nodes."""
+"""Translation of Kedro nodes to Dagster ops and assets."""
 
 from logging import getLogger
 
@@ -21,6 +21,42 @@ LOGGER = getLogger(__name__)
 
 
 class NodeTranslator:
+    def _get_node_parameters_config(self, node):
+        params = {}
+        for dataset_name in node.inputs:
+            asset_name = dagster_format(dataset_name)
+            if not _is_asset_name(asset_name):
+                params[asset_name] = self._catalog.load(dataset_name)
+
+        # Node parameters are mapped to Dagster configs
+        return _create_pydantic_model_from_dict(
+            name="ParametersConfig",
+            params=params,
+            __base__=dg.Config,
+            __config__=ConfigDict(extra="allow", frozen=False),
+        )
+
+    def _get_out_asset_params(self, dataset_name, asset_name):
+        metadata, description = None, None
+        io_manager_key = "io_manager"
+
+        if asset_name in self.asset_names:
+            try:
+                dataset = self._catalog._get_dataset(dataset_name)
+                metadata = getattr(dataset, "metadata", None) or {}
+                description = metadata.pop("description", "")
+                if not isinstance(dataset, MemoryDataset):
+                    io_manager_key = f"{asset_name}_io_manager"
+
+            except DatasetNotFoundError:
+                pass
+
+        return dict(
+            io_manager_key=io_manager_key,
+            metadata=metadata,
+            description=description,
+        )
+
     @property
     def asset_names(self):
         if hasattr(self, "_asset_names"):
@@ -37,49 +73,29 @@ class NodeTranslator:
         return asset_names
 
     def create_op(self, node: Node, retry_policy: dg.RetryPolicy | None = None):
-        ins, params = {}, {}
+        ins = {}
         for dataset_name in node.inputs:
             asset_name = dagster_format(dataset_name)
             if _is_asset_name(asset_name):
                 ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_name))
-            else:
-                params[asset_name] = self._catalog.load(dataset_name)
 
         out = {}
         for dataset_name in node.outputs:
             asset_name = dagster_format(dataset_name)
-            metadata, description = None, None
-            io_manager_key = "io_manager"
+            out_asset_params = self._get_out_asset_params(dataset_name, asset_name)
+            out[asset_name] = dg.Out(**out_asset_params)
 
-            if asset_name in self.asset_names:
-                try:
-                    dataset = self._catalog._get_dataset(dataset_name)
-                    metadata = getattr(dataset, "metadata", None) or {}
-                    description = metadata.pop("description", "")
-                    if not isinstance(dataset, MemoryDataset):
-                        io_manager_key = f"{asset_name}_io_manager"
-
-                except DatasetNotFoundError:
-                    pass
-
-            out[asset_name] = dg.Out(
-                io_manager_key=io_manager_key,
-                metadata=metadata,
-                description=description,
-            )
-
-        # Node parameters are mapped to Dagster configs
-        NodeParametersConfig = _create_pydantic_model_from_dict(
-            params,
-            __base__=dg.Config,
-            __config__=ConfigDict(extra="allow", frozen=False),
-        )
-
+        NodeParametersConfig = self._get_node_parameters_config(node)
         op_name = dagster_format(node.name)
 
-        required_resource_keys = None
+        required_resource_keys = []
+        for dataset_name in node.inputs + node.outputs:
+            asset_name = dagster_format(dataset_name)
+            if f"{asset_name}_io_manager" in self.named_resources_:
+                required_resource_keys.append(f"{asset_name}_io_manager")
+
         if is_mlflow_enabled():
-            required_resource_keys = {"mlflow"}
+            required_resource_keys.append("mlflow")
 
         @dg.op(
             name=f"{op_name}_graph",
@@ -91,7 +107,7 @@ class NodeTranslator:
             retry_policy=retry_policy,
         )
         def node_graph_op(context, config: NodeParametersConfig, **inputs):
-            # Logic to execute the Kedro node
+            # Logic to execute the Kedro node with hooks
             context.log.info(f"Running node `{node.name}` in graph.")
 
             inputs |= config.model_dump()
@@ -157,50 +173,24 @@ class NodeTranslator:
             AssetDefinition: A Dagster asset.
         """
 
-        ins, params = {}, {}
+        ins = {}
         for dataset_name in node.inputs:
             asset_name = dagster_format(dataset_name)
-
-            if not asset_name.startswith("params:"):
-                ins[asset_name] = dg.AssetIn(
-                    key=asset_name,
-                    # input_manager_key=f"{asset_name}_io_manager",
-                )
-            else:
-                params[asset_name] = self._catalog.load(dataset_name)
+            if _is_asset_name(asset_name):
+                ins[asset_name] = dg.AssetIn(key=asset_name)
 
         outs = {}
         for dataset_name in node.outputs:
             asset_name = dagster_format(dataset_name)
-            metadata, description = None, None
-            io_manager_key = "io_manager"
+            out_asset_params = self._get_out_asset_params(dataset_name, asset_name)
+            outs[asset_name] = dg.AssetOut(key=asset_name, **out_asset_params)
 
-            if asset_name in self.asset_names:
-                try:
-                    dataset = self._catalog._get_dataset(dataset_name)
-                    metadata = getattr(dataset, "metadata", None) or {}
-                    description = metadata.pop("description", "")
-                    if not isinstance(dataset, MemoryDataset):
-                        io_manager_key = f"{asset_name}_io_manager"
-
-                except DatasetNotFoundError:
-                    pass
-
-            outs[asset_name] = dg.AssetOut(
-                key=asset_name,
-                description=description,
-                metadata=metadata,
-                io_manager_key=io_manager_key,
-            )
-
-        # Node parameters are mapped to Dagster configs
-        NodeParametersConfig = _create_pydantic_model_from_dict(
-            params,
-            __base__=dg.Config,
-            __config__=ConfigDict(extra="allow", frozen=False),
-        )
-
+        NodeParametersConfig = self._get_node_parameters_config(node)
         name = dagster_format(node.name)
+
+        required_resource_keys = None
+        if is_mlflow_enabled():
+            required_resource_keys = {"mlflow"}
 
         # Define a multi_asset from a Kedro node
         @dg.multi_asset(
@@ -209,16 +199,12 @@ class NodeTranslator:
             group_name=_get_node_pipeline_name(pipelines, node),
             ins=ins,
             outs=outs,
-            # required_resource_keys={"pipeline_hook"},
+            required_resource_keys=required_resource_keys,
             op_tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
             partitions_def=partition_def,
             backfill_policy=backfill_policy,
         )
-        def dagster_asset(
-            context,
-            config: NodeParametersConfig,
-            **inputs,
-        ):
+        def dagster_asset(context, config: NodeParametersConfig, **inputs):
             # Logic to execute the Kedro node
             context.log.info(f"Running node `{node.name}` in asset.")
 

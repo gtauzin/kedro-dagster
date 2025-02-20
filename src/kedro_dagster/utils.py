@@ -64,11 +64,12 @@ def kedro_format(name):
 
 # TODO: Improve
 def _create_pydantic_model_from_dict(
-    params: dict[str, Any], __base__, __config__: ConfigDict | None = None
+    name: str, params: dict[str, Any], __base__, __config__: ConfigDict | None = None
 ) -> type[BaseModel]:
     """Create a Pydantic model from a dictionary.
 
     Args:
+        name: Name of the created class.
         params: The dictionary of parameters.
         __base__: The base class for the model.
         __config__: The configuration for the model.
@@ -80,7 +81,7 @@ def _create_pydantic_model_from_dict(
     for param_name, param_value in params.items():
         if isinstance(param_value, dict):
             # Recursively create a nested model for nested dictionaries
-            nested_model = _create_pydantic_model_from_dict(param_value, __base__=__base__, __config__=__config__)
+            nested_model = _create_pydantic_model_from_dict(name, param_value, __base__=__base__, __config__=__config__)
             # TODO: Nested __base__? Yes for NodeParams, no for IOManagers?
 
             fields[param_name] = (nested_model, ...)
@@ -89,12 +90,13 @@ def _create_pydantic_model_from_dict(
             param_type = type(param_value)
             if param_type is type(None):
                 param_type = dg.Any
+
             fields[param_name] = (param_type, param_value)
 
     if __base__ is None:
-        model = create_model("ParametersConfig", __config__=__config__, **fields)
+        model = create_model(name, __config__=__config__, **fields)
     else:
-        model = create_model("ParametersConfig", __base__=__base__, **fields)
+        model = create_model(name, __base__=__base__, **fields)
         model.config = __config__
 
     return model

@@ -7,7 +7,7 @@ from typing import Any
 import dagster as dg
 from kedro.framework.project import pipelines
 from kedro.io import DatasetNotFoundError, MemoryDataset
-from pydantic import ConfigDict
+from pydantic import ConfigDict, create_model
 
 from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_asset_name, dagster_format
 
@@ -27,16 +27,21 @@ class CatalogTranslator:
         Returns:
             IOManagerDefinition: A Dagster IO manager.
         """
-        dataset_config = {
-            key: val if not isinstance(val, PurePosixPath) else str(val)
-            for key, val in dataset._describe().items()
-            if key not in ["version"]  # TODO: Not sure how versioned dataset would work
-        } | {"dataset": dataset.__class__.__name__}
+        dataset_params = {"dataset": dataset.__class__.__name__}
+        for param, value in dataset._describe().items():
+            valid_value = value
+            if isinstance(value, PurePosixPath):
+                valid_value = str(value)
 
-        # TODO: Make use of KedroDataCatalog.to_config() to get the config of the dataset
+            # Version is not serializable
+            if param == "version":
+                continue
+
+            dataset_params[param] = valid_value
 
         DatasetModel = _create_pydantic_model_from_dict(
-            dataset_config,
+            name="DatasetModel",
+            params=dataset_params,
             __base__=dg.Config,
             __config__=ConfigDict(arbitrary_types_allowed=True),
         )
@@ -44,9 +49,7 @@ class CatalogTranslator:
         hook_manager = self._hook_manager
         named_nodes = self._named_nodes
 
-        class ConfiguredDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):
-            f"""IO Manager for kedro dataset `{dataset_name}`."""
-
+        class ConfigurableDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):
             def handle_output(self, context: dg.OutputContext, obj):
                 node_name = context.op_def.name
                 if node_name in named_nodes:
@@ -88,7 +91,13 @@ class CatalogTranslator:
 
                 return data
 
-        return ConfiguredDatasetIOManager(**dataset_config)
+        # Trick to modify the name of the IO Manager for Dagster UI
+        ConfigurableDatasetIOManager = create_model(dataset_params["dataset"], __base__=ConfigurableDatasetIOManager)
+
+        # Modify the description of the IO Manager for Dagster UI
+        ConfigurableDatasetIOManager.__doc__ = f"""IO Manager for kedro dataset `{dataset_name}`."""
+
+        return ConfigurableDatasetIOManager(**dataset_params)
 
     def translate_catalog(self) -> dict[str, dg.IOManagerDefinition]:
         """Get the IO managers from Kedro datasets.
