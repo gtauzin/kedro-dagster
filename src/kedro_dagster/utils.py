@@ -54,11 +54,40 @@ def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:
         file_handler.write(parsed_template)
 
 
+def get_asset_key_from_dataset_name(dataset_name: str) -> dg.AssetKey:
+    """Get the asset key from a dataset name.
+
+    Args:
+        dataset_name: The name of the dataset.
+
+    Returns:
+        AssetKey: The asset key.
+    """
+    return dg.AssetKey(dataset_name.split("."))
+
+
 def dagster_format(name):
+    """Format a name for Dagster.
+
+    Args:
+        name: The name to format.
+
+    Returns:
+        str: The name formatted in a Dagster-friendly way.
+    """
     return name.replace(".", "__")
 
 
 def kedro_format(name):
+    """Format a name for Kedro.
+
+    Args:
+        name: The name to format.
+
+    Returns:
+        str: The name formatted in a Kedro-friendly way.
+    """
+
     return name.replace("__", ".")
 
 
@@ -142,39 +171,6 @@ def _get_node_pipeline_name(pipelines, node):
                         namespace = ".".join(node.name.split(".")[:-1])
                         return dagster_format(f"{namespace}.{pipeline_name}")
                     return pipeline_name
-
-
-class FilterParamsModel(dg.Config):
-    node_names: list[str] | None = None
-    from_nodes: list[str] | None = None
-    to_nodes: list[str] | None = None
-    from_inputs: list[str] | None = None
-    to_outputs: list[str] | None = None
-    node_namespace: str | None = None
-    tags: list[str] | None = None
-
-    class Config:
-        # force triggering type control when setting value instead of init
-        validate_assignment = True
-        # raise an error if an unknown key is passed to the constructor
-        extra = "forbid"
-
-
-class RunParamsModel(FilterParamsModel):
-    session_id: str
-    project_path: str | None = None
-    env: str | None = None
-    kedro_version: str | None = None
-    pipeline_name: str | None = None
-    load_versions: dict[str, str] | None = None
-    extra_params: dict[str, Any] | None = None
-    runner: str | None = None
-
-    class Config:
-        # force triggering type control when setting value instead of init
-        validate_assignment = True
-        # raise an error if an unknown key is passed to the constructor
-        extra = "forbid"
 
 
 def get_mlflow_resource_from_config(mlflow_config: BaseModel) -> dg.ResourceDefinition:

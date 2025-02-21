@@ -13,6 +13,7 @@ from kedro_dagster.utils import (
     _get_node_pipeline_name,
     _is_asset_name,
     dagster_format,
+    get_asset_key_from_dataset_name,
     is_mlflow_enabled,
     kedro_format,
 )
@@ -21,6 +22,14 @@ LOGGER = getLogger(__name__)
 
 
 class NodeTranslator:
+    """Translate Kedro nodes into Dagster ops and assets."""
+
+    def __init__(self, catalog, hook_manager, session_id, named_resources):
+        self._catalog = catalog
+        self._hook_manager = hook_manager
+        self._session_id = session_id
+        self._named_resources = named_resources
+
     def _get_node_parameters_config(self, node):
         params = {}
         for dataset_name in node.inputs:
@@ -91,7 +100,7 @@ class NodeTranslator:
         required_resource_keys = []
         for dataset_name in node.inputs + node.outputs:
             asset_name = dagster_format(dataset_name)
-            if f"{asset_name}_io_manager" in self.named_resources_:
+            if f"{asset_name}_io_manager" in self._named_resources:
                 required_resource_keys.append(f"{asset_name}_io_manager")
 
         if is_mlflow_enabled():
@@ -146,8 +155,9 @@ class NodeTranslator:
                 session_id=self._session_id,
             )
 
-            for output_asset_name in node.outputs:
-                context.log_event(dg.AssetMaterialization(asset_key=output_asset_name))
+            for output_dataset_name in node.outputs:
+                output_asset_key = get_asset_key_from_dataset_name(output_dataset_name)
+                context.log_event(dg.AssetMaterialization(asset_key=output_asset_key))
 
             if len(outputs) > 0:
                 return tuple(outputs.values()) + (None,)
@@ -177,13 +187,15 @@ class NodeTranslator:
         for dataset_name in node.inputs:
             asset_name = dagster_format(dataset_name)
             if _is_asset_name(asset_name):
-                ins[asset_name] = dg.AssetIn(key=asset_name)
+                asset_key = get_asset_key_from_dataset_name(dataset_name)
+                ins[asset_name] = dg.AssetIn(key=asset_key)
 
         outs = {}
         for dataset_name in node.outputs:
             asset_name = dagster_format(dataset_name)
+            asset_key = get_asset_key_from_dataset_name(dataset_name)
             out_asset_params = self._get_out_asset_params(dataset_name, asset_name)
-            outs[asset_name] = dg.AssetOut(key=asset_name, **out_asset_params)
+            outs[asset_name] = dg.AssetOut(key=asset_key, **out_asset_params)
 
         NodeParametersConfig = self._get_node_parameters_config(node)
         name = dagster_format(node.name)
@@ -226,6 +238,7 @@ class NodeTranslator:
 
         # Assets that are not generated through dagster are external and
         # registered with AssetSpec
+        named_assets = {}
         for external_dataset_name in default_pipeline.inputs():
             external_asset_name = dagster_format(external_dataset_name)
             if _is_asset_name(external_asset_name):
@@ -237,20 +250,24 @@ class NodeTranslator:
                 if not isinstance(dataset, MemoryDataset):
                     io_manager_key = f"{external_asset_name}_io_manager"
 
-                asset = dg.AssetSpec(
-                    external_asset_name,
+                external_asset_key = get_asset_key_from_dataset_name(external_dataset_name)
+                external_asset = dg.AssetSpec(
+                    key=external_asset_key,
                     group_name="external",
                     description=description,
                     metadata=metadata,
                 ).with_io_manager_key(io_manager_key=io_manager_key)
-                self.named_assets_[external_asset_name] = asset
+                named_assets[external_asset_name] = external_asset
 
         # Create assets from Kedro nodes that have outputs
+        named_ops = {}
         for node in default_pipeline.nodes:
             op_name = dagster_format(node.name)
             graph_op = self.create_op(node)
-            self._named_ops[f"{op_name}_graph"] = graph_op
+            named_ops[f"{op_name}_graph"] = graph_op
 
             if len(node.outputs):
                 asset = self.create_asset(node)
-                self.named_assets_[op_name] = asset
+                named_assets[op_name] = asset
+
+        return named_ops, named_assets

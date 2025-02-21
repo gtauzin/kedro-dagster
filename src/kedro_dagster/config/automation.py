@@ -3,7 +3,6 @@
 from pydantic import BaseModel
 
 
-# TODO: Map name
 class ScheduleOptions(BaseModel):
     cron_schedule: str
     execution_timezone: str | None = None

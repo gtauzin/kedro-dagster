@@ -6,7 +6,8 @@ from typing import Any
 
 import dagster as dg
 from kedro.framework.project import pipelines
-from kedro.io import DatasetNotFoundError, MemoryDataset
+from kedro.io import CatalogProtocol, DatasetNotFoundError, MemoryDataset
+from pluggy import PluginManager
 from pydantic import ConfigDict, create_model
 
 from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_asset_name, dagster_format
@@ -16,6 +17,10 @@ LOGGER = getLogger(__name__)
 
 class CatalogTranslator:
     """Translate Kedro datasets into Dagster IO managers."""
+
+    def __init__(self, catalog: CatalogProtocol, hook_manager: PluginManager):
+        self._catalog = catalog
+        self._hook_manager = hook_manager
 
     def _translate_dataset(self, dataset: Any, dataset_name: str) -> dg.IOManagerDefinition:
         """Create a Dagster IO manager from a Kedro dataset.
@@ -47,8 +52,10 @@ class CatalogTranslator:
         )
 
         hook_manager = self._hook_manager
-        named_nodes = self._named_nodes
+        named_nodes = {dagster_format(node.name): node for node in sum(pipelines.values()).nodes}
 
+        # TODO: Check if hooks are indeed called for ops and not assets
+        # TODO: Remove _graph and add _asset
         class ConfigurableDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):
             def handle_output(self, context: dg.OutputContext, obj):
                 # When defining the op, we have named them either with
@@ -56,6 +63,8 @@ class CatalogTranslator:
                 node_name = context.op_def.name
                 if node_name in named_nodes:
                     # Hooks called only if op is not an asset
+                    context.log("Executing `before_dataset_saved` Kedro hook.")
+
                     node = named_nodes[node_name]
                     hook_manager.hook.before_dataset_saved(
                         dataset_name=dataset_name,
@@ -67,6 +76,8 @@ class CatalogTranslator:
 
                 if node_name in named_nodes:
                     # Hooks called only if op is not an asset
+                    context.log("Executing `after_dataset_saved` Kedro hook.")
+
                     hook_manager.hook.after_dataset_saved(
                         dataset_name=dataset_name,
                         data=obj,
@@ -79,6 +90,8 @@ class CatalogTranslator:
                 # a trailing "_graph"
                 if node_name in named_nodes:
                     # Hooks called only if op is not an asset
+                    context.log("Executing `before_dataset_loaded` Kedro hook.")
+
                     node = named_nodes[node_name]
                     hook_manager.hook.before_dataset_loaded(
                         dataset_name=dataset_name,
@@ -89,6 +102,8 @@ class CatalogTranslator:
 
                 if node_name in named_nodes:
                     # Hooks called only if op is not an asset
+                    context.log("Executing `after_dataset_loaded` Kedro hook.")
+
                     hook_manager.hook.after_dataset_loaded(
                         dataset_name=dataset_name,
                         data=data,
@@ -97,11 +112,11 @@ class CatalogTranslator:
 
                 return data
 
-        # Trick to modify the name of the IO Manager for Dagster UI
+        # Trick to modify the name of the IO Manager in Dagster UI
         ConfigurableDatasetIOManager = create_model(dataset_params["dataset"], __base__=ConfigurableDatasetIOManager)
 
-        # Modify the description of the IO Manager for Dagster UI
-        ConfigurableDatasetIOManager.__doc__ = f"""IO Manager for kedro dataset `{dataset_name}`."""
+        # Modify the description of the IO Manager in Dagster UI
+        ConfigurableDatasetIOManager.__doc__ = f"""IO Manager for Kedro dataset `{dataset_name}`."""
 
         return ConfigurableDatasetIOManager(**dataset_params)
 
@@ -111,7 +126,7 @@ class CatalogTranslator:
         Returns:
             Dict[str, IOManagerDefinition]: A dictionary of DagsterIO managers.
         """
-        LOGGER.info("Creating IO managers...")
+        named_io_managers = {}
         for dataset_name in sum(pipelines.values()).datasets():
             asset_name = dagster_format(dataset_name)
             if _is_asset_name(asset_name):
@@ -128,7 +143,9 @@ class CatalogTranslator:
                 if isinstance(dataset, MemoryDataset):
                     continue
 
-                self.named_resources_[f"{asset_name}_io_manager"] = self._translate_dataset(
+                named_io_managers[f"{asset_name}_io_manager"] = self._translate_dataset(
                     dataset,
                     dataset_name,
                 )
+
+        return named_io_managers
