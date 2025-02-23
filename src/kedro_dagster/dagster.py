@@ -7,6 +7,11 @@ from kedro.framework.project import pipelines
 from pydantic import BaseModel
 
 from kedro_dagster.config.execution import (
+    CeleryDockerExecutorOptions,
+    CeleryExecutorOptions,
+    CeleryK8sJobExecutorOptions,
+    DaskExecutorOptions,
+    DockerExecutorOptions,
     InProcessExecutorOptions,
     K8sJobExecutorOptions,
     MultiprocessExecutorOptions,
@@ -14,13 +19,25 @@ from kedro_dagster.config.execution import (
 
 
 class ExecutorCreator:
-    """Creates Dagster executor definitions from Kedro configuration."""
+    """Creates Dagster executor definitions from Kedro configuration.
 
-    # TODO: Map all dagster executors
+    Args:
+        dagster_config: The Dagster configuration.
+    """
+
     _OPTION_EXECUTOR_MAP = {
         InProcessExecutorOptions: dg.in_process_executor,
         MultiprocessExecutorOptions: dg.multiprocess_executor,
     }
+
+    _EXECUTOR_CONFIGS = [
+        (CeleryExecutorOptions, "dagster_celery", "celery_executor"),
+        (CeleryDockerExecutorOptions, "dagster_celery_docker", "celery_docker_executor"),
+        (CeleryK8sJobExecutorOptions, "dagster_celery_k8s", "celery_k8s_job_executor"),
+        (DaskExecutorOptions, "dagster_dask", "dask_executor"),
+        (DockerExecutorOptions, "dagster_docker", "docker_executor"),
+        (K8sJobExecutorOptions, "dagster_k8s", "k8s_job_executor"),
+    ]
 
     def __init__(self, dagster_config: BaseModel):
         self._dagster_config = dagster_config
@@ -31,9 +48,7 @@ class ExecutorCreator:
         Args:
             executor_option (BaseModel): The executor option to register.
             executor (ExecutorDefinition): The executor to register the option with.
-
         """
-
         self._OPTION_EXECUTOR_MAP[executor_option] = executor
 
     def create_executors(self) -> dict[str, dg.ExecutorDefinition]:
@@ -41,14 +56,15 @@ class ExecutorCreator:
 
         Returns:
             Dict[str, ExecutorDefinition]: A dict of executor definitions.
-
         """
-        try:
-            from dagster_k8s import k8s_job_executor
-
-            self.register_executor(K8sJobExecutorOptions, k8s_job_executor)
-        except ImportError:
-            pass
+        # Register all available executors dynamically
+        for executor_option, module_name, executor_name in self._EXECUTOR_CONFIGS:
+            try:
+                module = __import__(module_name, fromlist=[executor_name])
+                executor = getattr(module, executor_name)
+                self.register_executor(executor_option, executor)
+            except ImportError:
+                pass
 
         named_executors = {}
         for executor_name, executor_config in self._dagster_config.executors.items():

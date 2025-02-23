@@ -16,7 +16,13 @@ LOGGER = getLogger(__name__)
 
 
 class CatalogTranslator:
-    """Translate Kedro datasets into Dagster IO managers."""
+    """Translate Kedro datasets into Dagster IO managers.
+
+    Args:
+        catalog: The Kedro catalog.
+        hook_manager: The hook manager to call Kedro hooks.
+
+    """
 
     def __init__(self, catalog: CatalogProtocol, hook_manager: PluginManager):
         self._catalog = catalog

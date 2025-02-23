@@ -1,6 +1,4 @@
-"""Configuration definitions for Kedro-Dagster."""
-
-from typing import Any
+"""Configuration definitions for Kedro-Dagster jobs."""
 
 from pydantic import BaseModel
 
@@ -9,6 +7,8 @@ from .execution import ExecutorOptions
 
 
 class PipelineOptions(BaseModel):
+    """Pipeline configuration options."""
+
     pipeline_name: str | None = None
     from_nodes: list[str] | None = None
     to_nodes: list[str] | None = None
@@ -22,15 +22,9 @@ class PipelineOptions(BaseModel):
         extra = "forbid"
 
 
-class NodeOptions(BaseModel):
-    node_name: str | None = None
-    config: dict[str, Any] | None = None
-
-    class Config:
-        extra = "forbid"
-
-
 class JobOptions(BaseModel):
+    """Job configuration options."""
+
     pipeline: PipelineOptions
     executor: ExecutorOptions | str | None = None
     schedule: ScheduleOptions | str | None = None

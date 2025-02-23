@@ -15,15 +15,15 @@ LOGGER = getLogger(__name__)
 
 
 class KedroDagsterConfig(BaseModel):
+    """Configuration for Kedro-Dagster."""
+
     dev: DevOptions | None = None
     executors: dict[str, ExecutorOptions] | None = None
     schedules: dict[str, ScheduleOptions] | None = None
     jobs: dict[str, JobOptions] | None = None
 
     class Config:
-        # force triggering type control when setting value instead of init
         validate_assignment = True
-        # raise an error if an unknown key is passed to the constructor
         extra = "forbid"
 
     @model_validator(mode="before")
@@ -51,18 +51,6 @@ class KedroDagsterConfig(BaseModel):
         values["executors"] = parsed_executors
         return values
 
-    # @model_validator(mode="before")
-    # @classmethod
-    # def validate_jobs(cls, values):
-    #     jobs = values.get("jobs", {})
-
-    #     parsed_jobs = {}
-    #     for name, job_config in jobs.items():
-    #         parsed_jobs[name] = JobOptions(**job_config)
-
-    #     values["jobs"] = parsed_jobs
-    #     return values
-
 
 def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
     """Get the Dagster configuration from the `dagster.yml` file.
@@ -82,16 +70,9 @@ def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
             "No 'dagster.yml' config file found in environment. Default configuration will be used. "
             "Use ``kedro dagster init`` command in CLI to customize the configuration."
         )
-        # we create an empty dict to have the same behaviour when the dagster.yml
-        # is commented out. In this situation there is no MissingConfigException
-        # but we got an empty dict
+
         conf_dagster_yml = {}
 
-    dagster_config = KedroDagsterConfig.model_validate({**conf_dagster_yml})
-
-    # store in context for interactive use
-    # we use __setattr__ instead of context.dagster because
-    # the class will become frozen in kedro>=0.19
-    context.__setattr__("dagster", dagster_config)
+    dagster_config = KedroDagsterConfig(**conf_dagster_yml)
 
     return dagster_config

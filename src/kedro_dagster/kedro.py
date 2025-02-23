@@ -1,4 +1,4 @@
-"""Translation of Kedro pipeline hooks."""
+"""Translation of Kedro run params and on error pipeline hooks."""
 
 from typing import Any
 
@@ -9,7 +9,15 @@ from kedro.framework.project import pipelines
 
 
 class KedroRunTranslator:
-    """Translator for Kedro context."""
+    """Translator for Kedro run params.
+
+    Args:
+        context: Kedro context.
+        project_path: Path to the Kedro project.
+        env: Kedro environment.
+        session_id: Kedro session ID.
+
+    """
 
     def __init__(self, context: KedroContext, project_path: str, env: str, session_id: str):
         self._context = context
@@ -102,8 +110,14 @@ class KedroRunTranslator:
 
         return KedroRunResource(**run_params)
 
-    def _translate_on_pipeline_error_hook(self) -> dg.SensorDefinition:
-        """Translate Kedro pipeline hooks to Dagster resource and sensor."""
+    def translate_on_pipeline_error_hook(self) -> dict[str, dg.SensorDefinition]:
+        """Translate Kedro pipeline hooks to Dagster resource and sensor.
+
+        Returns:
+            dict[str, dg.SensorDefinition]: A dictionary with the sensor definition
+            for the `on_pipeline_error` hook.
+
+        """
 
         @dg.run_failure_sensor(
             name="on_pipeline_error_sensor",

@@ -1,6 +1,7 @@
 """Translation of Kedro nodes to Dagster ops and assets."""
 
 from logging import getLogger
+from typing import Any
 
 import dagster as dg
 from kedro.framework.project import pipelines
@@ -22,7 +23,15 @@ LOGGER = getLogger(__name__)
 
 
 class NodeTranslator:
-    """Translate Kedro nodes into Dagster ops and assets."""
+    """Translate Kedro nodes into Dagster ops and assets.
+
+    Args:
+        catalog: Kedro catalog.
+        hook_manager: Kedro hook manager.
+        session_id: Kedro session ID.
+        named_resources: Named resources in the Kedro project.
+
+    """
 
     def __init__(self, catalog, hook_manager, session_id, named_resources):
         self._catalog = catalog
@@ -30,7 +39,16 @@ class NodeTranslator:
         self._session_id = session_id
         self._named_resources = named_resources
 
-    def _get_node_parameters_config(self, node):
+    def _get_node_parameters_config(self, node) -> dg.Config:
+        """Get the node parameters as a Dagster config.
+
+        Args:
+            node: Kedro node.
+
+        Returns:
+            Config: A Dagster config representing the node parameters.
+
+        """
         params = {}
         for dataset_name in node.inputs:
             asset_name = dagster_format(dataset_name)
@@ -45,7 +63,17 @@ class NodeTranslator:
             __config__=ConfigDict(extra="allow", frozen=False),
         )
 
-    def _get_out_asset_params(self, dataset_name, asset_name):
+    def _get_out_asset_params(self, dataset_name, asset_name) -> dict[str, Any]:
+        """Get the output asset parameters.
+
+        Args:
+            dataset_name: The dataset name.
+            asset_name: The corresponding asset name.
+
+        Returns:
+            dict: The output asset parameters.
+
+        """
         metadata, description = None, None
         io_manager_key = "io_manager"
 
@@ -81,7 +109,19 @@ class NodeTranslator:
 
         return asset_names
 
-    def create_op(self, node: Node, retry_policy: dg.RetryPolicy | None = None):
+    def create_op(self, node: Node, retry_policy: dg.RetryPolicy | None = None) -> dg.OpDefinition:
+        """Create a Dagster op from a Kedro node.
+
+        The created op is meant to be used in a Dagster graph.
+
+        Args:
+            node: Kedro node.
+            retry_policy: Dagster retry policy for the op.
+
+        Returns:
+            OpDefinition: A Dagster op.
+
+        """
         ins = {}
         for dataset_name in node.inputs:
             asset_name = dagster_format(dataset_name)
@@ -173,11 +213,14 @@ class NodeTranslator:
         partition_def: dg.PartitionsDefinition | None = None,
         partition_mappings: dict[str, dg.PartitionMapping] | None = None,
         backfill_policy: dg.BackfillPolicy | None = None,
-    ):
+    ) -> dg.AssetsDefinition:
         """Create a Dagster asset from a Kedro node.
 
         Args:
             node: The Kedro node to wrap into an asset.
+            partition_def: Partitions definition for the asset.
+            partition_mappings: Partition mappings for the asset.
+            backfill_policy: Backfill policy for the asset
 
         Returns:
             AssetDefinition: A Dagster asset.
@@ -204,7 +247,6 @@ class NodeTranslator:
         if is_mlflow_enabled():
             required_resource_keys = {"mlflow"}
 
-        # Define a multi_asset from a Kedro node
         @dg.multi_asset(
             name=name,
             description=f"Kedro node {node.name} wrapped as a Dagster multi asset.",
@@ -232,7 +274,7 @@ class NodeTranslator:
 
         return dagster_asset
 
-    def translate_nodes(self):
+    def translate_nodes(self) -> tuple[dict[str, dg.OpDefinition], dict[str, dg.AssetSpec | dg.AssetsDefinition]]:
         """Translate Kedro nodes into Dagster ops."""
         default_pipeline = pipelines.get("__default__")
 

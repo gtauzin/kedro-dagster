@@ -1,4 +1,4 @@
-"""Dagster job definitons from Kedro pipelines."""
+"""Translation of Kedro pipelines to Dagster jobs."""
 
 from typing import Any
 
@@ -12,7 +12,20 @@ from kedro_dagster.utils import _is_asset_name, dagster_format, get_asset_key_fr
 
 
 class PipelineTranslator:
-    """ """
+    """Translator for Kedro pipelines to Dagster jobs.
+
+    Args:
+        dagster_config: The configuration of the Dagster job.
+        context: The Kedro context.
+        project_path: The path to the Kedro project.
+        env: The Kedro environment.
+        session_id: The Kedro session ID.
+        named_assets: The named assets.
+        named_ops: The named ops.
+        named_resources: The named resources.
+        named_executors: The named executors.
+
+    """
 
     def __init__(
         self,
@@ -39,7 +52,16 @@ class PipelineTranslator:
         self._named_executors = named_executors
 
     @staticmethod
-    def _get_filter_params_dict(pipeline_config: dict[str, Any]):
+    def _get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
+        """Get the filter parameters for the pipeline.
+
+        Args:
+            pipeline_config: The configuration of the pipeline.
+
+        Returns:
+            dict[str, Any]: The filter parameters.
+
+        """
         filter_params = dict(
             tags=pipeline_config.get("tags"),
             from_nodes=pipeline_config.get("from_nodes"),
@@ -52,7 +74,17 @@ class PipelineTranslator:
 
         return filter_params
 
-    def _create_pipeline_hook_ops(self, job_name: str, pipeline: Pipeline):
+    def _create_pipeline_hook_ops(self, job_name: str, pipeline: Pipeline) -> tuple[dg.OpDefinition, dg.OpDefinition]:
+        """Create the pipeline hook ops.
+
+        Args:
+            job_name: The name of the job.
+            pipeline: The Kedro pipeline.
+
+        Returns:
+            tuple[OpDefinition, OpDefinition]: The before and after pipeline run hook ops.
+
+        """
         required_resource_keys = {"kedro_run"}
         if is_mlflow_enabled():
             required_resource_keys.add("mlflow")
@@ -119,6 +151,10 @@ class PipelineTranslator:
         Args:
             pipeline_config: The configuration of the pipeline.
             job_name: The name of the job.
+            executor_def: The executor definition.
+            partitions_def: The partitions definition.
+            op_retry_policy: The retry policy for ops.
+            logger_defs: The logger definitions.
 
         Returns:
             JobDefinition: A Dagster job definition.
@@ -218,7 +254,13 @@ class PipelineTranslator:
 
         return job
 
-    def translate_pipelines(self):
+    def translate_pipelines(self) -> dict[str, dg.JobDefinition]:
+        """Translate the Kedro pipelines into Dagster jobs.
+
+        Returns:
+            dict[str, JobDefinition]: The translated Dagster jobs.
+
+        """
         named_jobs = {}
         for job_name, job_config in self._dagster_config.jobs.items():
             pipeline_config = job_config.pipeline.model_dump()
