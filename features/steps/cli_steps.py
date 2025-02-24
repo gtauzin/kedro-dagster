@@ -14,7 +14,7 @@ OK_EXIT_CODE = 0
 
 
 @given("I have prepared a config file")
-def create_configuration_file(context):
+def create_configuration_file(context: behave.runner.Context):
     """Behave step to create a temporary config file
     (given the existing temp directory)
     and store it in the context.
@@ -35,7 +35,7 @@ def create_configuration_file(context):
 
 
 @given("I run a non-interactive kedro new using {starter_name} starter")
-def create_project_from_config_file(context, starter_name):
+def create_project_from_config_file(context: behave.runner.Context, starter_name: str):
     """Behave step to run kedro new
     given the config I previously created.
     """
@@ -95,7 +95,7 @@ def create_project_from_config_file(context, starter_name):
 
 
 @given('I have executed the kedro command "{command}"')
-def exec_kedro_command(context, command):
+def exec_kedro_command(context: behave.runner.Context, command: str):
     """Execute Kedro command and check the status."""
     make_cmd = [context.kedro] + command.split()
 
@@ -108,7 +108,7 @@ def exec_kedro_command(context, command):
 
 
 @given("I have installed the project dependencies")
-def pip_install_dependencies(context):
+def pip_install_dependencies(context: behave.runner.Context):
     """Install project dependencies using pip."""
     reqs_path = Path("requirements.txt")
     res = run(
@@ -124,19 +124,24 @@ def pip_install_dependencies(context):
 
 
 @when('I execute the kedro command "{command}"')
-def exec_kedro_target(context, command):
+def exec_kedro_target(context: behave.runner.Context, command: str):
     """Execute Kedro target"""
-    split_command = command.split()
-    make_cmd = [context.kedro] + split_command
+    make_cmd = [context.kedro] + command.split()
 
-    if split_command[0] == "docker" and split_command[1] in ("ipython", "jupyter"):
-        context.result = ChildTerminatingPopen(make_cmd, env=context.env, cwd=str(context.root_project_dir))
-    else:
-        context.result = run(make_cmd, env=context.env, cwd=str(context.root_project_dir))
+    context.result = run(make_cmd, env=context.env, cwd=str(context.root_project_dir))
+
+    print((context.root_project_dir / Path("src/" + context.project_name + "/definitions.py")).exists())
+    print((context.root_project_dir / Path("conf/base/dagster.yml")).exists())
+    assert False
+
+    if context.result.returncode != OK_EXIT_CODE:
+        print(context.result.stdout)
+        print(context.result.stderr)
+        assert False
 
 
 @when('I occupy port "{port}"')
-def occupy_port(context, port):
+def occupy_port(context: behave.runner.Context, port):
     """Execute  target"""
     ChildTerminatingPopen(
         ["nc", "-l", "0.0.0.0", port],
@@ -146,7 +151,7 @@ def occupy_port(context, port):
 
 
 @then("I should get a successful exit code")
-def check_status_code(context):
+def check_status_code(context: behave.runner.Context):
     if context.result.returncode != OK_EXIT_CODE:
         print(context.result.stdout)
         print(context.result.stderr)
@@ -154,7 +159,7 @@ def check_status_code(context):
 
 
 @then("I should get an error exit code")
-def check_failed_status_code(context):
+def check_failed_status_code(context: behave.runner.Context):
     if context.result.returncode == OK_EXIT_CODE:
         print(context.result.stdout)
         print(context.result.stderr)

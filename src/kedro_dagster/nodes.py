@@ -223,7 +223,7 @@ class NodeTranslator:
             backfill_policy: Backfill policy for the asset
 
         Returns:
-            AssetDefinition: A Dagster asset.
+            AssetsDefinition: A Dagster asset.
         """
 
         ins = {}

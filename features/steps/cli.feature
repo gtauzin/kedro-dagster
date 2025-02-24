@@ -9,4 +9,4 @@ Feature: dagster commands in new projects
     When I execute the kedro command "dagster init"
     Then I should get a successful exit code
     And A dagster.yml file should exist
-#    And A definitions.py file should exist
+    And A definitions.py file should exist
