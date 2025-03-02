@@ -1151,7 +1151,7 @@ wheels = [
 
 [[package]]
 name = "kedro-dagster"
-version = "0.1.2.dev40+gc467784"
+version = "0.1.2.dev44+g8b78ab8.d20250302"
 source = { editable = "." }
 dependencies = [
     { name = "dagster" },
@@ -1190,7 +1190,7 @@ docs = [
 fix = [
     { name = "pre-commit-uv" },
 ]
-test = [
+tests = [
     { name = "behave" },
     { name = "covdefaults" },
     { name = "diff-cover" },
@@ -1232,7 +1232,7 @@ docs = [
     { name = "mkdocstrings", specifier = ">=0.27" },
 ]
 fix = [{ name = "pre-commit-uv", specifier = ">=4.1" }]
-test = [
+tests = [
     { name = "behave", specifier = ">=1.2" },
     { name = "covdefaults", specifier = ">=2.3" },
     { name = "diff-cover", specifier = ">=9.2" },

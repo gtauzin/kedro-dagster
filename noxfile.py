@@ -29,6 +29,9 @@ def tests(session):
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
 
+    # Run behavior tests
+    session.run("behave", "-vv", external=True)
+
     # Run unit tests
     session.run(
         "pytest",

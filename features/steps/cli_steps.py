@@ -21,6 +21,7 @@ def create_configuration_file(context: behave.runner.Context):
     """
     context.config_file = context.temp_dir / "config"
     context.project_name = "project-dummy"
+    context.package_name = context.project_name.replace("-", "_")
 
     root_project_dir = context.temp_dir / context.project_name
     context.root_project_dir = root_project_dir
@@ -28,7 +29,7 @@ def create_configuration_file(context: behave.runner.Context):
         "project_name": context.project_name,
         "repo_name": context.project_name,
         "output_dir": str(context.temp_dir),
-        "python_package": context.project_name.replace("-", "_"),
+        "python_package": context.package_name,
     }
     with context.config_file.open("w") as config_file:
         yaml.dump(config, config_file, default_flow_style=False)
@@ -130,10 +131,6 @@ def exec_kedro_target(context: behave.runner.Context, command: str):
 
     context.result = run(make_cmd, env=context.env, cwd=str(context.root_project_dir))
 
-    print((context.root_project_dir / Path("src/" + context.project_name + "/definitions.py")).exists())
-    print((context.root_project_dir / Path("conf/base/dagster.yml")).exists())
-    assert False
-
     if context.result.returncode != OK_EXIT_CODE:
         print(context.result.stdout)
         print(context.result.stderr)
@@ -175,7 +172,7 @@ def check_if_file_exists(context: behave.runner.Context, filename: str):
         filepath: A path to a file to check for existence.
     """
     if filename == "definitions.py":
-        filepath = "src/" + context.project_name + "/definitions.py"
+        filepath = "src/" + context.package_name + "/definitions.py"
 
     if filename == "dagster.yml":
         filepath = "conf/base/dagster.yml"
