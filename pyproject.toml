@@ -112,7 +112,6 @@ ignore=[
 # folder.
 "examples/*"=["E402"]
 
-# TODO: Add docstring examples
 [tool.pytest.ini_options]
 addopts = """
 --color=yes \

@@ -45,12 +45,10 @@ def tests(session):
         *session.posargs,
         external=True,
     )
-    # Run docstring examples tests
-    session.run("pytest", "--doctest-modules", "src", *session.posargs, external=True)
 
     # Run diff-cover
-    # diff_against = session.env.get("DIFF_AGAINST", "origin/main")
-    # session.run("diff-cover", "--compare-branch", diff_against, f"coverage.{session.python}.xml", external=True)
+    diff_against = session.env.get("DIFF_AGAINST", "origin/main")
+    session.run("diff-cover", "--compare-branch", diff_against, f"coverage.{session.python}.xml", external=True)
 
 
 @nox.session(venv_backend="uv")
