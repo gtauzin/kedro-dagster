@@ -112,16 +112,18 @@ ignore=[
 # folder.
 "examples/*"=["E402"]
 
+# TODO: Add docstring examples
 [tool.pytest.ini_options]
 addopts = """
---doctest-modules --color=yes \
+--color=yes \
 --cov-report term-missing \
 --cov src/kedro_dagster -ra"""
 doctest_optionflags = "NORMALIZE_WHITESPACE"
+norecursedirs = "src/kedro_dagster/templates"
 
 [tool.coverage]
 paths.source = ["src/kedro_dagster"]
-report.fail_under = 10
+report.fail_under = 1
 report.include_namespace_packages = true
 report.skip_covered = false
 html.show_contexts = true

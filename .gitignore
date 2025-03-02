@@ -73,9 +73,11 @@ htmlcov/
 .coverage.*
 .cache
 nosetests.xml
-coverage.xml
+coverage.*xml
+junit.*xml
 *.cover
 .hypothesis/
+fake-project
 
 # Translations
 *.mo

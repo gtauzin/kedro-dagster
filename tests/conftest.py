@@ -35,6 +35,7 @@ def _create_kedro_settings_py(file_name: Path, patterns: list[str]):
     file_name.write_text(content)
 
 
+# TODO: Replace fake_project by tmp?
 @fixture(scope="session")
 def kedro_project(cli_runner):
     CliRunner().invoke(

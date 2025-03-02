@@ -177,8 +177,6 @@ def check_if_file_exists(context: behave.runner.Context, filename: str):
     if filename == "dagster.yml":
         filepath = "conf/base/dagster.yml"
 
-    print(filepath)
-
     filepath: Path = context.root_project_dir / filepath
     assert filepath.exists(), f"Expected {filepath} to exists but .exists() returns {filepath.exists()}"
     assert filepath.stat().st_size > 0, f"Expected {filepath} to have size > 0 but has {filepath.stat().st_size}"

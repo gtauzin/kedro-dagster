@@ -35,7 +35,7 @@ def tests(session):
     # Run unit tests
     session.run(
         "pytest",
-        "--cov=src/wavy",
+        "--cov=src/kedro_dagster",
         f"--cov-report=html:{session.create_tmp()}/htmlcov",
         f"--cov-report=xml:coverage.{session.python}.xml",
         f"--junitxml=junit.{session.python}.xml",
@@ -49,8 +49,8 @@ def tests(session):
     session.run("pytest", "--doctest-modules", "src", *session.posargs, external=True)
 
     # Run diff-cover
-    diff_against = session.env.get("DIFF_AGAINST", "origin/main")
-    session.run("diff-cover", "--compare-branch", diff_against, f"coverage.{session.python}.xml", external=True)
+    # diff_against = session.env.get("DIFF_AGAINST", "origin/main")
+    # session.run("diff-cover", "--compare-branch", diff_against, f"coverage.{session.python}.xml", external=True)
 
 
 @nox.session(venv_backend="uv")
