@@ -93,8 +93,6 @@ class KedroRunTranslator:
                 )
 
             def after_context_created_hook(self):
-                # TODO: Load context? Resource reinitialized for each op means it
-                # would be undefined in ops in which it is not called
                 hook_manager.hook.after_context_created(context=context)
 
         run_params = (

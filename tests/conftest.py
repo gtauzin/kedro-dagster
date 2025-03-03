@@ -35,9 +35,16 @@ def _create_kedro_settings_py(file_name: Path, patterns: list[str]):
     file_name.write_text(content)
 
 
-# TODO: Replace fake_project by tmp?
 @fixture(scope="session")
-def kedro_project(cli_runner):
+def temp_directory(tmpdir_factory):
+    # Use tmpdir_factory to create a temporary directory with session scope
+    return tmpdir_factory.mktemp("session_temp_dir")
+
+
+@fixture(scope="session")
+def kedro_project(cli_runner, temp_directory):
+    os.chdir(temp_directory)
+
     CliRunner().invoke(
         # Supply name, tools, and example to skip interactive prompts
         kedro_cli,
@@ -77,7 +84,7 @@ def register_pipelines():
     }
     """
 
-    project_path = Path().cwd() / "fake-project"
+    project_path = Path(temp_directory.join("fake-project"))
     (project_path / "src" / "fake_project" / "pipeline_registry.py").write_text(pipeline_registry_py)
 
     settings_file = project_path / "src" / "fake_project" / "settings.py"
