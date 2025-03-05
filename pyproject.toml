@@ -64,6 +64,7 @@ tests = [
   "diff-cover>=9.2",
   "behave>=1.2",
   "psutil>=6.1",
+  "pyaml>=25.1",
 ]
 
 [project.entry-points."kedro.project_commands"]
@@ -134,3 +135,9 @@ run.parallel = true
 run.plugins = [
   "covdefaults",
 ]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+ignore_missing_imports = true
+disable_error_code = ["misc", "import-untyped"]

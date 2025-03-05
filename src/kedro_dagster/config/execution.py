@@ -226,14 +226,6 @@ class K8sJobExecutorOptions(MultiprocessExecutorOptions):
 class CeleryK8sJobExecutorOptions(CeleryExecutorOptions, K8sJobExecutorOptions):
     """Options for the celery-based executor which launches tasks as Kubernetes Jobs."""
 
-    load_incluster_config: bool = Field(
-        default=True,
-        description="""Set this value if you are running the launcher within a k8s cluster. If
-        ``True``, we assume the launcher is running within the target cluster and load config
-        using ``kubernetes.config.load_incluster_config``. Otherwise, we will use the k8s config
-        specified in ``kubeconfig_file`` (using ``kubernetes.config.load_kube_config``) or fall
-        back to the default kubeconfig. Default: ``True``.""",
-    )
     job_wait_timeout: float = Field(
         default=86400.0,
         description=(

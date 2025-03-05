@@ -60,7 +60,7 @@ class KedroDagsterTranslator:
 
         if env is None:
             default_run_env = settings._CONFIG_LOADER_ARGS["default_run_env"]
-            env = os.getenv("KEDRO_ENV", default_run_env)
+            env = os.getenv("KEDRO_ENV", default_run_env) or ""
 
         self._env = env
 

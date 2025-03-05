@@ -6,11 +6,11 @@ import psutil
 
 
 def run(
-    cmd: str | Sequence,
+    cmd: str | Sequence,  # type: ignore[type-arg]
     split: bool = True,
     print_output: bool = False,
     **kwargs: str,
-) -> subprocess.CompletedProcess:
+) -> subprocess.CompletedProcess:  # type: ignore[type-arg]
     """
     Args:
         cmd: A command string, or a command followed by program
@@ -48,7 +48,7 @@ def run(
     return result  # type: ignore[no-any-return]
 
 
-class ChildTerminatingPopen(subprocess.Popen):
+class ChildTerminatingPopen(subprocess.Popen):  # type: ignore[type-arg]
     """
     Extend subprocess.Popen class to automatically kill child processes when
     terminated

@@ -180,12 +180,12 @@ def dev(
     ) as session:
         context = session.load_context()
         dagster_config = get_dagster_config(context)
-        python_file = dagster_config.dev.python_file
+        python_file = dagster_config.dev.python_file  # type: ignore[union-attr]
         log_level = log_level or dagster_config.dev.log_level
         log_format = log_format or dagster_config.dev.log_format
-        host = host or dagster_config.dev.host
-        port = port or dagster_config.dev.port
-        live_data_poll_rate = live_data_poll_rate or dagster_config.dev.live_data_poll_rate
+        host = host or dagster_config.dev.host  # type: ignore[union-attr]
+        port = port or dagster_config.dev.port  # type: ignore[union-attr]
+        live_data_poll_rate = live_data_poll_rate or dagster_config.dev.live_data_poll_rate  # type: ignore[union-attr]
 
         # call dagster dev with specific options
         subprocess.call([

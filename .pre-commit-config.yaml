@@ -13,3 +13,10 @@ repos:
     -   id: ruff
         args: ["--fix", "--output-format=full"]
     -   id: ruff-format
+
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+    -   id: mypy
+        args: ["--strict", "--exclude=tests"]
+        pass_filename: false

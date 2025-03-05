@@ -1,4 +1,5 @@
 """Behave environment setup commands"""
+# mypy: ignore-errors
 
 import os
 import shutil
@@ -19,7 +20,7 @@ def call(cmd, env, verbose=False):
     assert res.returncode == 0
 
 
-def before_all(context: Context):
+def before_all(context):
     """Environment preparation before other cli tests are run.
     Installs kedro by running pip in the top level directory.
     """

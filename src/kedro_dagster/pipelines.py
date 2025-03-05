@@ -212,7 +212,7 @@ class PipelineTranslator:
 
                     if len(node.outputs) == 0:
                         materialized_output_assets_op = {materialized_outputs.output_name: materialized_outputs}
-                    elif len(node.outputs) > 0:
+                    else:
                         materialized_output_assets_op = {
                             materialized_output.output_name: materialized_output
                             for materialized_output in materialized_outputs
@@ -270,11 +270,10 @@ class PipelineTranslator:
             pipeline_config = job_config.pipeline.model_dump()
 
             executor_config = job_config.executor
-            if isinstance(executor_config, str):
-                if executor_config in self._named_executors:
-                    executor_def = self._named_executors[executor_config]
-                else:
-                    raise ValueError(f"Executor `{executor_config}` not found.")
+            if executor_config in self._named_executors:
+                executor_def = self._named_executors[executor_config]
+            else:
+                raise ValueError(f"Executor `{executor_config}` not found.")
 
             job = self.translate_pipeline(
                 pipeline_config=pipeline_config,

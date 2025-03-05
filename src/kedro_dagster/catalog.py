@@ -72,8 +72,9 @@ class CatalogTranslator:
                 # When defining the op, we have named them either with
                 # a trailing "_graph"
                 node_name = context.op_def.name
-                if node_name in named_nodes:
-                    # Hooks called only if op is not an asset
+                # Hooks called only if op is not an asset
+                is_node_multi_asset = node_name in named_nodes
+                if is_node_multi_asset:
                     context.log.info("Executing `before_dataset_saved` Kedro hook.")
 
                     node = named_nodes[node_name]
@@ -85,8 +86,7 @@ class CatalogTranslator:
 
                 dataset.save(obj)
 
-                if node_name in named_nodes:
-                    # Hooks called only if op is not an asset
+                if is_node_multi_asset:
                     context.log.info("Executing `after_dataset_saved` Kedro hook.")
 
                     hook_manager.hook.after_dataset_saved(
@@ -99,8 +99,9 @@ class CatalogTranslator:
                 node_name = context.op_def.name
                 # When defining the op, we have named them either with
                 # a trailing "_graph"
-                if node_name in named_nodes:
-                    # Hooks called only if op is not an asset
+                # Hooks called only if op is not an asset
+                is_node_multi_asset = node_name in named_nodes
+                if is_node_multi_asset:
                     context.log.info("Executing `before_dataset_loaded` Kedro hook.")
 
                     node = named_nodes[node_name]
@@ -111,8 +112,7 @@ class CatalogTranslator:
 
                 data = dataset.load()
 
-                if node_name in named_nodes:
-                    # Hooks called only if op is not an asset
+                if is_node_multi_asset:
                     context.log.info("Executing `after_dataset_loaded` Kedro hook.")
 
                     hook_manager.hook.after_dataset_loaded(

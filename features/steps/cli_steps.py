@@ -174,12 +174,19 @@ def check_if_file_exists(context: behave.runner.Context, filename: str) -> None:
     if filename == "definitions.py":
         filepath = "src/" + context.package_name + "/definitions.py"
 
-    if filename == "dagster.yml":
-        filepath = "conf/base/dagster.yml"
+    elif filename == "dagster.yml":
+        filepath = Path("conf/base/dagster.yml")
 
-    filepath: Path = context.root_project_dir / filepath
-    assert filepath.exists(), f"Expected {filepath} to exists but .exists() returns {filepath.exists()}"
-    assert filepath.stat().st_size > 0, f"Expected {filepath} to have size > 0 but has {filepath.stat().st_size}"
+    else:
+        raise ValueError("`filename` should be either `definitions.py` or `dagster.yml`.")
+
+    absolute_filepath: Path = context.root_project_dir / filepath
+    assert filepath.exists(), (
+        f"Expected {absolute_filepath} to exists but .exists() returns {absolute_filepath.exists()}"
+    )
+    assert filepath.stat().st_size > 0, (
+        f"Expected {absolute_filepath} to have size > 0 but has {absolute_filepath.stat().st_size}"
+    )
 
 
 @then("A {filepath} file should contain {text} string")
@@ -191,7 +198,7 @@ def grep_file(context: behave.runner.Context, filepath: str, text: str) -> None:
         filepath: A path to a file to grep.
         text: Text (or regex) to search for.
     """
-    filepath: Path = context.root_project_dir / filepath
-    with filepath.open("r") as file:
+    absolute_filepath: Path = context.root_project_dir / filepath
+    with absolute_filepath.open("r") as file:
         found = any(line and re.search(text, line) for line in file)
-    assert found, f"String {text} not found in {filepath}"
+    assert found, f"String {text} not found in {absolute_filepath}"
