@@ -1,10 +1,11 @@
 """Translation from Kedro to Dagtser."""
 
+import os
 from logging import getLogger
 from pathlib import Path
 
 import dagster as dg
-from kedro.framework.project import find_pipelines
+from kedro.framework.project import find_pipelines, settings
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 from kedro.utils import _find_kedro_project
@@ -56,6 +57,10 @@ class KedroDagsterTranslator:
         self._project_path = project_path
         if project_path is None:
             self._project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
+
+        if env is None:
+            default_run_env = settings._CONFIG_LOADER_ARGS["default_run_env"]
+            env = os.getenv("KEDRO_ENV", default_run_env)
 
         self._env = env
 
@@ -203,6 +208,7 @@ class KedroDagsterTranslator:
         self.catalog_translator = CatalogTranslator(
             catalog=self._context.catalog,
             hook_manager=self._context._hook_manager,
+            env=self._env,
         )
         named_io_managers = self.catalog_translator.translate_catalog()
         self._named_resources |= named_io_managers
@@ -214,6 +220,7 @@ class KedroDagsterTranslator:
             hook_manager=self._context._hook_manager,
             session_id=self._session_id,
             named_resources=self._named_resources,
+            env=self._env,
         )
         self._named_ops, self._named_assets = self.node_translator.translate_nodes()
 

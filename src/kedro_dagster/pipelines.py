@@ -170,8 +170,8 @@ class PipelineTranslator:
         ) = self._create_pipeline_hook_ops(job_name, pipeline)
 
         @dg.graph(
-            name=job_name,
-            description=f"Job derived from pipeline associated to `{job_name}`.",
+            name=f"{self._env}__{job_name}",
+            description=f"Job derived from pipeline associated to `{job_name}` in env `{self._env}`.",
             out=None,
         )
         def pipeline_graph():
@@ -186,10 +186,10 @@ class PipelineTranslator:
                     if asset_name in self._named_assets:
                         materialized_input_assets[asset_name] = self._named_assets[asset_name]
                     else:
-                        asset_key = get_asset_key_from_dataset_name(dataset_name)
+                        asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
                         materialized_input_assets[asset_name] = dg.AssetSpec(
                             key=asset_key,
-                        ).with_io_manager_key(f"{asset_name}_io_manager")
+                        ).with_io_manager_key(f"{self._env}__{asset_name}_io_manager")
 
             materialized_output_assets = {}
             for layer in pipeline.grouped_nodes:
@@ -237,14 +237,16 @@ class PipelineTranslator:
 
         for dataset_name in pipeline.all_inputs() | pipeline.all_outputs():
             asset_name = dagster_format(dataset_name)
-            if f"{asset_name}_io_manager" in self._named_resources:
-                resource_defs[f"{asset_name}_io_manager"] = self._named_resources[f"{asset_name}_io_manager"]
+            if f"{self._env}__{asset_name}_io_manager" in self._named_resources:
+                resource_defs[f"{self._env}__{asset_name}_io_manager"] = self._named_resources[
+                    f"{self._env}__{asset_name}_io_manager"
+                ]
 
         if is_mlflow_enabled():
             resource_defs |= {"mlflow": self._named_resources["mlflow"]}
 
         job = pipeline_graph.to_job(
-            name=job_name,
+            name=f"{self._env}__{job_name}",
             resource_defs=resource_defs,
             executor_def=executor_def,
             partitions_def=partitions_def,

@@ -108,7 +108,7 @@ class KedroRunTranslator:
 
         return KedroRunResource(**run_params)
 
-    def translate_on_pipeline_error_hook(self) -> dict[str, dg.SensorDefinition]:
+    def _translate_on_pipeline_error_hook(self) -> dict[str, dg.SensorDefinition]:
         """Translate Kedro pipeline hooks to Dagster resource and sensor.
 
         Returns:

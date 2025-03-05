@@ -2,15 +2,19 @@
 
 from logging import getLogger
 from pathlib import PurePosixPath
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from kedro.framework.project import pipelines
-from kedro.io import CatalogProtocol, DatasetNotFoundError, MemoryDataset
-from pluggy import PluginManager
+from kedro.io import DatasetNotFoundError, MemoryDataset
 from pydantic import ConfigDict, create_model
 
 from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_asset_name, dagster_format
+
+if TYPE_CHECKING:
+    from kedro.io import CatalogProtocol
+    from pluggy import PluginManager
+
 
 LOGGER = getLogger(__name__)
 
@@ -24,9 +28,10 @@ class CatalogTranslator:
 
     """
 
-    def __init__(self, catalog: CatalogProtocol, hook_manager: PluginManager):
+    def __init__(self, catalog: "CatalogProtocol", hook_manager: "PluginManager", env: str):
         self._catalog = catalog
         self._hook_manager = hook_manager
+        self._env = env
 
     def _translate_dataset(self, dataset: Any, dataset_name: str) -> dg.IOManagerDefinition:
         """Create a Dagster IO manager from a Kedro dataset.
@@ -69,7 +74,7 @@ class CatalogTranslator:
                 node_name = context.op_def.name
                 if node_name in named_nodes:
                     # Hooks called only if op is not an asset
-                    context.log("Executing `before_dataset_saved` Kedro hook.")
+                    context.log.info("Executing `before_dataset_saved` Kedro hook.")
 
                     node = named_nodes[node_name]
                     hook_manager.hook.before_dataset_saved(
@@ -82,7 +87,7 @@ class CatalogTranslator:
 
                 if node_name in named_nodes:
                     # Hooks called only if op is not an asset
-                    context.log("Executing `after_dataset_saved` Kedro hook.")
+                    context.log.info("Executing `after_dataset_saved` Kedro hook.")
 
                     hook_manager.hook.after_dataset_saved(
                         dataset_name=dataset_name,
@@ -96,7 +101,7 @@ class CatalogTranslator:
                 # a trailing "_graph"
                 if node_name in named_nodes:
                     # Hooks called only if op is not an asset
-                    context.log("Executing `before_dataset_loaded` Kedro hook.")
+                    context.log.info("Executing `before_dataset_loaded` Kedro hook.")
 
                     node = named_nodes[node_name]
                     hook_manager.hook.before_dataset_loaded(
@@ -108,7 +113,7 @@ class CatalogTranslator:
 
                 if node_name in named_nodes:
                     # Hooks called only if op is not an asset
-                    context.log("Executing `after_dataset_loaded` Kedro hook.")
+                    context.log.info("Executing `after_dataset_loaded` Kedro hook.")
 
                     hook_manager.hook.after_dataset_loaded(
                         dataset_name=dataset_name,
@@ -149,7 +154,7 @@ class CatalogTranslator:
                 if isinstance(dataset, MemoryDataset):
                     continue
 
-                named_io_managers[f"{asset_name}_io_manager"] = self._translate_dataset(
+                named_io_managers[f"{self._env}__{asset_name}_io_manager"] = self._translate_dataset(
                     dataset,
                     dataset_name,
                 )

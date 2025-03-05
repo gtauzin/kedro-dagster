@@ -54,7 +54,7 @@ def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:
         file_handler.write(parsed_template)
 
 
-def get_asset_key_from_dataset_name(dataset_name: str) -> dg.AssetKey:
+def get_asset_key_from_dataset_name(dataset_name: str, env: str) -> dg.AssetKey:
     """Get the asset key from a dataset name.
 
     Args:
@@ -63,7 +63,7 @@ def get_asset_key_from_dataset_name(dataset_name: str) -> dg.AssetKey:
     Returns:
         AssetKey: The asset key.
     """
-    return dg.AssetKey(dataset_name.split("."))
+    return dg.AssetKey([env] + dataset_name.split("."))
 
 
 def dagster_format(name):
