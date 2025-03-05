@@ -12,10 +12,10 @@ class InProcessExecutorOptions(BaseModel):
     """Options for the inprocess executor."""
 
     class RetriesEnableOptions(BaseModel):
-        enabled: dict = {}
+        enabled: dict = {}  # type: ignore[type-arg]
 
     class RetriesDisableOptions(BaseModel):
-        disabled: dict = {}
+        disabled: dict = {}  # type: ignore[type-arg]
 
     retries: RetriesEnableOptions | RetriesDisableOptions = Field(
         default=RetriesEnableOptions(),
@@ -118,17 +118,19 @@ class K8sJobExecutorOptions(MultiprocessExecutorOptions):
     """Options for the Kubernetes-based executor."""
 
     class K8sJobConfig(BaseModel):
-        container_config: dict | None = Field(default=None, description="Configuration for the Kubernetes container.")
-        pod_spec_config: dict | None = Field(
+        container_config: dict[str, Any] | None = Field(
+            default=None, description="Configuration for the Kubernetes container."
+        )
+        pod_spec_config: dict[str, Any] | None = Field(
             default=None, description="Configuration for the Kubernetes Pod specification."
         )
-        pod_template_spec_metadata: dict | None = Field(
+        pod_template_spec_metadata: dict[str, Any] | None = Field(
             default=None, description="Metadata for the Kubernetes Pod template specification."
         )
-        job_spec_config: dict | None = Field(
+        job_spec_config: dict[str, Any] | None = Field(
             default=None, description="Configuration for the Kubernetes Job specification."
         )
-        job_metadata: dict | None = Field(default=None, description="Metadata for the Kubernetes Job.")
+        job_metadata: dict[str, Any] | None = Field(default=None, description="Metadata for the Kubernetes Job.")
 
     job_namespace: str | None = Field(default=None, is_required=False)
     load_incluster_config: bool | None = Field(

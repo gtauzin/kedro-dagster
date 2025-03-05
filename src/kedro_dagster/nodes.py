@@ -110,19 +110,17 @@ class NodeTranslator:
         )
 
     @property
-    def asset_names(self):
-        if hasattr(self, "_asset_names"):
-            return self._asset_names
+    def asset_names(self) -> list[str]:
+        if not hasattr(self, "_asset_names"):
+            asset_names = []
+            for dataset_name in sum(self._pipelines.values()).datasets():
+                asset_name = dagster_format(dataset_name)
+                asset_names.append(asset_name)
 
-        asset_names = []
-        for dataset_name in sum(self._pipelines.values()).datasets():
-            asset_name = dagster_format(dataset_name)
-            asset_names.append(asset_name)
+            asset_names = list(set(asset_names))
+            self._asset_names = asset_names
 
-        asset_names = list(set(asset_names))
-        self._asset_names = asset_names
-
-        return asset_names
+        return self._asset_names
 
     def create_op(self, node: "Node", retry_policy: dg.RetryPolicy | None = None) -> dg.OpDefinition:
         """Create a Dagster op from a Kedro node.
@@ -170,11 +168,11 @@ class NodeTranslator:
             tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
             retry_policy=retry_policy,
         )
-        def node_graph_op(context, config: NodeParametersConfig, **inputs):
+        def node_graph_op(context: dg.OpExecutionContext, config: NodeParametersConfig, **inputs):  # type: ignore[no-untyped-def, valid-type]
             # Logic to execute the Kedro node with hooks
             context.log.info(f"Running node `{node.name}` in graph.")
 
-            inputs |= config.model_dump()
+            inputs |= config.model_dump()  # type: ignore[attr-defined]
             inputs = {kedro_format(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()}
 
             # TODO: Should is_async be False?
@@ -273,11 +271,11 @@ class NodeTranslator:
             partitions_def=partition_def,
             backfill_policy=backfill_policy,
         )
-        def dagster_asset(context, config: NodeParametersConfig, **inputs):
+        def dagster_asset(context: dg.AssetExecutionContext, config: NodeParametersConfig, **inputs):  # type: ignore[no-untyped-def, valid-type]
             # Logic to execute the Kedro node
             context.log.info(f"Running node `{node.name}` in asset.")
 
-            inputs |= config.model_dump()
+            inputs |= config.model_dump()  # type: ignore[attr-defined]
             inputs = {kedro_format(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()}
 
             outputs = node.run(inputs)

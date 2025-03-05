@@ -19,7 +19,7 @@ def call(cmd, env, verbose=False):
     assert res.returncode == 0
 
 
-def before_all(context):
+def before_all(context: Context):
     """Environment preparation before other cli tests are run.
     Installs kedro by running pip in the top level directory.
     """

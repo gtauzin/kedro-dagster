@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pydantic import BaseModel
 
 
-def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> str:
+def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> str:  # type: ignore[no-untyped-def]
     """This functions enable to copy a file and render the
     tags (identified by {{ my_tag }}) with the values provided in kwargs.
 
@@ -35,17 +35,17 @@ def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> s
         # but cookiecutter only deals with folder, not file
         # thus we need to create an object with all necessary attributes
         class FalseCookieCutter:
-            def __init__(self, **kwargs):
+            def __init__(self, **kwargs):  # type: ignore[no-untyped-def]
                 self.__dict__.update(kwargs)
 
-        parsed_template = template.render(cookiecutter=FalseCookieCutter(**kwargs))
+        parsed_template = template.render(cookiecutter=FalseCookieCutter(**kwargs))  # type: ignore[no-untyped-call]
     else:
         parsed_template = template.render(**kwargs)
 
-    return parsed_template
+    return parsed_template  # type: ignore[no-any-return]
 
 
-def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:
+def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:  # type: ignore[no-untyped-def]
     """Write a template file and replace tis jinja's tags
      (identified by {{ my_tag }}) with the values provided in kwargs.
 
@@ -71,7 +71,7 @@ def get_asset_key_from_dataset_name(dataset_name: str, env: str) -> dg.AssetKey:
     return dg.AssetKey([env] + dataset_name.split("."))
 
 
-def dagster_format(name):
+def dagster_format(name: str) -> str:
     """Format a name for Dagster.
 
     Args:
@@ -83,7 +83,7 @@ def dagster_format(name):
     return name.replace(".", "__")
 
 
-def kedro_format(name):
+def kedro_format(name: str) -> str:
     """Format a name for Kedro.
 
     Args:
@@ -97,7 +97,7 @@ def kedro_format(name):
 
 
 # TODO: Improve
-def _create_pydantic_model_from_dict(
+def _create_pydantic_model_from_dict(  # type: ignore[no-untyped-def]
     name: str, params: dict[str, Any], __base__, __config__: ConfigDict | None = None
 ) -> "BaseModel":
     """Create a Pydantic model from a dictionary.
@@ -164,7 +164,7 @@ def _is_asset_name(dataset_name: str) -> bool:
     return not dataset_name.startswith("params:") and dataset_name != "parameters"
 
 
-def _get_node_pipeline_name(pipelines: dict[str, "Pipeline"], node: "Node"):
+def _get_node_pipeline_name(pipelines: dict[str, "Pipeline"], node: "Node") -> str:
     """Return the name of the pipeline that a node belongs to.
 
     Args:
@@ -182,6 +182,8 @@ def _get_node_pipeline_name(pipelines: dict[str, "Pipeline"], node: "Node"):
                         namespace = ".".join(node.name.split(".")[:-1])
                         return dagster_format(f"{namespace}.{pipeline_name}")
                     return pipeline_name
+
+    raise ValueError(f"Node `{node.name}` is not part of any pipelines.")
 
 
 def get_mlflow_resource_from_config(mlflow_config: "BaseModel") -> dg.ResourceDefinition:

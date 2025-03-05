@@ -1,5 +1,7 @@
 """Configuration definitions for Kedro-Dagster."""
 
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -9,4 +11,4 @@ class ScheduleOptions(BaseModel):
     cron_schedule: str
     execution_timezone: str | None = None
     description: str | None = None
-    metadata: dict | None = None
+    metadata: dict[str, Any] | None = None

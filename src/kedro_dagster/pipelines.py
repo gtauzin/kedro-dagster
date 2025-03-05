@@ -122,7 +122,7 @@ class PipelineTranslator:
             ins=after_pipeline_run_hook_ins,
             required_resource_keys=required_resource_keys,
         )
-        def after_pipeline_run_hook(context: dg.OpExecutionContext, **materialized_assets) -> dg.Nothing:
+        def after_pipeline_run_hook(context: dg.OpExecutionContext, **materialized_assets) -> dg.Nothing:  # type: ignore[no-untyped-def]
             kedro_run_resource = context.resources.kedro_run
 
             run_results = {}
@@ -162,7 +162,7 @@ class PipelineTranslator:
             JobDefinition: A Dagster job definition.
 
         """
-        pipeline_name = pipeline_config.get("pipeline_name")
+        pipeline_name = pipeline_config.get("pipeline_name", "__default__")
         filter_params = self._get_filter_params_dict(pipeline_config)
         pipeline = pipelines.get(pipeline_name).filter(**filter_params)
 
@@ -176,7 +176,7 @@ class PipelineTranslator:
             description=f"Job derived from pipeline associated to `{job_name}` in env `{self._env}`.",
             out=None,
         )
-        def pipeline_graph():
+        def pipeline_graph() -> None:
             before_pipeline_run_hook_output = before_pipeline_run_hook()
 
             # Fil up materialized_assets with pipeline input assets
@@ -193,7 +193,7 @@ class PipelineTranslator:
                             key=asset_key,
                         ).with_io_manager_key(f"{self._env}__{asset_name}_io_manager")
 
-            materialized_output_assets = {}
+            materialized_output_assets: dict[str, Any] = {}
             for layer in pipeline.grouped_nodes:
                 for node in layer:
                     op_name = dagster_format(node.name) + "_graph"
@@ -266,7 +266,7 @@ class PipelineTranslator:
 
         """
         named_jobs = {}
-        for job_name, job_config in self._dagster_config.jobs.items():
+        for job_name, job_config in self._dagster_config.jobs.items():  # type: ignore[attr-defined]
             pipeline_config = job_config.pipeline.model_dump()
 
             executor_config = job_config.executor

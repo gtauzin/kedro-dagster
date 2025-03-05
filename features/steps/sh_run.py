@@ -40,12 +40,12 @@ def run(
     """
     if isinstance(cmd, str) and split:
         cmd = shlex.split(cmd)
-    result = subprocess.run(cmd, input="", capture_output=True, **kwargs)
+    result = subprocess.run(cmd, input="", capture_output=True, **kwargs)  # type: ignore[call-overload]
     result.stdout = result.stdout.decode("utf-8")
     result.stderr = result.stderr.decode("utf-8")
     if print_output:
         print(result.stdout)
-    return result
+    return result  # type: ignore[no-any-return]
 
 
 class ChildTerminatingPopen(subprocess.Popen):
@@ -58,7 +58,7 @@ class ChildTerminatingPopen(subprocess.Popen):
         dies (so-called orphan processes)
     """
 
-    def __init__(self, cmd: Sequence[str], **kwargs) -> None:
+    def __init__(self, cmd: Sequence[str], **kwargs) -> None:  # type: ignore[no-untyped-def]
         """
         Initializer pipes stderr and stdout.
 

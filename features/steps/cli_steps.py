@@ -14,7 +14,7 @@ OK_EXIT_CODE = 0
 
 
 @given("I have prepared a config file")
-def create_configuration_file(context: behave.runner.Context):
+def create_configuration_file(context: behave.runner.Context) -> None:
     """Behave step to create a temporary config file
     (given the existing temp directory)
     and store it in the context.
@@ -36,7 +36,7 @@ def create_configuration_file(context: behave.runner.Context):
 
 
 @given("I run a non-interactive kedro new using {starter_name} starter")
-def create_project_from_config_file(context: behave.runner.Context, starter_name: str):
+def create_project_from_config_file(context: behave.runner.Context, starter_name: str) -> None:
     """Behave step to run kedro new
     given the config I previously created.
     """
@@ -96,7 +96,7 @@ def create_project_from_config_file(context: behave.runner.Context, starter_name
 
 
 @given('I have executed the kedro command "{command}"')
-def exec_kedro_command(context: behave.runner.Context, command: str):
+def exec_kedro_command(context: behave.runner.Context, command: str) -> None:
     """Execute Kedro command and check the status."""
     make_cmd = [context.kedro] + command.split()
 
@@ -109,7 +109,7 @@ def exec_kedro_command(context: behave.runner.Context, command: str):
 
 
 @given("I have installed the project dependencies")
-def pip_install_dependencies(context: behave.runner.Context):
+def pip_install_dependencies(context: behave.runner.Context) -> None:
     """Install project dependencies using pip."""
     reqs_path = Path("requirements.txt")
     res = run(
@@ -125,7 +125,7 @@ def pip_install_dependencies(context: behave.runner.Context):
 
 
 @when('I execute the kedro command "{command}"')
-def exec_kedro_target(context: behave.runner.Context, command: str):
+def exec_kedro_target(context: behave.runner.Context, command: str) -> None:
     """Execute Kedro target"""
     make_cmd = [context.kedro] + command.split()
 
@@ -138,7 +138,7 @@ def exec_kedro_target(context: behave.runner.Context, command: str):
 
 
 @when('I occupy port "{port}"')
-def occupy_port(context: behave.runner.Context, port):
+def occupy_port(context: behave.runner.Context, port: str) -> None:
     """Execute  target"""
     ChildTerminatingPopen(
         ["nc", "-l", "0.0.0.0", port],
@@ -148,7 +148,7 @@ def occupy_port(context: behave.runner.Context, port):
 
 
 @then("I should get a successful exit code")
-def check_status_code(context: behave.runner.Context):
+def check_status_code(context: behave.runner.Context) -> None:
     if context.result.returncode != OK_EXIT_CODE:
         print(context.result.stdout)
         print(context.result.stderr)
@@ -156,7 +156,7 @@ def check_status_code(context: behave.runner.Context):
 
 
 @then("I should get an error exit code")
-def check_failed_status_code(context: behave.runner.Context):
+def check_failed_status_code(context: behave.runner.Context) -> None:
     if context.result.returncode == OK_EXIT_CODE:
         print(context.result.stdout)
         print(context.result.stderr)
@@ -164,7 +164,7 @@ def check_failed_status_code(context: behave.runner.Context):
 
 
 @then("A {filename} file should exist")
-def check_if_file_exists(context: behave.runner.Context, filename: str):
+def check_if_file_exists(context: behave.runner.Context, filename: str) -> None:
     """Checks if file is present and has content.
 
     Args:
@@ -183,7 +183,7 @@ def check_if_file_exists(context: behave.runner.Context, filename: str):
 
 
 @then("A {filepath} file should contain {text} string")
-def grep_file(context: behave.runner.Context, filepath: str, text: str):
+def grep_file(context: behave.runner.Context, filepath: str, text: str) -> None:
     """Checks if given file contains passed string.
 
     Args:

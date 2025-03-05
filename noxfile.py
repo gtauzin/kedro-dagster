@@ -14,7 +14,7 @@ nox.options.sessions = ["fix", "tests", "serve_docs"]
 
 # Test sessions for different Python versions
 @nox.session(python=["3.10", "3.11", "3.12", "3.13"], venv_backend="uv")
-def tests(session):
+def tests(session: nox.Session) -> None:
     """Run the tests with pytest under the specified Python version."""
     session.env["COVERAGE_FILE"] = f".coverage.{session.python}"
     session.env["COVERAGE_PROCESS_START"] = "pyproject.toml"
@@ -52,7 +52,7 @@ def tests(session):
 
 
 @nox.session(venv_backend="uv")
-def fix(session):
+def fix(session: nox.Session) -> None:
     """Format the code base to adhere to our styles, and complain about what we cannot do automatically."""
     # Install dependencies
     session.run_install(
@@ -68,7 +68,7 @@ def fix(session):
 
 
 @nox.session(venv_backend="uv")
-def build_docs(session):
+def build_docs(session: nox.Session) -> None:
     """Run a development server for working on documentation."""
     # Install dependencies
     session.run_install(
@@ -84,7 +84,7 @@ def build_docs(session):
 
 
 @nox.session(venv_backend="uv")
-def serve_docs(session):
+def serve_docs(session: nox.Session) -> None:
     """Run a development server for working on documentation."""
     # Install dependencies
     session.run_install(
@@ -102,7 +102,7 @@ def serve_docs(session):
 
 
 @nox.session(venv_backend="uv")
-def deploy_docs(session):
+def deploy_docs(session: nox.Session) -> None:
     """Build fresh docs and deploy them."""
     # Install dependencies
     session.run_install(

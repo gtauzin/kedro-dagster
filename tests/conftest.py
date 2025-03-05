@@ -8,21 +8,23 @@ https://docs.pytest.org/en/latest/fixture.html
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 from click.testing import CliRunner
 from kedro.framework.cli.starters import create_cli as kedro_cli
 from kedro.framework.startup import bootstrap_project
-from pytest import fixture
+from pytest import TempdirFactory, fixture
 
 
 @fixture(name="cli_runner", scope="session")
-def cli_runner():
+def cli_runner() -> Iterator[CliRunner]:
     runner = CliRunner()
     yield runner
 
 
-def _create_kedro_settings_py(file_name: Path, patterns: list[str]):
+def _create_kedro_settings_py(file_name: Path, patterns: list[str]) -> None:
     patterns_str = ", ".join([f'"{p}"' for p in patterns])
     content = f"""CONFIG_LOADER_ARGS = {{
     "base_env": "base",
@@ -36,13 +38,13 @@ def _create_kedro_settings_py(file_name: Path, patterns: list[str]):
 
 
 @fixture(scope="session")
-def temp_directory(tmpdir_factory):
+def temp_directory(tmpdir_factory: TempdirFactory) -> Path:
     # Use tmpdir_factory to create a temporary directory with session scope
-    return tmpdir_factory.mktemp("session_temp_dir")
+    return tmpdir_factory.mktemp("session_temp_dir")  # type: ignore[no-any-return]
 
 
 @fixture(scope="session")
-def kedro_project(cli_runner, temp_directory):
+def kedro_project(cli_runner: CliRunner, temp_directory) -> Path:  # type: ignore[no-untyped-def]
     os.chdir(temp_directory)
 
     CliRunner().invoke(
@@ -95,8 +97,8 @@ def register_pipelines():
 
 
 @fixture(scope="session")
-def metadata(kedro_project):
+def metadata(kedro_project: Path) -> dict[str, Any]:
     # cwd() depends on ^ the isolated filesystem, created by CliRunner()
     project_path = kedro_project.resolve()
     metadata = bootstrap_project(project_path)
-    return metadata
+    return metadata  # type: ignore[no-any-return]

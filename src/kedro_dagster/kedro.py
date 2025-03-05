@@ -83,11 +83,11 @@ class KedroRunTranslator:
 
             @property
             def run_params(self) -> dict[str, Any]:
-                return self.model_dump()
+                return self.model_dump()  # type: ignore[no-any-return]
 
             @property
             def pipeline(self) -> dict[str, Any]:
-                return pipelines.get(self.pipeline_name).filter(
+                return pipelines.get(self.pipeline_name).filter(  # type: ignore[no-any-return]
                     tags=self.tags,
                     from_nodes=self.from_nodes,
                     to_nodes=self.to_nodes,
@@ -97,7 +97,7 @@ class KedroRunTranslator:
                     node_namespace=self.node_namespace,
                 )
 
-            def after_context_created_hook(self):
+            def after_context_created_hook(self) -> None:
                 hook_manager.hook.after_context_created(context=context)
 
         run_params = (
@@ -128,7 +128,7 @@ class KedroRunTranslator:
             monitored_jobs=None,  # TODO: Only for pipeline jobs!
             default_status=dg.DefaultSensorStatus.RUNNING,
         )
-        def on_pipeline_error_sensor(context: dg.RunFailureSensorContext):
+        def on_pipeline_error_sensor(context: dg.RunFailureSensorContext) -> None:
             kedro_context_resource = context.resource_defs["kedro_run"]
             run_params = kedro_context_resource.run_params
             pipeline = kedro_context_resource.pipeline

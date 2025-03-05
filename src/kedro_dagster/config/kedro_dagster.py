@@ -1,6 +1,7 @@
 """Configuration definitions for Kedro-Dagster."""
 
 from logging import getLogger
+from typing import Any
 
 from kedro.config import MissingConfigException
 from kedro.framework.context import KedroContext
@@ -28,7 +29,14 @@ class KedroDagsterConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_executors(cls, values):
+    def validate_dev(cls, values: dict[str, Any]) -> dict[str, Any]:
+        dev = values.get("dev", DevOptions())
+        values["dev"] = dev
+        return values
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_executors(cls, values: dict[str, Any]) -> dict[str, Any]:
         executors = values.get("executors", {})
 
         parsed_executors = {}

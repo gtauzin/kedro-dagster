@@ -67,8 +67,8 @@ class CatalogTranslator:
 
         # TODO: Check if hooks are indeed called for ops and not assets
         # TODO: Remove _graph and add _asset
-        class ConfigurableDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):
-            def handle_output(self, context: dg.OutputContext, obj):
+        class ConfigurableDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):  # type: ignore[valid-type]
+            def handle_output(self, context: dg.OutputContext, obj) -> None:  # type: ignore[no-untyped-def]
                 # When defining the op, we have named them either with
                 # a trailing "_graph"
                 node_name = context.op_def.name
@@ -95,7 +95,7 @@ class CatalogTranslator:
                         node=node,
                     )
 
-            def load_input(self, context: dg.InputContext):
+            def load_input(self, context: dg.InputContext) -> Any:
                 node_name = context.op_def.name
                 # When defining the op, we have named them either with
                 # a trailing "_graph"

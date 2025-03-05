@@ -135,13 +135,13 @@ class LoggerTranslator:
         self._package_name = package_name
         self._pipelines = pipelines
 
-    def translate_loggers(self):
+    def translate_loggers(self) -> dict[str, dg.LoggerDefinition]:
         """Translate Kedro loggers to Dagster loggers."""
         named_loggers = {}
         for pipeline_name in self._pipelines:
 
-            def get_logger_definition(package_name, pipeline_name):
-                def pipeline_logger(context: dg.InitLoggerContext):
+            def get_logger_definition(package_name: str, pipeline_name: str) -> dg.LoggerDefinition:
+                def pipeline_logger(context: dg.InitLoggerContext) -> logging.Logger:
                     return logging.getLogger(f"{package_name}.pipelines.{pipeline_name}.nodes")
 
                 return dg.LoggerDefinition(

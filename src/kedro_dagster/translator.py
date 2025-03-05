@@ -52,7 +52,7 @@ class KedroDagsterTranslator:
         self,
         project_path: Path | None = None,
         env: str | None = None,
-        conf_source: Path | None = None,
+        conf_source: str | None = None,
     ):
         self._project_path = project_path
         if project_path is None:
@@ -124,7 +124,7 @@ class KedroDagsterTranslator:
         """
         return self._named_executors
 
-    def initialialize_kedro(self, conf_source: str | None = None):
+    def initialialize_kedro(self, conf_source: str | None = None) -> None:
         """Initialize Kedro project.
 
         Args:
@@ -158,7 +158,7 @@ class KedroDagsterTranslator:
 
     # TODO: Allow translating a subset of the project
     # TODO: Allow to pass params that overwrite the dagster config
-    def translate(self):
+    def translate(self) -> None:
         """Translate Kedro project into Dagster.
 
         Calling this function sets the following attributes:

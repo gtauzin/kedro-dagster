@@ -18,14 +18,14 @@ class DevOptions(BaseModel):
     live_data_poll_rate: str = "2000"
 
     @property
-    def python_file(self):
+    def python_file(self) -> Path:
         project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
         project_metadata = bootstrap_project(project_path)
         package_name = project_metadata.package_name
         definitions_py = "definitions.py"
         definitions_py_path = project_path / "src" / package_name / definitions_py
 
-        return definitions_py_path
+        return definitions_py_path  # type: ignore[no-any-return]
 
     class Config:
         extra = "forbid"
