@@ -4,6 +4,7 @@ from logging import getLogger
 from pathlib import Path
 
 import dagster as dg
+from kedro.framework.project import find_pipelines
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 from kedro.utils import _find_kedro_project
@@ -146,9 +147,12 @@ class KedroDagsterTranslator:
         LOGGER.info("Loading context...")
         self._context = self._session.load_context()
 
+        self._pipelines = find_pipelines()
+
         LOGGER.info("Kedro initialized.")
 
     # TODO: Allow translating a subset of the project
+    # TODO: Allow to pass params that overwrite the dagster config
     def translate(self):
         """Translate Kedro project into Dagster.
 
@@ -190,7 +194,9 @@ class KedroDagsterTranslator:
             self._named_resources["mlflow"] = get_mlflow_resource_from_config(self._context.mlflow)
 
         LOGGER.info("Mapping loggers...")
-        self.logger_creator = LoggerTranslator(dagster_config=dagster_config, project_metadata=self._project_metadata)
+        self.logger_creator = LoggerTranslator(
+            dagster_config=dagster_config, project_metadata=self._project_metadata, pipelines=self._pipelines
+        )
         self._named_loggers = self.logger_creator.translate_loggers()
 
         LOGGER.info("Translating catalog...")
@@ -203,6 +209,7 @@ class KedroDagsterTranslator:
 
         LOGGER.info("Translating nodes...")
         self.node_translator = NodeTranslator(
+            pipelines=self._pipelines,
             catalog=self._context.catalog,
             hook_manager=self._context._hook_manager,
             session_id=self._session_id,

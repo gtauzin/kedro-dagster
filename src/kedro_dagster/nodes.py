@@ -4,8 +4,8 @@ from logging import getLogger
 from typing import Any
 
 import dagster as dg
-from kedro.framework.project import pipelines
 from kedro.io import DatasetNotFoundError, MemoryDataset
+from kedro.pipeline import Pipeline
 from kedro.pipeline.node import Node
 from pydantic import ConfigDict
 
@@ -33,7 +33,8 @@ class NodeTranslator:
 
     """
 
-    def __init__(self, catalog, hook_manager, session_id, named_resources):
+    def __init__(self, pipelines, catalog, hook_manager, session_id, named_resources):
+        self._pipelines = pipelines
         self._catalog = catalog
         self._hook_manager = hook_manager
         self._session_id = session_id
@@ -100,7 +101,7 @@ class NodeTranslator:
             return self._asset_names
 
         asset_names = []
-        for dataset_name in sum(pipelines.values()).datasets():
+        for dataset_name in sum(self._pipelines.values()).datasets():
             asset_name = dagster_format(dataset_name)
             asset_names.append(asset_name)
 
@@ -250,7 +251,7 @@ class NodeTranslator:
         @dg.multi_asset(
             name=name,
             description=f"Kedro node {node.name} wrapped as a Dagster multi asset.",
-            group_name=_get_node_pipeline_name(pipelines, node),
+            group_name=_get_node_pipeline_name(self._pipelines, node),
             ins=ins,
             outs=outs,
             required_resource_keys=required_resource_keys,
@@ -276,7 +277,7 @@ class NodeTranslator:
 
     def translate_nodes(self) -> tuple[dict[str, dg.OpDefinition], dict[str, dg.AssetSpec | dg.AssetsDefinition]]:
         """Translate Kedro nodes into Dagster ops."""
-        default_pipeline = pipelines.get("__default__")
+        default_pipeline = sum(self._pipelines.values(), start=Pipeline([]))
 
         # Assets that are not generated through dagster are external and
         # registered with AssetSpec

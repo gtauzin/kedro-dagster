@@ -3,7 +3,7 @@
 import logging
 
 import dagster as dg
-from kedro.framework.project import pipelines
+from kedro.pipeline import Pipeline
 from pydantic import BaseModel
 
 from kedro_dagster.config.execution import (
@@ -127,27 +127,27 @@ class ScheduleCreator:
 class LoggerTranslator:
     """Translates Kedro loggers to Dagster loggers."""
 
-    def __init__(self, dagster_config: BaseModel, project_metadata: BaseModel):
+    def __init__(self, dagster_config: BaseModel, project_metadata: BaseModel, pipelines: dict[str, Pipeline]):
         self._dagster_config = dagster_config
         self._package_name = project_metadata.package_name
+        self._pipelines = pipelines
 
     def translate_loggers(self):
         """Translate Kedro loggers to Dagster loggers."""
         named_loggers = {}
-        for pipeline_name in pipelines:
-            if pipeline_name != "__default__":
+        for pipeline_name in self._pipelines:
 
-                def get_logger_definition(package_name, pipeline_name):
-                    def pipeline_logger(context: dg.InitLoggerContext):
-                        return logging.getLogger(f"{package_name}.pipelines.{pipeline_name}.nodes")
+            def get_logger_definition(package_name, pipeline_name):
+                def pipeline_logger(context: dg.InitLoggerContext):
+                    return logging.getLogger(f"{package_name}.pipelines.{pipeline_name}.nodes")
 
-                    return dg.LoggerDefinition(
-                        pipeline_logger,
-                        description=f"Logger for pipeline`{pipeline_name}` of package `{package_name}`.",
-                    )
-
-                named_loggers[f"{self._package_name}.pipelines.{pipeline_name}.nodes"] = get_logger_definition(
-                    self._package_name, pipeline_name
+                return dg.LoggerDefinition(
+                    pipeline_logger,
+                    description=f"Logger for pipeline`{pipeline_name}` of package `{package_name}`.",
                 )
+
+            named_loggers[f"{self._package_name}.pipelines.{pipeline_name}.nodes"] = get_logger_definition(
+                self._package_name, pipeline_name
+            )
 
         return named_loggers
