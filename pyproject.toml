@@ -9,7 +9,10 @@ requires = [
 name = "kedro-dagster"
 dynamic = ["version"]
 authors = [
-    { name = "Guillaume Tauzin", email = "gtauzin@protonmail.com" },
+  { name = "Guillaume Tauzin" },
+]
+maintainers = [
+  { name = "Guillaume Tauzin" },
 ]
 description = "Kedro-Dagster makes it easy to deploy Kedro projects to Dagster"
 license = "Apache-2.0"
