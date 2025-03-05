@@ -113,8 +113,13 @@ class KedroRunTranslator:
 
         return KedroRunResource(**run_params)
 
-    def _translate_on_pipeline_error_hook(self) -> dict[str, dg.SensorDefinition]:
+    def _translate_on_pipeline_error_hook(
+        self, named_jobs: dict[str, dg.JobDefinition]
+    ) -> dict[str, dg.SensorDefinition]:
         """Translate Kedro pipeline hooks to Dagster resource and sensor.
+
+        Args:
+            named_jobs (dict[str, JobDefinition]): Dictionary of named Dagster jobs.
 
         Returns:
             dict[str, dg.SensorDefinition]: A dictionary with the sensor definition
@@ -125,7 +130,7 @@ class KedroRunTranslator:
         @dg.run_failure_sensor(
             name="on_pipeline_error_sensor",
             description="Sensor for kedro `on_pipeline_error` hook.",
-            monitored_jobs=None,  # TODO: Only for pipeline jobs!
+            monitored_jobs=list(named_jobs.values()),
             default_status=dg.DefaultSensorStatus.RUNNING,
         )
         def on_pipeline_error_sensor(context: dg.RunFailureSensorContext) -> None:
@@ -136,7 +141,7 @@ class KedroRunTranslator:
             error_class_name = context.failure_event.event_specific_data.error.cls_name
             error_message = context.failure_event.event_specific_data.error.message
 
-            context.log.error(error_message)
+            context.log.error(f"{error_class_name}: {error_message}")
 
             self._hook_manager.hook.on_pipeline_error(
                 error=error_class_name(error_message),

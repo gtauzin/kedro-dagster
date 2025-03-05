@@ -96,7 +96,6 @@ def kedro_format(name: str) -> str:
     return name.replace("__", ".")
 
 
-# TODO: Improve
 def _create_pydantic_model_from_dict(  # type: ignore[no-untyped-def]
     name: str, params: dict[str, Any], __base__, __config__: ConfigDict | None = None
 ) -> "BaseModel":
@@ -116,8 +115,6 @@ def _create_pydantic_model_from_dict(  # type: ignore[no-untyped-def]
         if isinstance(param_value, dict):
             # Recursively create a nested model for nested dictionaries
             nested_model = _create_pydantic_model_from_dict(name, param_value, __base__=__base__, __config__=__config__)
-            # TODO: Nested __base__? Yes for NodeParams, no for IOManagers?
-
             fields[param_name] = (nested_model, ...)
         else:
             # Use the type of the value as the field type

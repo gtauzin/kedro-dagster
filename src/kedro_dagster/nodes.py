@@ -175,7 +175,6 @@ class NodeTranslator:
             inputs |= config.model_dump()  # type: ignore[attr-defined]
             inputs = {kedro_format(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()}
 
-            # TODO: Should is_async be False?
             self._hook_manager.hook.before_node_run(
                 node=node,
                 catalog=self._catalog,
@@ -198,7 +197,6 @@ class NodeTranslator:
                 )
                 raise exc
 
-            # TODO: Should is_async be False?
             self._hook_manager.hook.after_node_run(
                 node=node,
                 catalog=self._catalog,

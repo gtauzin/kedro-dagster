@@ -126,7 +126,7 @@ class ScheduleCreator:
         return named_schedules
 
 
-# TODO: Allow logger customization
+# TODO: Improve logger customization
 class LoggerTranslator:
     """Translates Kedro loggers to Dagster loggers."""
 

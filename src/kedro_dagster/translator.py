@@ -156,7 +156,7 @@ class KedroDagsterTranslator:
 
         LOGGER.info("Kedro initialized.")
 
-    # TODO: Allow translating a subset of the project
+    # TODO: Allow translating a subset of the project?
     # TODO: Allow to pass params that overwrite the dagster config
     def translate(self) -> None:
         """Translate Kedro project into Dagster.
@@ -191,9 +191,6 @@ class KedroDagsterTranslator:
             extra_params=None,
         )
         self._named_resources = {"kedro_run": kedro_run_resource}
-
-        LOGGER.info("Creating run sensor...")
-        self._named_sensors = kedro_run_translator._translate_on_pipeline_error_hook()
 
         if is_mlflow_enabled():
             self._named_resources["mlflow"] = get_mlflow_resource_from_config(self._context.mlflow)
@@ -245,5 +242,8 @@ class KedroDagsterTranslator:
         LOGGER.info("Creating schedules...")
         self.schedule_creator = ScheduleCreator(dagster_config=dagster_config, named_jobs=self._named_jobs)
         self._named_schedules = self.schedule_creator.create_schedules()
+
+        LOGGER.info("Creating run sensor...")
+        self._named_sensors = kedro_run_translator._translate_on_pipeline_error_hook(named_jobs=self._named_jobs)
 
         LOGGER.info("Kedro project translated into Dagster.")
