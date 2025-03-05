@@ -1,10 +1,10 @@
 """Dagster executor creation from config."""
 
 import logging
+from typing import TYPE_CHECKING
 
 import dagster as dg
 from kedro.pipeline import Pipeline
-from pydantic import BaseModel
 
 from kedro_dagster.config.execution import (
     CeleryDockerExecutorOptions,
@@ -16,6 +16,9 @@ from kedro_dagster.config.execution import (
     K8sJobExecutorOptions,
     MultiprocessExecutorOptions,
 )
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
 
 class ExecutorCreator:
@@ -39,14 +42,14 @@ class ExecutorCreator:
         (K8sJobExecutorOptions, "dagster_k8s", "k8s_job_executor"),
     ]
 
-    def __init__(self, dagster_config: BaseModel):
+    def __init__(self, dagster_config: "BaseModel"):
         self._dagster_config = dagster_config
 
-    def register_executor(self, executor_option: BaseModel, executor: dg.ExecutorDefinition) -> None:
+    def register_executor(self, executor_option: "BaseModel", executor: dg.ExecutorDefinition) -> None:
         """Register an executor option with a Dagster executor.
 
         Args:
-            executor_option (BaseModel): The executor option to register.
+            executor_option ("BaseModel"): The executor option to register.
             executor (ExecutorDefinition): The executor to register the option with.
         """
         self._OPTION_EXECUTOR_MAP[executor_option] = executor
@@ -85,7 +88,7 @@ class ExecutorCreator:
 class ScheduleCreator:
     """Creates Dagster schedule definitions from Kedro configuration."""
 
-    def __init__(self, dagster_config: BaseModel, named_jobs: dict[str, dg.JobDefinition]):
+    def __init__(self, dagster_config: "BaseModel", named_jobs: dict[str, dg.JobDefinition]):
         self._dagster_config = dagster_config
         self._named_jobs = named_jobs
 
@@ -127,9 +130,9 @@ class ScheduleCreator:
 class LoggerTranslator:
     """Translates Kedro loggers to Dagster loggers."""
 
-    def __init__(self, dagster_config: BaseModel, project_metadata: BaseModel, pipelines: dict[str, Pipeline]):
+    def __init__(self, dagster_config: "BaseModel", package_name: str, pipelines: dict[str, Pipeline]):
         self._dagster_config = dagster_config
-        self._package_name = project_metadata.package_name
+        self._package_name = package_name
         self._pipelines = pipelines
 
     def translate_loggers(self):

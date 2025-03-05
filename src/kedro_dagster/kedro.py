@@ -1,25 +1,27 @@
 """Translation of Kedro run params and on error pipeline hooks."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from kedro import __version__ as kedro_version
-from kedro.framework.context import KedroContext
 from kedro.framework.project import pipelines
+
+if TYPE_CHECKING:
+    from kedro.framework.context import KedroContext
 
 
 class KedroRunTranslator:
     """Translator for Kedro run params.
 
     Args:
-        context: Kedro context.
-        project_path: Path to the Kedro project.
-        env: Kedro environment.
-        session_id: Kedro session ID.
+        context (KedroContext): Kedro context.
+        project_path (str): Path to the Kedro project.
+        env (str): Kedro environment.
+        session_id (str): Kedro session ID.
 
     """
 
-    def __init__(self, context: KedroContext, project_path: str, env: str, session_id: str):
+    def __init__(self, context: "KedroContext", project_path: str, env: str, session_id: str):
         self._context = context
         self._catalog = context.catalog
         self._hook_manager = context._hook_manager
@@ -40,10 +42,13 @@ class KedroRunTranslator:
         """Create a Dagster resource for Kedro pipeline hooks.
 
         Args:
-            run_params: Parameters for the run.
+            pipeline_name (str): Name of the Kedro pipeline.
+            filter_params (dict[str, Any]): Parameters used to filter the pipeline.
+            load_versions (list[str] | None): Load versions for versioned datasets.
+            extra_params (dict[str, Any] | None): Extra parameters
 
         Returns:
-            KedroRunResource: A Dagster resource for Kedro pipeline hooks.
+            ConfigurableResource: A Dagster resource for Kedro pipeline hooks.
 
         """
 

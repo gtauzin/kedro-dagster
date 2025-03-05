@@ -1,36 +1,38 @@
 """Translation of Kedro pipelines to Dagster jobs."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import dagster as dg
-from kedro.framework.context import KedroContext
 from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
 
 from kedro_dagster.kedro import KedroRunTranslator
 from kedro_dagster.utils import _is_asset_name, dagster_format, get_asset_key_from_dataset_name, is_mlflow_enabled
 
+if TYPE_CHECKING:
+    from kedro.framework.context import KedroContext
+
 
 class PipelineTranslator:
     """Translator for Kedro pipelines to Dagster jobs.
 
     Args:
-        dagster_config: The configuration of the Dagster job.
-        context: The Kedro context.
-        project_path: The path to the Kedro project.
-        env: The Kedro environment.
-        session_id: The Kedro session ID.
-        named_assets: The named assets.
-        named_ops: The named ops.
-        named_resources: The named resources.
-        named_executors: The named executors.
+        dagster_config (dict[str, Any]): The configuration of the Dagster job.
+        context (KedroContext): The Kedro context.
+        project_path (str): The path to the Kedro project.
+        env (str): The Kedro environment.
+        session_id (str): The Kedro session ID.
+        named_assets (dict[str, AssetsDefinition]): The named assets.
+        named_ops (dict[str, OpDefinition]): The named ops.
+        named_resources (dict[str, ResourceDefinition]): The named resources.
+        named_executors (dict[str, ExecutorDefinition]): The named executors.
 
     """
 
     def __init__(
         self,
         dagster_config: dict[str, Any],
-        context: KedroContext,
+        context: "KedroContext",
         project_path: str,
         env: str,
         session_id: str,
@@ -78,8 +80,8 @@ class PipelineTranslator:
         """Create the pipeline hook ops.
 
         Args:
-            job_name: The name of the job.
-            pipeline: The Kedro pipeline.
+            job_name (str): The name of the job.
+            pipeline (Pipeline): The Kedro pipeline.
 
         Returns:
             tuple[OpDefinition, OpDefinition]: The before and after pipeline run hook ops.
@@ -149,12 +151,12 @@ class PipelineTranslator:
         """Translate a Kedro pipeline into a Dagster job.
 
         Args:
-            pipeline_config: The configuration of the pipeline.
-            job_name: The name of the job.
-            executor_def: The executor definition.
-            partitions_def: The partitions definition.
-            op_retry_policy: The retry policy for ops.
-            logger_defs: The logger definitions.
+            pipeline_config (dict[str, Any]): The configuration of the pipeline.
+            job_name (str): The name of the job.
+            executor_def (ExecutorDefinition): The executor definition.
+            partitions_def (PartitionsDefinition | None): The partitions definition.
+            op_retry_policy (RetryPolicy | None): The retry policy for ops.
+            logger_defs (dict[str, LoggerDefinition] | None): The logger definitions.
 
         Returns:
             JobDefinition: A Dagster job definition.

@@ -31,10 +31,10 @@ class NodeTranslator:
     """Translate Kedro nodes into Dagster ops and assets.
 
     Args:
-        catalog: Kedro catalog.
-        hook_manager: Kedro hook manager.
-        session_id: Kedro session ID.
-        named_resources: Named resources in the Kedro project.
+        catalog (CatalogProtocol): Kedro catalog.
+        hook_manager (PluginManager): Kedro hook manager.
+        session_id (str): Kedro session ID.
+        named_resources (dict[str, ResourceDefinition]): Named dagster resources.
 
     """
 
@@ -58,7 +58,7 @@ class NodeTranslator:
         """Get the node parameters as a Dagster config.
 
         Args:
-            node: Kedro node.
+            node (Node): Kedro node.
 
         Returns:
             Config: A Dagster config representing the node parameters.
@@ -82,11 +82,11 @@ class NodeTranslator:
         """Get the output asset parameters.
 
         Args:
-            dataset_name: The dataset name.
-            asset_name: The corresponding asset name.
+            dataset_name (str): The dataset name.
+            asset_name (str): The corresponding asset name.
 
         Returns:
-            dict: The output asset parameters.
+            dict[str, Any]: The output asset parameters.
 
         """
         metadata, description = None, None
@@ -130,8 +130,8 @@ class NodeTranslator:
         The created op is meant to be used in a Dagster graph.
 
         Args:
-            node: Kedro node.
-            retry_policy: Dagster retry policy for the op.
+            node (Node): Kedro node.
+            retry_policy (RetryPolicy): Dagster retry policy for the op.
 
         Returns:
             OpDefinition: A Dagster op.
@@ -232,10 +232,10 @@ class NodeTranslator:
         """Create a Dagster asset from a Kedro node.
 
         Args:
-            node: The Kedro node to wrap into an asset.
-            partition_def: Partitions definition for the asset.
-            partition_mappings: Partition mappings for the asset.
-            backfill_policy: Backfill policy for the asset
+            node (Node): The Kedro node to wrap into an asset.
+            partition_def (PartitionsDefinition | None): Partitions definition for the asset.
+            partition_mappings (dict[str, PartitionMapping] | None): Partition mappings for the asset.
+            backfill_policy (BackfillPolicy | None): Backfill policy for the asset
 
         Returns:
             AssetsDefinition: A Dagster asset.
@@ -290,7 +290,12 @@ class NodeTranslator:
         return dagster_asset
 
     def translate_nodes(self) -> tuple[dict[str, dg.OpDefinition], dict[str, dg.AssetSpec | dg.AssetsDefinition]]:
-        """Translate Kedro nodes into Dagster ops."""
+        """Translate Kedro nodes into Dagster ops.
+
+        Returns:
+            dict[str, dg.OpDefinition]: Dictionary of named ops.
+            dict[str, dg.AssetSpec | dg.AssetsDefinition]]: Dictionary of named assets.
+        """
         default_pipeline = sum(self._pipelines.values(), start=Pipeline([]))
 
         # Assets that are not generated through dagster are external and

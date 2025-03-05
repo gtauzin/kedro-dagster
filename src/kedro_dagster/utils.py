@@ -1,11 +1,16 @@
 """Utility functions."""
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from jinja2 import Environment, FileSystemLoader
-from pydantic import BaseModel, ConfigDict, create_model
+from pydantic import ConfigDict, create_model
+
+if TYPE_CHECKING:
+    from kedro.pipeline import Pipeline
+    from kedro.pipeline.node import Node
+    from pydantic import BaseModel
 
 
 def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> str:
@@ -13,10 +18,10 @@ def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> s
     tags (identified by {{ my_tag }}) with the values provided in kwargs.
 
     Arguments:
-        src {Union[str, Path]} -- The path to the template which should be rendered
+        src (Union[str, Path]): The path to the template which should be rendered
 
     Returns:
-        str -- A string that contains all the files with replaced tags.
+        str: A string that contains all the files with replaced tags.
     """
     src = Path(src)
 
@@ -45,8 +50,8 @@ def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:
      (identified by {{ my_tag }}) with the values provided in kwargs.
 
     Arguments:
-        src {Union[str, Path]} -- Path to the template which should be rendered
-        dst {Union[str, Path]} -- Path where the rendered template should be saved
+        src (Union[str, Path]): Path to the template which should be rendered.
+        dst (Union[str, Path]): Path where the rendered template should be saved.
     """
     dst = Path(dst)
     parsed_template = render_jinja_template(src, **kwargs)
@@ -58,7 +63,7 @@ def get_asset_key_from_dataset_name(dataset_name: str, env: str) -> dg.AssetKey:
     """Get the asset key from a dataset name.
 
     Args:
-        dataset_name: The name of the dataset.
+        dataset_name (str): The name of the dataset.
 
     Returns:
         AssetKey: The asset key.
@@ -70,7 +75,7 @@ def dagster_format(name):
     """Format a name for Dagster.
 
     Args:
-        name: The name to format.
+        name (str): The name to format.
 
     Returns:
         str: The name formatted in a Dagster-friendly way.
@@ -82,7 +87,7 @@ def kedro_format(name):
     """Format a name for Kedro.
 
     Args:
-        name: The name to format.
+        name (str): The name to format.
 
     Returns:
         str: The name formatted in a Kedro-friendly way.
@@ -94,17 +99,17 @@ def kedro_format(name):
 # TODO: Improve
 def _create_pydantic_model_from_dict(
     name: str, params: dict[str, Any], __base__, __config__: ConfigDict | None = None
-) -> type[BaseModel]:
+) -> "BaseModel":
     """Create a Pydantic model from a dictionary.
 
     Args:
-        name: Name of the created class.
-        params: The dictionary of parameters.
+        name (str): Name of the created class.
+        params (dict[str, Any]): The dictionary of parameters.
         __base__: The base class for the model.
         __config__: The configuration for the model.
 
     Returns:
-        type[BaseModel]: The Pydantic model.
+        BaseModel: The Pydantic model.
     """
     fields = {}
     for param_name, param_value in params.items():
@@ -132,6 +137,12 @@ def _create_pydantic_model_from_dict(
 
 
 def is_mlflow_enabled() -> bool:
+    """Check if `mlflow` is enabled:
+
+    Returns:
+        bool: Whether `mlflow` is enabled.
+
+    """
     try:
         import kedro_mlflow  # NOQA
         import mlflow  # NOQA
@@ -145,7 +156,7 @@ def _is_asset_name(dataset_name: str) -> bool:
     """Check if a dataset name is an asset name.
 
     Args:
-        dataset_name: The name of the dataset.
+        dataset_name (str): The name of the dataset.
 
     Returns:
         bool: Whether the dataset is an asset.
@@ -153,12 +164,12 @@ def _is_asset_name(dataset_name: str) -> bool:
     return not dataset_name.startswith("params:") and dataset_name != "parameters"
 
 
-def _get_node_pipeline_name(pipelines, node):
+def _get_node_pipeline_name(pipelines: dict[str, "Pipeline"], node: "Node"):
     """Return the name of the pipeline that a node belongs to.
 
     Args:
-        pipelines: Dictionary of Kedro pipelines.
-        node: The Kedro ``Node`` for which the pipeline name is being retrieved.
+        pipelines (dict[str, Pipeline]): Dictionary of Kedro pipelines.
+        node Node: The Kedro ``Node`` for which the pipeline name is being retrieved.
 
     Returns:
         str: Name of the ``Pipeline`` that the ``Node`` belongs to.
@@ -173,7 +184,15 @@ def _get_node_pipeline_name(pipelines, node):
                     return pipeline_name
 
 
-def get_mlflow_resource_from_config(mlflow_config: BaseModel) -> dg.ResourceDefinition:
+def get_mlflow_resource_from_config(mlflow_config: "BaseModel") -> dg.ResourceDefinition:
+    """Get `mlflow` resource and configure it based on the `mlflow` config.
+
+    Args:
+        mlflow_config (BaseModel): `kedro-mlflow` configuration.
+
+    Returns:
+        ResourceDefinition: Configured `mlflow` resource.
+    """
     from dagster_mlflow import mlflow_tracking
 
     mlflow_resource = mlflow_tracking.configured({

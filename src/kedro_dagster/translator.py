@@ -29,10 +29,10 @@ class KedroDagsterTranslator:
     """Translate Kedro project into Dagster.
 
     Args:
-        project_path: The path to the Kedro project.
-        env: A string representing the Kedro environment to use.
+        project_path (str): The path to the Kedro project.
+        env (str): A string representing the Kedro environment to use.
             If None, the default environment is used.
-        conf_source: The path to the Kedro configuration source
+        conf_source (str): The path to the Kedro configuration source
             directory. If None, the default configuration source
             directory is used.
 
@@ -200,7 +200,7 @@ class KedroDagsterTranslator:
 
         LOGGER.info("Mapping loggers...")
         self.logger_creator = LoggerTranslator(
-            dagster_config=dagster_config, project_metadata=self._project_metadata, pipelines=self._pipelines
+            dagster_config=dagster_config, package_name=self._project_metadata.package_name, pipelines=self._pipelines
         )
         self._named_loggers = self.logger_creator.translate_loggers()
 
