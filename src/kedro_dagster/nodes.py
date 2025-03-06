@@ -285,7 +285,7 @@ class NodeTranslator:
 
         return dagster_asset
 
-    def translate_nodes(self) -> tuple[dict[str, dg.OpDefinition], dict[str, dg.AssetSpec | dg.AssetsDefinition]]:
+    def to_dagster(self) -> tuple[dict[str, dg.OpDefinition], dict[str, dg.AssetSpec | dg.AssetsDefinition]]:
         """Translate Kedro nodes into Dagster ops.
 
         Returns:

@@ -131,7 +131,7 @@ class CatalogTranslator:
 
         return ConfigurableDatasetIOManager(**dataset_params)
 
-    def translate_catalog(self) -> dict[str, dg.IOManagerDefinition]:
+    def to_dagster(self) -> dict[str, dg.IOManagerDefinition]:
         """Get the IO managers from Kedro datasets.
 
         Returns:

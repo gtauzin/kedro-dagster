@@ -229,7 +229,7 @@ class PipelineTranslator:
             env=self._env,
             session_id=self._session_id,
         )
-        kedro_run_resource = kedro_run_translator._create_kedro_run_resource(
+        kedro_run_resource = kedro_run_translator.to_dagster(
             pipeline_name=pipeline_name,
             filter_params=filter_params,
             load_versions=pipeline_config.get("load_versions"),
@@ -258,7 +258,7 @@ class PipelineTranslator:
 
         return job
 
-    def translate_pipelines(self) -> dict[str, dg.JobDefinition]:
+    def to_dagster(self) -> dict[str, dg.JobDefinition]:
         """Translate the Kedro pipelines into Dagster jobs.
 
         Returns:

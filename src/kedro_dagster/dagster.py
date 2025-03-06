@@ -135,7 +135,7 @@ class LoggerTranslator:
         self._package_name = package_name
         self._pipelines = pipelines
 
-    def translate_loggers(self) -> dict[str, dg.LoggerDefinition]:
+    def to_dagster(self) -> dict[str, dg.LoggerDefinition]:
         """Translate Kedro loggers to Dagster loggers."""
         named_loggers = {}
         for pipeline_name in self._pipelines:

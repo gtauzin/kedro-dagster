@@ -32,7 +32,7 @@ class KedroRunTranslator:
             kedro_version=kedro_version,
         )
 
-    def _create_kedro_run_resource(
+    def to_dagster(
         self,
         pipeline_name: str,
         filter_params: dict[str, Any],
