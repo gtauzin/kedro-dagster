@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from jinja2 import Environment, FileSystemLoader
+from kedro.framework.project import find_pipelines
 from pydantic import ConfigDict, create_model
 
 if TYPE_CHECKING:
@@ -161,16 +162,17 @@ def _is_asset_name(dataset_name: str) -> bool:
     return not dataset_name.startswith("params:") and dataset_name != "parameters"
 
 
-def _get_node_pipeline_name(pipelines: dict[str, "Pipeline"], node: "Node") -> str:
+def _get_node_pipeline_name(node: "Node") -> str:
     """Return the name of the pipeline that a node belongs to.
 
     Args:
-        pipelines (dict[str, Pipeline]): Dictionary of Kedro pipelines.
         node Node: The Kedro ``Node`` for which the pipeline name is being retrieved.
 
     Returns:
         str: Name of the ``Pipeline`` that the ``Node`` belongs to.
     """
+    pipelines: dict[str, Pipeline] = find_pipelines()
+
     for pipeline_name, pipeline in pipelines.items():
         if pipeline_name != "__default__":
             for pipeline_node in pipeline.nodes:
@@ -181,6 +183,29 @@ def _get_node_pipeline_name(pipelines: dict[str, "Pipeline"], node: "Node") -> s
                     return pipeline_name
 
     raise ValueError(f"Node `{node.name}` is not part of any pipelines.")
+
+
+def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
+    """Get the filter parameters for the pipeline.
+
+    Args:
+        pipeline_config: The configuration of the pipeline.
+
+    Returns:
+        dict[str, Any]: The filter parameters.
+
+    """
+    filter_params = dict(
+        tags=pipeline_config.get("tags"),
+        from_nodes=pipeline_config.get("from_nodes"),
+        to_nodes=pipeline_config.get("to_nodes"),
+        node_names=pipeline_config.get("node_names"),
+        from_inputs=pipeline_config.get("from_inputs"),
+        to_outputs=pipeline_config.get("to_outputs"),
+        node_namespace=pipeline_config.get("node_namespace"),
+    )
+
+    return filter_params
 
 
 def get_mlflow_resource_from_config(mlflow_config: "BaseModel") -> dg.ResourceDefinition:

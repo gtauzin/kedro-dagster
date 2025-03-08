@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 import dagster as dg
-from kedro.pipeline import Pipeline
+from kedro.framework.project import pipelines
 
 from kedro_dagster.config.execution import (
     CeleryDockerExecutorOptions,
@@ -49,7 +49,7 @@ class ExecutorCreator:
         """Register an executor option with a Dagster executor.
 
         Args:
-            executor_option ("BaseModel"): The executor option to register.
+            executor_option (BaseModel): The executor option to register.
             executor (ExecutorDefinition): The executor to register the option with.
         """
         self._OPTION_EXECUTOR_MAP[executor_option] = executor
@@ -130,15 +130,14 @@ class ScheduleCreator:
 class LoggerTranslator:
     """Translates Kedro loggers to Dagster loggers."""
 
-    def __init__(self, dagster_config: "BaseModel", package_name: str, pipelines: dict[str, Pipeline]):
+    def __init__(self, dagster_config: "BaseModel", package_name: str):
         self._dagster_config = dagster_config
         self._package_name = package_name
-        self._pipelines = pipelines
 
     def to_dagster(self) -> dict[str, dg.LoggerDefinition]:
         """Translate Kedro loggers to Dagster loggers."""
         named_loggers = {}
-        for pipeline_name in self._pipelines:
+        for pipeline_name in pipelines:
 
             def get_logger_definition(package_name: str, pipeline_name: str) -> dg.LoggerDefinition:
                 def pipeline_logger(context: dg.InitLoggerContext) -> logging.Logger:

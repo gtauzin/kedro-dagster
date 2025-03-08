@@ -36,16 +36,12 @@ class KedroRunTranslator:
         self,
         pipeline_name: str,
         filter_params: dict[str, Any],
-        load_versions: list[str] | None,
-        extra_params: dict[str, Any] | None,
     ) -> dg.ConfigurableResource:
         """Create a Dagster resource for Kedro pipeline hooks.
 
         Args:
             pipeline_name (str): Name of the Kedro pipeline.
             filter_params (dict[str, Any]): Parameters used to filter the pipeline.
-            load_versions (list[str] | None): Load versions for versioned datasets.
-            extra_params (dict[str, Any] | None): Extra parameters
 
         Returns:
             ConfigurableResource: A Dagster resource for Kedro pipeline hooks.
@@ -105,8 +101,8 @@ class KedroRunTranslator:
             | filter_params
             | dict(
                 pipeline_name=pipeline_name,
-                load_versions=load_versions,
-                extra_params=extra_params,
+                load_versions=None,
+                extra_params=None,
                 runner=None,
             )
         )

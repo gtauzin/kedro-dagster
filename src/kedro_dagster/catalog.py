@@ -5,16 +5,15 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
-from kedro.framework.project import pipelines
 from kedro.io import DatasetNotFoundError, MemoryDataset
+from kedro.pipeline import Pipeline
 from pydantic import ConfigDict, create_model
 
 from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_asset_name, dagster_format
 
 if TYPE_CHECKING:
-    from kedro.io import CatalogProtocol
+    from kedro.io import AbstractDataset, CatalogProtocol
     from pluggy import PluginManager
-
 
 LOGGER = getLogger(__name__)
 
@@ -23,22 +22,27 @@ class CatalogTranslator:
     """Translate Kedro datasets into Dagster IO managers.
 
     Args:
-        catalog: The Kedro catalog.
-        hook_manager: The hook manager to call Kedro hooks.
+        catalog (CatalogProtocol): The Kedro catalog.
+        pipelines (list[Pipeline]): List of Kedro pipelines to translate.
+        hook_manager (PluginManager): The hook manager to call Kedro hooks.
+        env (str): The Kedro environment.
 
     """
 
-    def __init__(self, catalog: "CatalogProtocol", hook_manager: "PluginManager", env: str):
+    def __init__(
+        self, catalog: "CatalogProtocol", pipelines: list["Pipeline"], hook_manager: "PluginManager", env: str
+    ):
         self._catalog = catalog
+        self._pipelines = pipelines
         self._hook_manager = hook_manager
         self._env = env
 
-    def _translate_dataset(self, dataset: Any, dataset_name: str) -> dg.IOManagerDefinition:
+    def _translate_dataset(self, dataset: "AbstractDataset", dataset_name: str) -> dg.IOManagerDefinition:
         """Create a Dagster IO manager from a Kedro dataset.
 
         Args:
-            dataset: The Kedro dataset to wrap into an IO manager.
-            dataset_name: The name of the dataset.
+            dataset (AbstractDataset): The Kedro dataset to wrap into an IO manager.
+            dataset_name (str): The name of the dataset.
 
         Returns:
             IOManagerDefinition: A Dagster IO manager.
@@ -63,7 +67,7 @@ class CatalogTranslator:
         )
 
         hook_manager = self._hook_manager
-        named_nodes = {dagster_format(node.name): node for node in sum(pipelines.values()).nodes}
+        named_nodes = {dagster_format(node.name): node for node in sum(self._pipelines, start=Pipeline([])).nodes}
 
         # TODO: Check if hooks are indeed called for ops and not assets
         # TODO: Remove _graph and add _asset
@@ -138,7 +142,7 @@ class CatalogTranslator:
             Dict[str, IOManagerDefinition]: A dictionary of DagsterIO managers.
         """
         named_io_managers = {}
-        for dataset_name in sum(pipelines.values()).datasets():
+        for dataset_name in sum(self._pipelines, start=Pipeline([])).datasets():
             asset_name = dagster_format(dataset_name)
             if _is_asset_name(asset_name):
                 try:

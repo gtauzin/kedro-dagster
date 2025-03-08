@@ -7,7 +7,13 @@ from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
 
 from kedro_dagster.kedro import KedroRunTranslator
-from kedro_dagster.utils import _is_asset_name, dagster_format, get_asset_key_from_dataset_name, is_mlflow_enabled
+from kedro_dagster.utils import (
+    _is_asset_name,
+    dagster_format,
+    get_asset_key_from_dataset_name,
+    get_filter_params_dict,
+    is_mlflow_enabled,
+)
 
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
@@ -52,29 +58,6 @@ class PipelineTranslator:
         self._named_ops = named_ops
         self._named_resources = named_resources
         self._named_executors = named_executors
-
-    @staticmethod
-    def _get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
-        """Get the filter parameters for the pipeline.
-
-        Args:
-            pipeline_config: The configuration of the pipeline.
-
-        Returns:
-            dict[str, Any]: The filter parameters.
-
-        """
-        filter_params = dict(
-            tags=pipeline_config.get("tags"),
-            from_nodes=pipeline_config.get("from_nodes"),
-            to_nodes=pipeline_config.get("to_nodes"),
-            node_names=pipeline_config.get("node_names"),
-            from_inputs=pipeline_config.get("from_inputs"),
-            to_outputs=pipeline_config.get("to_outputs"),
-            node_namespace=pipeline_config.get("node_namespace"),
-        )
-
-        return filter_params
 
     def _create_pipeline_hook_ops(self, job_name: str, pipeline: Pipeline) -> tuple[dg.OpDefinition, dg.OpDefinition]:
         """Create the pipeline hook ops.
@@ -141,30 +124,28 @@ class PipelineTranslator:
 
     def translate_pipeline(
         self,
-        pipeline_config: dict[str, Any],
+        pipeline: Pipeline,
+        pipeline_name: str,
+        filter_params: dict[str, Any],
         job_name: str,
         executor_def: dg.ExecutorDefinition | None = None,
-        partitions_def: dg.PartitionsDefinition | None = None,
-        op_retry_policy: dg.RetryPolicy | None = None,
         logger_defs: dict[str, dg.LoggerDefinition] | None = None,
     ) -> dg.JobDefinition:
         """Translate a Kedro pipeline into a Dagster job.
 
         Args:
-            pipeline_config (dict[str, Any]): The configuration of the pipeline.
+            pipeline (Pipeline): The Kedro pipeline.
+            pipeline_name (dict[str, Any]): The name of the Kedro pipeline.
+            filter_params (dict[str, Any]):
+            filter_params (dict[str, Any]):
             job_name (str): The name of the job.
             executor_def (ExecutorDefinition): The executor definition.
-            partitions_def (PartitionsDefinition | None): The partitions definition.
-            op_retry_policy (RetryPolicy | None): The retry policy for ops.
             logger_defs (dict[str, LoggerDefinition] | None): The logger definitions.
 
         Returns:
             JobDefinition: A Dagster job definition.
 
         """
-        pipeline_name = pipeline_config.get("pipeline_name", "__default__")
-        filter_params = self._get_filter_params_dict(pipeline_config)
-        pipeline = pipelines.get(pipeline_name).filter(**filter_params)
 
         (
             before_pipeline_run_hook,
@@ -232,8 +213,6 @@ class PipelineTranslator:
         kedro_run_resource = kedro_run_translator.to_dagster(
             pipeline_name=pipeline_name,
             filter_params=filter_params,
-            load_versions=pipeline_config.get("load_versions"),
-            extra_params=pipeline_config.get("extra_params"),
         )
         resource_defs = {"kedro_run": kedro_run_resource}
 
@@ -251,8 +230,6 @@ class PipelineTranslator:
             name=f"{self._env}__{job_name}",
             resource_defs=resource_defs,
             executor_def=executor_def,
-            partitions_def=partitions_def,
-            op_retry_policy=op_retry_policy,
             logger_defs=logger_defs,
         )
 
@@ -269,6 +246,10 @@ class PipelineTranslator:
         for job_name, job_config in self._dagster_config.jobs.items():  # type: ignore[attr-defined]
             pipeline_config = job_config.pipeline.model_dump()
 
+            pipeline_name = pipeline_config.get("pipeline_name", "__default__")
+            filter_params = get_filter_params_dict(pipeline_config)
+            pipeline = pipelines.get(pipeline_name).filter(**filter_params)
+
             executor_config = job_config.executor
             if executor_config in self._named_executors:
                 executor_def = self._named_executors[executor_config]
@@ -276,7 +257,9 @@ class PipelineTranslator:
                 raise ValueError(f"Executor `{executor_config}` not found.")
 
             job = self.translate_pipeline(
-                pipeline_config=pipeline_config,
+                pipeline=pipeline,
+                pipeline_name=pipeline_name,
+                filter_params=filter_params,
                 job_name=job_name,
                 executor_def=executor_def,
             )

@@ -31,6 +31,7 @@ class NodeTranslator:
     """Translate Kedro nodes into Dagster ops and assets.
 
     Args:
+        pipelines (list[Pipeline]): List
         catalog (CatalogProtocol): Kedro catalog.
         hook_manager (PluginManager): Kedro hook manager.
         session_id (str): Kedro session ID.
@@ -40,7 +41,7 @@ class NodeTranslator:
 
     def __init__(
         self,
-        pipelines: dict[str, Pipeline],
+        pipelines: list[Pipeline],
         catalog: "CatalogProtocol",
         hook_manager: "PluginManager",
         session_id: str,
@@ -113,7 +114,7 @@ class NodeTranslator:
     def asset_names(self) -> list[str]:
         if not hasattr(self, "_asset_names"):
             asset_names = []
-            for dataset_name in sum(self._pipelines.values()).datasets():
+            for dataset_name in sum(self._pipelines).datasets():
                 asset_name = dagster_format(dataset_name)
                 asset_names.append(asset_name)
 
@@ -122,14 +123,13 @@ class NodeTranslator:
 
         return self._asset_names
 
-    def create_op(self, node: "Node", retry_policy: dg.RetryPolicy | None = None) -> dg.OpDefinition:
+    def create_op(self, node: "Node") -> dg.OpDefinition:
         """Create a Dagster op from a Kedro node.
 
         The created op is meant to be used in a Dagster graph.
 
         Args:
             node (Node): Kedro node.
-            retry_policy (RetryPolicy): Dagster retry policy for the op.
 
         Returns:
             OpDefinition: A Dagster op.
@@ -166,7 +166,6 @@ class NodeTranslator:
             out=out | {f"{op_name}_after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
             required_resource_keys=required_resource_keys,
             tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
-            retry_policy=retry_policy,
         )
         def node_graph_op(context: dg.OpExecutionContext, config: NodeParametersConfig, **inputs):  # type: ignore[no-untyped-def, valid-type]
             # Logic to execute the Kedro node with hooks
@@ -217,21 +216,11 @@ class NodeTranslator:
 
         return node_graph_op
 
-    # TODO: Map partition_mappings per asset in AssetOut
-    def create_asset(
-        self,
-        node: "Node",
-        partition_def: dg.PartitionsDefinition | None = None,
-        partition_mappings: dict[str, dg.PartitionMapping] | None = None,
-        backfill_policy: dg.BackfillPolicy | None = None,
-    ) -> dg.AssetsDefinition:
+    def create_asset(self, node: "Node") -> dg.AssetsDefinition:
         """Create a Dagster asset from a Kedro node.
 
         Args:
             node (Node): The Kedro node to wrap into an asset.
-            partition_def (PartitionsDefinition | None): Partitions definition for the asset.
-            partition_mappings (dict[str, PartitionMapping] | None): Partition mappings for the asset.
-            backfill_policy (BackfillPolicy | None): Backfill policy for the asset
 
         Returns:
             AssetsDefinition: A Dagster asset.
@@ -261,13 +250,11 @@ class NodeTranslator:
         @dg.multi_asset(
             name=name,
             description=f"Kedro node {node.name} wrapped as a Dagster multi asset.",
-            group_name=_get_node_pipeline_name(self._pipelines, node),
+            group_name=_get_node_pipeline_name(node),
             ins=ins,
             outs=outs,
             required_resource_keys=required_resource_keys,
             op_tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
-            partitions_def=partition_def,
-            backfill_policy=backfill_policy,
         )
         def dagster_asset(context: dg.AssetExecutionContext, config: NodeParametersConfig, **inputs):  # type: ignore[no-untyped-def, valid-type]
             # Logic to execute the Kedro node
@@ -292,7 +279,7 @@ class NodeTranslator:
             dict[str, dg.OpDefinition]: Dictionary of named ops.
             dict[str, dg.AssetSpec | dg.AssetsDefinition]]: Dictionary of named assets.
         """
-        default_pipeline = sum(self._pipelines.values(), start=Pipeline([]))
+        default_pipeline: Pipeline = sum(self._pipelines, start=Pipeline([]))
 
         # Assets that are not generated through dagster are external and
         # registered with AssetSpec
@@ -300,7 +287,7 @@ class NodeTranslator:
         for external_dataset_name in default_pipeline.inputs():
             external_asset_name = dagster_format(external_dataset_name)
             if _is_asset_name(external_asset_name):
-                dataset = self._catalog._get_dataset(external_asset_name)
+                dataset = self._catalog._get_dataset(external_dataset_name)
                 metadata = getattr(dataset, "metadata", None) or {}
                 description = metadata.pop("description", "")
 
