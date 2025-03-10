@@ -7,19 +7,27 @@ edit_uri: edit/main/docs/
 
 nav:
   - Home: index.md
+  - Introduction:
+      - pages/introduction/index.md
   - Getting Started:
+      - pages/getting-started/index.md
       - Installation: pages/getting-started/installation.md
       - Quickstart: pages/getting-started/quickstart.md
   - Tutorials:
+      - pages/tutorials/index.md
       - Setting up: pages/tutorials/setting-up.md
   - Technical Documentation:
+      - pages/technical/index.md
+      - Project: pages/technical/project.md
       - Catalog: pages/technical/catalog.md
       - Nodes: pages/technical/nodes.md
       - Pipelines: pages/technical/pipelines.md
       - Hooks: pages/technical/hooks.md
   - API Reference:
+      - pages/api/index.md
       - kedro_dagster: pages/api/kedro-dagster.md
   - Contributing:
+      - pages/contributing/index.md
       - Code of Conduct: pages/contributing/code-of-conduct.md
       - Contributing Guide: pages/contributing/guide.md
 
@@ -69,6 +77,14 @@ theme:
         icon: material/toggle-switch-off
         name: Switch to system preference
 
+markdown_extensions:
+  - toc:
+      permalink: true
+
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets
+
 plugins:
   - git-revision-date-localized:
       enable_creation_date: true
@@ -84,7 +100,7 @@ plugins:
             merge_init_into_class: true
             docstring_section_style: list
             separate_signature: true
-            #   filters: ["!^_"]
+            filters: ["!^_"]
             show_root_heading: true
             docstring_options:
               ignore_init_summary: true

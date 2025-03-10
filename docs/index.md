@@ -1,6 +1,7 @@
-# Welcome to Kedro-Dagster's documentation!
+# Welcome to Kedro-Dagster's documentation
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables seamless integration between [Kedro](https://kedro.readthedocs.io/), a framework for creating reproducible and maintainable data science code, and [Dagster](https://dagster.io/), a data orchestrator for data (and machine learning) pipelines. This plugin makes use of Dagster's orchestration capabilities to deploy, automate, and monitor Kedro pipelines effectively.
+
 
 ## Getting Started
 
