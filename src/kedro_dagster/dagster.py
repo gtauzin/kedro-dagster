@@ -126,7 +126,6 @@ class ScheduleCreator:
         return named_schedules
 
 
-# TODO: Improve logger customization
 class LoggerTranslator:
     """Translates Kedro loggers to Dagster loggers."""
 
@@ -141,7 +140,12 @@ class LoggerTranslator:
 
             def get_logger_definition(package_name: str, pipeline_name: str) -> dg.LoggerDefinition:
                 def pipeline_logger(context: dg.InitLoggerContext) -> logging.Logger:
-                    return logging.getLogger(f"{package_name}.pipelines.{pipeline_name}.nodes")
+                    logger = logging.getLogger(f"{package_name}.pipelines.{pipeline_name}.nodes")
+                    logger.setLevel(context.logger_config["log_level"])
+                    handler = logging.StreamHandler()
+                    logger.addHandler(handler)
+
+                    return logger
 
                 return dg.LoggerDefinition(
                     pipeline_logger,

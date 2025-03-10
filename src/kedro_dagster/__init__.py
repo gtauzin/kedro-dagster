@@ -9,7 +9,7 @@ from .dagster import ExecutorCreator, LoggerTranslator, ScheduleCreator
 from .kedro import KedroRunTranslator
 from .nodes import NodeTranslator
 from .pipelines import PipelineTranslator
-from .translator import KedroProjectTranslator
+from .translator import DagsterCodeLocation, KedroProjectTranslator
 
 logging.getLogger(__name__).setLevel(logging.INFO)
 
@@ -21,5 +21,6 @@ __all__ = [
     "KedroRunTranslator",
     "NodeTranslator",
     "PipelineTranslator",
+    "DagsterCodeLocation",
     "KedroProjectTranslator",
 ]
