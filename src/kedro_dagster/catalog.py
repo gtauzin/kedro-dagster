@@ -69,8 +69,6 @@ class CatalogTranslator:
         hook_manager = self._hook_manager
         named_nodes = {dagster_format(node.name): node for node in sum(self._pipelines, start=Pipeline([])).nodes}
 
-        # TODO: Check if hooks are indeed called for ops and not assets
-        # TODO: Remove _graph and add _asset
         class ConfigurableDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):  # type: ignore[valid-type]
             def handle_output(self, context: dg.OutputContext, obj) -> None:  # type: ignore[no-untyped-def]
                 # When defining the op, we have named them either with
