@@ -1,14 +1,10 @@
 """Dagster definitions."""
 
-import os
-
 import dagster as dg
 
 from kedro_dagster import KedroProjectTranslator
 
-KEDRO_ENV = os.getenv("KEDRO_ENV", "dev")
-
-translator = KedroProjectTranslator(env=KEDRO_ENV)
+translator = KedroProjectTranslator(env="local")
 dagster_code_location = translator.to_dagster()
 
 resources = dagster_code_location.named_resources

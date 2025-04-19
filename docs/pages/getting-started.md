@@ -12,14 +12,20 @@ pip install kedro-dagster
 
 ## 2. Create a Kedro Project (Optional)
 
+*Skip this step if you already have a Kedro project you want to deploy with Dagster.*
+
 If you don't already have a Kedro project, you can create one using a starter template:
 
 ```bash
 kedro new --starter=spaceflights-pandas
 ```
 
-Follow the prompts to set up your project.
-*Skip this step if you already have a Kedro project you want to deploy with Dagster.*
+Follow the prompts to set up your project. Once, it is done, install the dependencies of your project:
+
+```bash
+cd spaceflights-pandas
+pip install -r requirements.txt
+```
 
 ## 3. Initialize Dagster Integration
 
