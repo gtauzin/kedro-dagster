@@ -156,7 +156,7 @@ class NodeTranslator:
             required_resource_keys.append("mlflow")
 
         @dg.op(
-            name=f"{op_name}_graph",
+            name=f"{op_name}",
             description=f"Kedro node {node.name} wrapped as a Dagster op.",
             ins=ins | {"before_pipeline_run_hook_output": dg.In(dagster_type=dg.Nothing)},
             out=out | {f"{op_name}_after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
@@ -237,14 +237,13 @@ class NodeTranslator:
             outs[asset_name] = dg.AssetOut(key=asset_key, **out_asset_params)
 
         NodeParametersConfig = self._get_node_parameters_config(node)
-        name = dagster_format(node.name)
 
         required_resource_keys = None
         if is_mlflow_enabled():
             required_resource_keys = {"mlflow"}
 
         @dg.multi_asset(
-            name=name,
+            name=f"{dagster_format(node.name)}_asset",
             description=f"Kedro node {node.name} wrapped as a Dagster multi asset.",
             group_name=_get_node_pipeline_name(node),
             ins=ins,

@@ -4,9 +4,10 @@ import os
 from dataclasses import dataclass
 from logging import getLogger
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import dagster as dg
-from kedro.framework.project import find_pipelines, settings
+from kedro.framework.project import find_pipelines, pipelines, settings
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 from kedro.utils import _find_kedro_project
@@ -21,7 +22,11 @@ from kedro_dagster.dagster import (
 from kedro_dagster.kedro import KedroRunTranslator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
-from kedro_dagster.utils import get_mlflow_resource_from_config, is_mlflow_enabled
+from kedro_dagster.utils import get_filter_params_dict, get_mlflow_resource_from_config, is_mlflow_enabled
+
+if TYPE_CHECKING:
+    from kedro.pipeline import Pipeline
+    from pydantic import BaseModel
 
 LOGGER = getLogger(__name__)
 
@@ -109,10 +114,37 @@ class KedroProjectTranslator:
 
         LOGGER.info("Kedro initialization complete.")
 
-    # TODO: Allow translating a subset of the project?
-    # TODO: Allow to pass params that overwrite the dagster config
-    def to_dagster(self) -> DagsterCodeLocation:
-        """Translate the Kedro project into a Dagster code location.
+    def get_defined_pipelines(self, dagster_config: "BaseModel", translate_all: bool) -> list["Pipeline"]:
+        """Get pipelines to translate.
+
+        Args:
+            dagster_config (dict[str, Any]): The configuration of the Dagster job.
+            translate_all (bool): Whether to translate the whole Kedro project.
+            If ``False``, translates only the pipelines defined in `dagster.yml`.
+
+        Returns:
+            list[Pipeline]: List of Kedro pipelines to translate.
+        """
+        if translate_all:
+            return list(find_pipelines().values())
+
+        defined_pipelines = []
+        for job_config in dagster_config.jobs.values():
+            pipeline_config = job_config.pipeline.model_dump()
+
+            pipeline_name = pipeline_config.get("pipeline_name", "__default__")
+            filter_params = get_filter_params_dict(pipeline_config)
+            pipeline = pipelines.get(pipeline_name).filter(**filter_params)
+            defined_pipelines.append(pipeline)
+
+        return defined_pipelines
+
+    def to_dagster(self, translate_all: bool = False) -> DagsterCodeLocation:
+        """Translate Kedro project into Dagster.
+
+        Args:
+            translate_all (bool): Whether to translate the whole Kedro project.
+            If ``False``, translates only the pipelines defined in `dagster.yml`.
 
         Returns:
             DagsterCodeLocation: The translated Dagster code location.
@@ -132,8 +164,6 @@ class KedroProjectTranslator:
         kedro_run_resource = kedro_run_translator.to_dagster(
             pipeline_name="__default__",
             filter_params={},
-            load_versions=None,
-            extra_params=None,
         )
         named_resources: dict[str, dg.ResourceDefinition] = {"kedro_run": kedro_run_resource}
 
@@ -143,13 +173,15 @@ class KedroProjectTranslator:
 
         LOGGER.info("Mapping Dagster loggers...")
         self.logger_creator = LoggerTranslator(
-            dagster_config=dagster_config, package_name=self._project_metadata.package_name, pipelines=self._pipelines
+            dagster_config=dagster_config, package_name=self._project_metadata.package_name
         )
         named_loggers = self.logger_creator.to_dagster()
 
         LOGGER.info("Translating Kedro catalog to Dagster IO managers...")
+        defined_pipelines = self.get_defined_pipelines(dagster_config=dagster_config, translate_all=translate_all)
         self.catalog_translator = CatalogTranslator(
             catalog=self._context.catalog,
+            pipelines=defined_pipelines,
             hook_manager=self._context._hook_manager,
             env=self._env,
         )
@@ -158,7 +190,7 @@ class KedroProjectTranslator:
 
         LOGGER.info("Translating Kedro nodes to Dagster ops and assets...")
         self.node_translator = NodeTranslator(
-            pipelines=self._pipelines,
+            pipelines=defined_pipelines,
             catalog=self._context.catalog,
             hook_manager=self._context._hook_manager,
             session_id=self._session_id,

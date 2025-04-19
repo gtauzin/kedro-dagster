@@ -133,27 +133,24 @@ class LoggerTranslator:
         self._dagster_config = dagster_config
         self._package_name = package_name
 
+    @staticmethod
+    def _get_logger_definition(package_name: str, pipeline_name: str) -> dg.LoggerDefinition:
+        def pipeline_logger(context: dg.InitLoggerContext) -> logging.Logger:
+            logger = logging.getLogger(f"{package_name}.pipelines.{pipeline_name}.nodes")
+            return logger
+
+        return dg.LoggerDefinition(
+            pipeline_logger,
+            description=f"Logger for pipeline`{pipeline_name}`.",
+        )
+
     def to_dagster(self) -> dict[str, dg.LoggerDefinition]:
         """Translate Kedro loggers to Dagster loggers."""
         named_loggers = {}
         for pipeline_name in pipelines:
-
-            def get_logger_definition(package_name: str, pipeline_name: str) -> dg.LoggerDefinition:
-                def pipeline_logger(context: dg.InitLoggerContext) -> logging.Logger:
-                    logger = logging.getLogger(f"{package_name}.pipelines.{pipeline_name}.nodes")
-                    logger.setLevel(context.logger_config["log_level"])
-                    handler = logging.StreamHandler()
-                    logger.addHandler(handler)
-
-                    return logger
-
-                return dg.LoggerDefinition(
-                    pipeline_logger,
-                    description=f"Logger for pipeline`{pipeline_name}` of package `{package_name}`.",
+            if pipeline_name != "__default__":
+                named_loggers[f"{self._package_name}.pipelines.{pipeline_name}.nodes"] = self._get_logger_definition(
+                    self._package_name, pipeline_name
                 )
-
-            named_loggers[f"{self._package_name}.pipelines.{pipeline_name}.nodes"] = get_logger_definition(
-                self._package_name, pipeline_name
-            )
 
         return named_loggers
