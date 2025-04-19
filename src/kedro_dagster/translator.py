@@ -1,4 +1,4 @@
-"""Translation from Kedro to Dagtser."""
+"""Translation from Kedro to Dagster."""
 
 import os
 from dataclasses import dataclass
@@ -30,7 +30,7 @@ LOGGER = getLogger(__name__)
 class DagsterCodeLocation:
     """Represents a Kedro-based Dagster code location.
 
-    Args:
+    Attributes:
         named_ops: A dictionary of named Dagster operations.
         named_assets: A dictionary of named Dagster assets.
         named_resources: A dictionary of named Dagster resources.
@@ -52,23 +52,12 @@ class DagsterCodeLocation:
 
 
 class KedroProjectTranslator:
-    """Translate Kedro project into Dagster.
+    """Translate Kedro project into Dagster code location.
 
     Args:
-        project_path (str): The path to the Kedro project.
-        env (str): A string representing the Kedro environment to use.
-            If None, the default environment is used.
-        conf_source (str): The path to the Kedro configuration source
-            directory. If None, the default configuration source
-            directory is used.
-
-    Attributes:
-        catalog_translator: The CatalogTranslator instance.
-        node_translator: The NodeTranslator instance.
-        pipeline_translator: The PipelineTranslator instance.
-        executor_creator: The ExecutorCreator instance.
-        schedule_creator: The ScheduleCreator instance.
-        logger_creator: The LoggerTranslator instance.
+        project_path (Path | None): The path to the Kedro project.
+        env (str | None): Kedro environment to use.
+        conf_source (str | None): Path to the Kedro configuration source directory.
     """
 
     def __init__(
@@ -76,35 +65,34 @@ class KedroProjectTranslator:
         project_path: Path | None = None,
         env: str | None = None,
         conf_source: str | None = None,
-    ):
-        self._project_path = project_path
+    ) -> None:
+        self._project_path: Path
         if project_path is None:
             self._project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
+        else:
+            self._project_path = project_path
 
         if env is None:
             default_run_env = settings._CONFIG_LOADER_ARGS["default_run_env"]
             env = os.getenv("KEDRO_ENV", default_run_env) or ""
 
-        self._env = env
+        self._env: str = env
 
-        self.initialialize_kedro(conf_source=conf_source)
+        self.initialize_kedro(conf_source=conf_source)
 
-    def initialialize_kedro(self, conf_source: str | None = None) -> None:
-        """Initialize Kedro project.
+    def initialize_kedro(self, conf_source: str | None = None) -> None:
+        """Initialize Kedro context and pipelines for translation.
 
         Args:
-            conf_source: The path to the Kedro configuration source
-            directory. If None, the default configuration source
-            directory is used.
-
+            conf_source (str | None): Optional configuration source directory.
         """
-        LOGGER.info("Initializing Kedro...")
+        LOGGER.info("Initializing Kedro project...")
 
-        LOGGER.info("Bootstrapping project...")
+        LOGGER.info("Bootstrapping Kedro project at path: %s", self._project_path)
         self._project_metadata = bootstrap_project(self._project_path)
-        LOGGER.info(f"Project name: {self._project_metadata.project_name}")
+        LOGGER.info("Project name: %s", self._project_metadata.project_name)
 
-        LOGGER.info("Creating session...")
+        LOGGER.info("Creating Kedro session...")
         self._session = KedroSession.create(
             project_path=self._project_path,
             env=self._env,
@@ -112,30 +100,29 @@ class KedroProjectTranslator:
         )
 
         self._session_id = self._session.session_id
-        LOGGER.info(f"Session created with ID {self._session_id}")
+        LOGGER.info("Session created with ID: %s", self._session_id)
 
-        LOGGER.info("Loading context...")
+        LOGGER.info("Loading Kedro context...")
         self._context = self._session.load_context()
 
         self._pipelines = find_pipelines()
 
-        LOGGER.info("Kedro initialized.")
+        LOGGER.info("Kedro initialization complete.")
 
     # TODO: Allow translating a subset of the project?
     # TODO: Allow to pass params that overwrite the dagster config
     def to_dagster(self) -> DagsterCodeLocation:
-        """Translate Kedro project into Dagster.
+        """Translate the Kedro project into a Dagster code location.
 
         Returns:
-            DagsterCodeLocation: A Kedro-based Dagster code location object.
-
+            DagsterCodeLocation: The translated Dagster code location.
         """
         LOGGER.info("Translating Kedro project into Dagster...")
 
-        LOGGER.info("Loading configuration...")
+        LOGGER.info("Loading Dagster configuration...")
         dagster_config = get_dagster_config(self._context)
 
-        LOGGER.info("Creating run resources...")
+        LOGGER.info("Creating Dagster run resources...")
         kedro_run_translator = KedroRunTranslator(
             context=self._context,
             project_path=str(self._project_path),
@@ -148,18 +135,19 @@ class KedroProjectTranslator:
             load_versions=None,
             extra_params=None,
         )
-        named_resources = {"kedro_run": kedro_run_resource}
+        named_resources: dict[str, dg.ResourceDefinition] = {"kedro_run": kedro_run_resource}
 
         if is_mlflow_enabled():
+            # Add MLflow resource if enabled in the Kedro context
             named_resources["mlflow"] = get_mlflow_resource_from_config(self._context.mlflow)
 
-        LOGGER.info("Mapping loggers...")
+        LOGGER.info("Mapping Dagster loggers...")
         self.logger_creator = LoggerTranslator(
             dagster_config=dagster_config, package_name=self._project_metadata.package_name, pipelines=self._pipelines
         )
         named_loggers = self.logger_creator.to_dagster()
 
-        LOGGER.info("Translating catalog...")
+        LOGGER.info("Translating Kedro catalog to Dagster IO managers...")
         self.catalog_translator = CatalogTranslator(
             catalog=self._context.catalog,
             hook_manager=self._context._hook_manager,
@@ -168,7 +156,7 @@ class KedroProjectTranslator:
         named_io_managers = self.catalog_translator.to_dagster()
         named_resources |= named_io_managers
 
-        LOGGER.info("Translating nodes...")
+        LOGGER.info("Translating Kedro nodes to Dagster ops and assets...")
         self.node_translator = NodeTranslator(
             pipelines=self._pipelines,
             catalog=self._context.catalog,
@@ -179,11 +167,11 @@ class KedroProjectTranslator:
         )
         named_ops, named_assets = self.node_translator.to_dagster()
 
-        LOGGER.info("Creating executors...")
+        LOGGER.info("Creating Dagster executors...")
         self.executor_creator = ExecutorCreator(dagster_config=dagster_config)
         named_executors = self.executor_creator.create_executors()
 
-        LOGGER.info("Translating pipelines...")
+        LOGGER.info("Translating Kedro pipelines to Dagster jobs...")
         self.pipeline_translator = PipelineTranslator(
             dagster_config=dagster_config,
             context=self._context,
@@ -197,14 +185,14 @@ class KedroProjectTranslator:
         )
         named_jobs = self.pipeline_translator.to_dagster()
 
-        LOGGER.info("Creating schedules...")
+        LOGGER.info("Creating Dagster schedules...")
         self.schedule_creator = ScheduleCreator(dagster_config=dagster_config, named_jobs=named_jobs)
         named_schedules = self.schedule_creator.create_schedules()
 
-        LOGGER.info("Creating run sensor...")
+        LOGGER.info("Creating Dagster run sensors...")
         named_sensors = kedro_run_translator._translate_on_pipeline_error_hook(named_jobs=named_jobs)
 
-        LOGGER.info("Kedro project translated into Dagster.")
+        LOGGER.info("Kedro project successfully translated into Dagster.")
 
         return DagsterCodeLocation(
             named_resources=named_resources,

@@ -15,14 +15,15 @@ if TYPE_CHECKING:
 
 
 def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> str:  # type: ignore[no-untyped-def]
-    """This functions enable to copy a file and render the
-    tags (identified by {{ my_tag }}) with the values provided in kwargs.
+    """Render a Jinja template from a file or string.
 
-    Arguments:
-        src (Union[str, Path]): The path to the template which should be rendered
+    Args:
+        src (str | Path): Path to the template file or template string.
+        is_cookiecutter (bool): Whether to use cookiecutter-style rendering.
+        **kwargs: Variables to pass to the template.
 
     Returns:
-        str: A string that contains all the files with replaced tags.
+        str: Rendered template as a string.
     """
     src = Path(src)
 
@@ -47,12 +48,12 @@ def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> s
 
 
 def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:  # type: ignore[no-untyped-def]
-    """Write a template file and replace tis jinja's tags
-     (identified by {{ my_tag }}) with the values provided in kwargs.
+    """Render and write a Jinja template to a destination file.
 
-    Arguments:
-        src (Union[str, Path]): Path to the template which should be rendered.
-        dst (Union[str, Path]): Path where the rendered template should be saved.
+    Args:
+        src (str | Path): Path to the template file.
+        dst (str | Path): Path to the output file.
+        **kwargs: Variables to pass to the template.
     """
     dst = Path(dst)
     parsed_template = render_jinja_template(src, **kwargs)
@@ -61,55 +62,55 @@ def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:  #
 
 
 def get_asset_key_from_dataset_name(dataset_name: str, env: str) -> dg.AssetKey:
-    """Get the asset key from a dataset name.
+    """Get a Dagster AssetKey from a Kedro dataset name and environment.
 
     Args:
-        dataset_name (str): The name of the dataset.
+        dataset_name (str): The Kedro dataset name.
+        env (str): The Kedro environment.
 
     Returns:
-        AssetKey: The asset key.
+        AssetKey: The corresponding Dagster AssetKey.
     """
     return dg.AssetKey([env] + dataset_name.split("."))
 
 
 def dagster_format(name: str) -> str:
-    """Format a name for Dagster.
+    """Format a name to Dagster's asset naming convention.
 
     Args:
         name (str): The name to format.
 
     Returns:
-        str: The name formatted in a Dagster-friendly way.
+        str: The formatted name.
     """
     return name.replace(".", "__")
 
 
 def kedro_format(name: str) -> str:
-    """Format a name for Kedro.
+    """Convert a Dagster-formatted name back to Kedro's naming convention.
 
     Args:
-        name (str): The name to format.
+        name (str): The Dagster-formatted name.
 
     Returns:
-        str: The name formatted in a Kedro-friendly way.
+        str: The original Kedro name.
     """
-
     return name.replace("__", ".")
 
 
 def _create_pydantic_model_from_dict(  # type: ignore[no-untyped-def]
     name: str, params: dict[str, Any], __base__, __config__: ConfigDict | None = None
 ) -> "BaseModel":
-    """Create a Pydantic model from a dictionary.
+    """Dynamically create a Pydantic model from a dictionary of parameters.
 
     Args:
-        name (str): Name of the created class.
-        params (dict[str, Any]): The dictionary of parameters.
-        __base__: The base class for the model.
-        __config__: The configuration for the model.
+        name (str): Name of the model.
+        params (dict): Parameters for the model.
+        __base__: Base class for the model.
+        __config__ (ConfigDict | None): Optional Pydantic config.
 
     Returns:
-        BaseModel: The Pydantic model.
+        BaseModel: The created Pydantic model.
     """
     fields = {}
     for param_name, param_value in params.items():
@@ -135,11 +136,10 @@ def _create_pydantic_model_from_dict(  # type: ignore[no-untyped-def]
 
 
 def is_mlflow_enabled() -> bool:
-    """Check if `mlflow` is enabled:
+    """Check if MLflow is enabled in the Kedro context.
 
     Returns:
-        bool: Whether `mlflow` is enabled.
-
+        bool: True if MLflow is enabled, False otherwise.
     """
     try:
         import kedro_mlflow  # NOQA
@@ -151,13 +151,13 @@ def is_mlflow_enabled() -> bool:
 
 
 def _is_asset_name(dataset_name: str) -> bool:
-    """Check if a dataset name is an asset name.
+    """Determine if a dataset name should be treated as an asset.
 
     Args:
-        dataset_name (str): The name of the dataset.
+        dataset_name (str): The dataset name.
 
     Returns:
-        bool: Whether the dataset is an asset.
+        bool: True if the name is an asset, False otherwise.
     """
     return not dataset_name.startswith("params:") and dataset_name != "parameters"
 
@@ -166,10 +166,10 @@ def _get_node_pipeline_name(node: "Node") -> str:
     """Return the name of the pipeline that a node belongs to.
 
     Args:
-        node Node: The Kedro ``Node`` for which the pipeline name is being retrieved.
+        node (Node): The Kedro Node.
 
     Returns:
-        str: Name of the ``Pipeline`` that the ``Node`` belongs to.
+        str: Name of the pipeline the node belongs to.
     """
     pipelines: dict[str, Pipeline] = find_pipelines()
 
@@ -186,14 +186,13 @@ def _get_node_pipeline_name(node: "Node") -> str:
 
 
 def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
-    """Get the filter parameters for the pipeline.
+    """Extract filter parameters from a pipeline config dict.
 
     Args:
-        pipeline_config: The configuration of the pipeline.
+        pipeline_config (dict[str, Any]): Pipeline configuration.
 
     Returns:
-        dict[str, Any]: The filter parameters.
-
+        dict[str, Any]: Filter parameters.
     """
     filter_params = dict(
         tags=pipeline_config.get("tags"),
@@ -209,13 +208,13 @@ def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_mlflow_resource_from_config(mlflow_config: "BaseModel") -> dg.ResourceDefinition:
-    """Get `mlflow` resource and configure it based on the `mlflow` config.
+    """Create a Dagster resource definition from MLflow config.
 
     Args:
-        mlflow_config (BaseModel): `kedro-mlflow` configuration.
+        mlflow_config (BaseModel): MLflow configuration.
 
     Returns:
-        ResourceDefinition: Configured `mlflow` resource.
+        ResourceDefinition: Dagster resource definition for MLflow.
     """
     from dagster_mlflow import mlflow_tracking
 

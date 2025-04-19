@@ -1,7 +1,9 @@
 """Behave step definitions for the cli_scenarios feature."""
 
 import re
+import socket
 import textwrap
+import time
 from pathlib import Path
 
 import behave
@@ -126,33 +128,32 @@ def pip_install_dependencies(context: behave.runner.Context) -> None:
 
 @when('I execute the kedro command "{command}"')
 def exec_kedro_target(context: behave.runner.Context, command: str) -> None:
-    """Execute Kedro target"""
-    make_cmd = [context.kedro] + command.split()
-
-    context.result = run(make_cmd, env=context.env, cwd=str(context.root_project_dir))
-
-    if context.result.returncode != OK_EXIT_CODE:
-        print(context.result.stdout)
-        print(context.result.stderr)
-        assert False
-
-
-@when('I occupy port "{port}"')
-def occupy_port(context: behave.runner.Context, port: str) -> None:
-    """Execute  target"""
-    ChildTerminatingPopen(
-        ["nc", "-l", "0.0.0.0", port],
-        env=context.env,
-        cwd=str(context.root_project_dir),
-    )
+    """Execute Kedro target. For 'dagster dev', run as background process."""
+    if command.startswith("dagster dev"):
+        make_cmd = [context.kedro] + command.split()
+        # Start dagster dev as a background process
+        context.process = ChildTerminatingPopen(make_cmd, env=context.env, cwd=str(context.root_project_dir))
+        # Give the server time to start
+        time.sleep(10)
+        # No exit code to check here; port check will follow
+        context.result = None
+    else:
+        make_cmd = [context.kedro] + command.split()
+        context.result = run(make_cmd, env=context.env, cwd=str(context.root_project_dir))
+        if context.result.returncode != OK_EXIT_CODE:
+            print(context.result.stdout)
+            print(context.result.stderr)
+            assert False
 
 
 @then("I should get a successful exit code")
 def check_status_code(context: behave.runner.Context) -> None:
-    if context.result.returncode != OK_EXIT_CODE:
-        print(context.result.stdout)
-        print(context.result.stderr)
-        assert False, f"Expected exit code /= {OK_EXIT_CODE} but got {context.result.returncode}"
+    # Only check exit code if not running a background process
+    if getattr(context, "result", None) is not None:
+        if context.result.returncode != OK_EXIT_CODE:
+            print(context.result.stdout)
+            print(context.result.stderr)
+            assert False, f"Expected exit code /= {OK_EXIT_CODE} but got {context.result.returncode}"
 
 
 @then("I should get an error exit code")
@@ -181,10 +182,10 @@ def check_if_file_exists(context: behave.runner.Context, filename: str) -> None:
         raise ValueError("`filename` should be either `definitions.py` or `dagster.yml`.")
 
     absolute_filepath: Path = context.root_project_dir / filepath
-    assert filepath.exists(), (
+    assert absolute_filepath.exists(), (
         f"Expected {absolute_filepath} to exists but .exists() returns {absolute_filepath.exists()}"
     )
-    assert filepath.stat().st_size > 0, (
+    assert absolute_filepath.stat().st_size > 0, (
         f"Expected {absolute_filepath} to have size > 0 but has {absolute_filepath.stat().st_size}"
     )
 
@@ -202,3 +203,30 @@ def grep_file(context: behave.runner.Context, filepath: str, text: str) -> None:
     with absolute_filepath.open("r") as file:
         found = any(line and re.search(text, line) for line in file)
     assert found, f"String {text} not found in {absolute_filepath}"
+
+
+@then('the port "{port}" at host "{host}" should be occupied')
+def check_port_at_host_occupied(context: behave.runner.Context, port: str, host: str):
+    """Attempts to open a TCP connection to (host, port).
+    Fails the step if the port is not accepting connections.
+    """
+    port = int(port)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1.0)  # 1 second timeout
+    try:
+        sock.connect((host, port))
+        occupied = True
+    except (ConnectionRefusedError, socket.timeout, OSError):
+        occupied = False
+    finally:
+        sock.close()
+
+    assert occupied, f"Port {port} on {host} is not occupied"
+
+
+def after_scenario(context: behave.runner.Context, scenario):
+    # Terminate dagster dev process if it was started
+    if hasattr(context, "process"):
+        context.process.terminate()
+        context.process.wait()
+        del context.process

@@ -32,7 +32,6 @@ class PipelineTranslator:
         named_ops (dict[str, OpDefinition]): The named ops.
         named_resources (dict[str, ResourceDefinition]): The named resources.
         named_executors (dict[str, ExecutorDefinition]): The named executors.
-
     """
 
     def __init__(
@@ -60,7 +59,7 @@ class PipelineTranslator:
         self._named_executors = named_executors
 
     def _create_pipeline_hook_ops(self, job_name: str, pipeline: Pipeline) -> tuple[dg.OpDefinition, dg.OpDefinition]:
-        """Create the pipeline hook ops.
+        """Create the pipeline hook ops for before and after pipeline run.
 
         Args:
             job_name (str): The name of the job.
@@ -135,18 +134,15 @@ class PipelineTranslator:
 
         Args:
             pipeline (Pipeline): The Kedro pipeline.
-            pipeline_name (dict[str, Any]): The name of the Kedro pipeline.
-            filter_params (dict[str, Any]):
-            filter_params (dict[str, Any]):
+            pipeline_name (str): The name of the Kedro pipeline.
+            filter_params (dict[str, Any]): Filter parameters for the pipeline.
             job_name (str): The name of the job.
             executor_def (ExecutorDefinition): The executor definition.
             logger_defs (dict[str, LoggerDefinition] | None): The logger definitions.
 
         Returns:
             JobDefinition: A Dagster job definition.
-
         """
-
         (
             before_pipeline_run_hook,
             after_pipeline_run_hook,
@@ -240,7 +236,6 @@ class PipelineTranslator:
 
         Returns:
             dict[str, JobDefinition]: The translated Dagster jobs.
-
         """
         named_jobs = {}
         for job_name, job_config in self._dagster_config.jobs.items():  # type: ignore[attr-defined]

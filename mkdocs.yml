@@ -7,29 +7,11 @@ edit_uri: edit/main/docs/
 
 nav:
   - Home: index.md
-  - Introduction:
-      - pages/introduction/index.md
-  - Getting Started:
-      - pages/getting-started/index.md
-      - Installation: pages/getting-started/installation.md
-      - Quickstart: pages/getting-started/quickstart.md
-  - Tutorials:
-      - pages/tutorials/index.md
-      - Setting up: pages/tutorials/setting-up.md
-  - Technical Documentation:
-      - pages/technical/index.md
-      - Project: pages/technical/project.md
-      - Catalog: pages/technical/catalog.md
-      - Nodes: pages/technical/nodes.md
-      - Pipelines: pages/technical/pipelines.md
-      - Hooks: pages/technical/hooks.md
-  - API Reference:
-      - pages/api/index.md
-      - kedro_dagster: pages/api/kedro-dagster.md
-  - Contributing:
-      - pages/contributing/index.md
-      - Code of Conduct: pages/contributing/code-of-conduct.md
-      - Contributing Guide: pages/contributing/guide.md
+  - Introduction: pages/intro.md
+  - Getting Started: pages/getting-started.md
+  - Example: pages/example.md
+  - Technical Documentation: pages/technical.md
+  - API Reference: pages/api.md
 
 theme:
   name: material
@@ -95,19 +77,20 @@ plugins:
       handlers:
         python:
           options:
+            heading_level: 4
+            show_root_heading: false
+            show_root_toc_entry: false
             show_source: true
             docstring_style: google
             merge_init_into_class: true
             docstring_section_style: list
             separate_signature: true
             filters: ["!^_"]
-            show_root_heading: true
             docstring_options:
               ignore_init_summary: true
               warn_unknown_params: false
               returns_named_value: false
           paths: [src]
-
 extra:
   version:
     provider: mike

@@ -1,5 +1,4 @@
-# SERVER CONFIGURATION -------------------
-
+# `dagster dev` configuration
 dev:
   log_level: "info"
   log_format: "colored"
@@ -7,13 +6,28 @@ dev:
   host: "127.0.0.1"
   live_data_poll_rate: "2000"
 
-# JOBS CONFIGURATION --------------------
+# Dagster schedules configuration
+schedules:
+  daily_schedule: # Schedule name
+    cron_schedule: "0 0 * * *" # Schedule specifications
 
+# Dagster executors configuration
+executors:
+  sequential_executor: # Executor name
+    in_process: # Executor specifications
+
+# Dagster jobs configuration
 jobs:
-#   data_processing:
-#     pipeline:
-#       pipeline_name: data_processing
+  # You may filter pipelines by using e.g. `node_names`` to define a job
+  # data_processing: # Job name
+  #   pipeline: # Pipeline specification
+  #     pipeline_name: data_processing
+  #     node_names:
+  #     - preprocess_companies_node
+  #     - preprocess_shuttles_node
 
   default:
     pipeline:
       pipeline_name: __default__
+    schedule: daily_schedule
+    executor: sequential_executor

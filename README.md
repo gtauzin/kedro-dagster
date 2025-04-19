@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/.github/logo-light.png">
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/.github/logo-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/docs/assets/logo-light.png">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/docs/assets/logo-dark.png">
     <img src="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/.github/logo-light.png" alt="Kedro-Dagster">
   </picture>
 </p>
@@ -18,7 +18,6 @@
 ## What is Kedro-Dagster?
 
 The Kedro-Dagster plugin enables seamless integration between [Kedro](https://kedro.readthedocs.io/), a framework for creating reproducible and maintainable data science code, and [Dagster](https://dagster.io/), a data orchestrator for machine learning and data pipelines. This plugin makes use of Dagster's orchestration capabilities to automate and monitor Kedro pipelines effectively.
-
 
 ## What are the features of Kedro-Dagster?
 
@@ -63,9 +62,11 @@ pip install kedro-dagster
    schedules:
      my_job_schedule:
        cron_schedule: "0 0 * * *"
+
    executors:
      my_executor:
         retries: 3
+
    jobs:
      my_job:
        pipeline:
@@ -81,16 +82,18 @@ pip install kedro-dagster
    Start the Dagster UI to monitor and manage your pipelines using the following command:
 
    ```bash
-   kedro dagster dev
+   kedro dagster dev --env <ENV_NAME>
    ```
+
+For a concrete use-case of `kedro-dagster`, have a look at the the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
 
 ## How do I use Kedro-Dagster?
 
-The [Kedro-Dagster documentation](https://gtauzin.github.io/kedro-dagster/) will be available soon, stay tuned!
+Full documentation is available at [https://gtauzin.github.io/kedro-dagster/](https://gtauzin.github.io/kedro-dagster/).
 
 ## Can I contribute?
 
-Yes! We welcome all kinds of contributions. Check out our [guide to contributing]([https://github.com/kedro-org/kedro/wiki/Contribute-to-Kedro](https://github.com/gtauzin/kedro-dagster/blob/main/CONTRIBUTING.md).
+Yes! We welcome all kinds of contributions. Check out our [guide to contributing](https://github.com/gtauzin/kedro-dagster/blob/main/CONTRIBUTING.md).
 
 ## Where can I learn more?
 

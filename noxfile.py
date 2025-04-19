@@ -30,7 +30,7 @@ def tests(session: nox.Session) -> None:
     )
 
     # Run behavior tests
-    session.run("behave", "-vv", external=True)
+    session.run("behave", "-vv", "features", external=True)
 
     # Run unit tests
     session.run(

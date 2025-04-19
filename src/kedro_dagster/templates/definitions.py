@@ -17,6 +17,9 @@ resources |= {
     "io_manager": dg.fs_io_manager,
 }
 
+# Define the default executor for Dagster jobs
+default_executor = dg.multiprocess_executor.configured(dict(max_concurrent=2))
+
 defs = dg.Definitions(
     assets=list(dagster_code_location.named_assets.values()),
     resources=resources,
@@ -24,5 +27,5 @@ defs = dg.Definitions(
     schedules=list(dagster_code_location.named_schedules.values()),
     sensors=list(dagster_code_location.named_sensors.values()),
     loggers=dagster_code_location.named_loggers,
-    executor=dg.multiprocess_executor.configured(dict(max_concurrent=2)),
+    executor=default_executor,
 )

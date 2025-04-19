@@ -9,16 +9,16 @@ requires = [
 name = "kedro-dagster"
 dynamic = ["version"]
 authors = [
-  { name = "Guillaume Tauzin" },
+  { name = "Guillaume Tauzin", email = "gtauzin.github@pm.me" },
 ]
 maintainers = [
-  { name = "Guillaume Tauzin" },
+  { name = "Guillaume Tauzin", email = "gtauzin.github@pm.me" }
 ]
 description = "Kedro-Dagster makes it easy to deploy Kedro projects to Dagster"
 license = "Apache-2.0"
 readme.content-type = "text/markdown"
 readme.file = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.14"
 classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
@@ -26,6 +26,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 urls."Bug Tracker" = "https://github.com/gtauzin/kedro-dagster/issues"
 urls."Changelog" = "https://github.com/gtauzin/kedro-dagster/releases"
@@ -119,10 +120,7 @@ ignore=[
 "examples/*"=["E402"]
 
 [tool.pytest.ini_options]
-addopts = """
---color=yes \
---cov-report term-missing \
---cov src/kedro_dagster -ra"""
+addopts = "--color=yes"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
 norecursedirs = "src/kedro_dagster/templates"
 
