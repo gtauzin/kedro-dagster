@@ -90,6 +90,7 @@ def dagster_format(name: str) -> str:
     # of parentheses means it is a Kedro (unspecified) node name.
     name = name.replace("(", "_").replace(")", "_")
     name = name.replace("[", "_").replace("]", "_")
+    name = name.replace("-", "").replace(">", "").replace(" ", "")
 
     return name.replace(".", "__")
 
