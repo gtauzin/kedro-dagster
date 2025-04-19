@@ -83,6 +83,12 @@ def dagster_format(name: str) -> str:
     Returns:
         str: The formatted name.
     """
+    if "(" in name:
+        # If the name contains parentheses, we need to escape them
+        # by replacing them with triple and quadruple underscores
+        # so that we can map them back to Kedro's name
+        name = name.replace("(", "___").replace(")", "____")
+
     return name.replace(".", "__")
 
 
@@ -95,6 +101,9 @@ def kedro_format(name: str) -> str:
     Returns:
         str: The original Kedro name.
     """
+    # Handle the case where the original Kedro name contained parentheses
+    name = name.replace("___", "(").replace("____", ")")
+
     return name.replace("__", ".")
 
 
