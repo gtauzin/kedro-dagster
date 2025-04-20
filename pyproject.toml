@@ -18,7 +18,7 @@ description = "Kedro-Dagster makes it easy to deploy Kedro projects to Dagster"
 license = "Apache-2.0"
 readme.content-type = "text/markdown"
 readme.file = "README.md"
-requires-python = ">=3.10, <3.14"
+requires-python = ">=3.10, <3.13"
 classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
@@ -26,7 +26,6 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
 ]
 urls."Bug Tracker" = "https://github.com/gtauzin/kedro-dagster/issues"
 urls."Changelog" = "https://github.com/gtauzin/kedro-dagster/releases"
@@ -141,7 +140,7 @@ run.plugins = [
 ]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.12"
 strict = true
 ignore_missing_imports = true
 disable_error_code = ["misc", "import-untyped"]

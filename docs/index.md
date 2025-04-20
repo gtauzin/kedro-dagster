@@ -1,15 +1,6 @@
 ![](images/logo_dark.png#only-dark){width=800}
 ![](images/logo_light.png#only-light){width=800}
 
-**TODO**
-
-- Make use of annotations
-- Make use of admnonition
-- https://squidfunk.github.io/mkdocs-material/reference/formatting/
-- Go through the whole code and check that everything is explained in the docs
-- Review README
-- Review kedro-dagster-example repos (metdata description, README, point to kedro-dagster release)
-
 # Welcome to Kedro-Dagster's documentation
 
 Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables seamless integration between [Kedro](https://kedro.readthedocs.io/), a framework for creating reproducible and maintainable data science code, and [Dagster](https://dagster.io/), a data orchestrator for data (and machine learning) pipelines. This plugin enables the use of Dagster's orchestration capabilities to deploy, automate, and monitor Kedro pipelines effectively.
@@ -32,7 +23,6 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 - [Key features](pages/intro.md#key-features)
 - [Limitations & Considerations](pages/intro.md#limitations-and-considerations)
 - [Contributing & Community](pages/intro.md#contributing-and-community)
-- [Next Steps](pages/intro.md#next-steps)
 
 ### [Getting Started](pages/getting-started.md)
 
@@ -43,7 +33,6 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 - [Initialize Dagster Integration](pages/getting-started.md#3-initialize-dagster-integration)
 - [Configure Jobs, Executors, and Schedules](pages/getting-started.md#4-configure-jobs-executors-and-schedules)
 - [Run the Dagster UI](pages/getting-started.md#5-run-the-dagster-ui)
-- [Next Steps](pages/getting-started.md#next-steps)
 
 ### [Example](pages/example.md)
 

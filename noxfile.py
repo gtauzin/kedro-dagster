@@ -13,7 +13,7 @@ nox.options.sessions = ["fix", "tests", "serve_docs"]
 
 
 # Test sessions for different Python versions
-@nox.session(python=["3.10", "3.11", "3.12", "3.13"], venv_backend="uv")
+@nox.session(python=["3.10", "3.11", "3.12"], venv_backend="uv")
 def tests(session: nox.Session) -> None:
     """Run the tests with pytest under the specified Python version."""
     session.env["COVERAGE_FILE"] = f".coverage.{session.python}"
