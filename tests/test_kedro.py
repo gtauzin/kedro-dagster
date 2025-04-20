@@ -11,7 +11,7 @@ class DummyContext:
 
 
 @pytest.fixture
-def kedro_run_translator():
+def kedro_run_translator() -> KedroRunTranslator:
     return KedroRunTranslator(
         context=DummyContext(),
         project_path="/tmp",
@@ -20,7 +20,7 @@ def kedro_run_translator():
     )
 
 
-def test_kedro_run_translator_to_dagster(kedro_run_translator):
+def test_kedro_run_translator_to_dagster(kedro_run_translator: KedroRunTranslator) -> None:
     resource = kedro_run_translator.to_dagster(
         pipeline_name="__default__",
         filter_params={},

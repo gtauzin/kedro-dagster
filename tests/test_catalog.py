@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import MagicMock
 
 import dagster as dg
@@ -8,41 +9,37 @@ from kedro_dagster.catalog import CatalogTranslator
 
 
 class DummyDataset:
-    def __init__(self):
-        self.saved = False
-        self.loaded = False
-
-    def save(self, obj):
+    def save(self, obj: str) -> None:
         self.saved = obj
 
-    def load(self):
+    def load(self) -> str:
         self.loaded = True
         return "data"
 
-    def _describe(self):
+    def _describe(self) -> dict[str, Any]:
         return {"foo": "bar"}
 
 
 class DummyHookManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.hook = MagicMock()
 
 
 class DummyPipeline(Pipeline):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(nodes=[])
 
-    def datasets(self):
+    def datasets(self) -> list[str]:
         return ["my_dataset"]
 
 
 class DummyCatalog:
-    def _get_dataset(self, name):
+    def _get_dataset(self, name: str) -> DummyDataset:
         return DummyDataset()
 
 
 @pytest.fixture
-def catalog_translator():
+def catalog_translator() -> CatalogTranslator:
     return CatalogTranslator(
         catalog=DummyCatalog(),
         pipelines=[DummyPipeline()],
@@ -51,7 +48,7 @@ def catalog_translator():
     )
 
 
-def test_translate_dataset_returns_io_manager(catalog_translator):
+def test_translate_dataset_returns_io_manager(catalog_translator: CatalogTranslator) -> None:
     dataset = DummyDataset()
     io_manager = catalog_translator._translate_dataset(dataset, "my_dataset")
     assert isinstance(io_manager, dg.ConfigurableIOManager)

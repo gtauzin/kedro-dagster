@@ -206,15 +206,14 @@ def grep_file(context: behave.runner.Context, filepath: str, text: str) -> None:
 
 
 @then('the port "{port}" at host "{host}" should be occupied')
-def check_port_at_host_occupied(context: behave.runner.Context, port: str, host: str):
+def check_port_at_host_occupied(context: behave.runner.Context, port: str, host: str) -> None:
     """Attempts to open a TCP connection to (host, port).
     Fails the step if the port is not accepting connections.
     """
-    port = int(port)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(1.0)  # 1 second timeout
     try:
-        sock.connect((host, port))
+        sock.connect((host, int(port)))
         occupied = True
     except (ConnectionRefusedError, socket.timeout, OSError):
         occupied = False
@@ -224,7 +223,7 @@ def check_port_at_host_occupied(context: behave.runner.Context, port: str, host:
     assert occupied, f"Port {port} on {host} is not occupied"
 
 
-def after_scenario(context: behave.runner.Context, scenario):
+def after_scenario(context: behave.runner.Context, scenario: behave.model.Scenario) -> None:
     # Terminate dagster dev process if it was started
     if hasattr(context, "process"):
         context.process.terminate()

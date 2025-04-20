@@ -16,7 +16,7 @@ class DummyProjectMetadata:
 
 
 @pytest.fixture
-def kedro_project_translator():
+def kedro_project_translator() -> KedroProjectTranslator:
     return KedroProjectTranslator(
         project_path=None,
         env="testenv",
@@ -24,11 +24,11 @@ def kedro_project_translator():
     )
 
 
-def test_translator_initialization(kedro_project_translator):
+def test_translator_initialization(kedro_project_translator: KedroProjectTranslator) -> None:
     assert isinstance(kedro_project_translator, KedroProjectTranslator)
 
 
-def test_dagster_code_location_fields():
+def test_dagster_code_location_fields() -> None:
     location = DagsterCodeLocation(
         named_ops={},
         named_assets={},
