@@ -1,27 +1,29 @@
+# mypy: ignore-errors
+
 from unittest.mock import MagicMock
 
 import dagster as dg
 import pytest
-from kedro.pipeline.node import Node
+from kedro.framework.session import KedroSession
 
 from kedro_dagster.pipelines import PipelineTranslator
 
 
 class DummyPipeline:
-    def __init__(self) -> None:
-        self.nodes: list[Node] = []
+    def __init__(self):
+        self.nodes = []
 
-    def inputs(self) -> list[str]:
+    def inputs(self):
         return ["input1"]
 
-    def all_inputs(self) -> set[str]:
+    def all_inputs(self):
         return set(["input1"])
 
-    def all_outputs(self) -> set[str]:
+    def all_outputs(self):
         return set(["output1"])
 
     @property
-    def grouped_nodes(self) -> list[Node]:
+    def grouped_nodes(self):
         return []
 
 
@@ -31,13 +33,16 @@ class DummyContext:
 
 
 @pytest.fixture
-def pipeline_translator() -> PipelineTranslator:
+def pipeline_translator(kedro_project):
+    # Create a Kedro session and context as in translator.py
+    session = KedroSession.create(project_path=kedro_project, env="base")
+    context = session.load_context()
     return PipelineTranslator(
         dagster_config=MagicMock(jobs={}),
-        context=DummyContext(),
-        project_path="/tmp",
-        env="testenv",
-        session_id="sess",
+        context=context,
+        project_path=str(kedro_project),
+        env="base",
+        session_id=session.session_id,
         named_assets={},
         named_ops={},
         named_resources={},
@@ -45,7 +50,8 @@ def pipeline_translator() -> PipelineTranslator:
     )
 
 
-def test_materialize_input_assets_empty(pipeline_translator: PipelineTranslator) -> None:
+def test_materialize_input_assets_empty(pipeline_translator):
+    # Use the real pipeline from the Kedro context if available
     pipeline = DummyPipeline()
     result = pipeline_translator.translate_pipeline(
         pipeline=pipeline,

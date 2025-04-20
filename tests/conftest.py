@@ -1,30 +1,23 @@
-"""
-This file contains the fixtures that are reusable by any tests within
-this directory. You don't need to import the fixtures as pytest will
-discover them automatically. More info here:
-https://docs.pytest.org/en/latest/fixture.html
-"""
+# mypy: ignore-errors
 
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
 
 from click.testing import CliRunner
 from kedro.framework.cli.starters import create_cli as kedro_cli
 from kedro.framework.startup import bootstrap_project
-from pytest import TempdirFactory, fixture
+from pytest import fixture
 
 
 @fixture(name="cli_runner", scope="session")
-def cli_runner() -> Iterator[CliRunner]:
+def cli_runner():
     runner = CliRunner()
     yield runner
 
 
-def _create_kedro_settings_py(file_name: Path, patterns: list[str]) -> None:
+def _create_kedro_settings_py(file_name, patterns):
     patterns_str = ", ".join([f'"{p}"' for p in patterns])
     content = f"""CONFIG_LOADER_ARGS = {{
     "base_env": "base",
@@ -38,13 +31,13 @@ def _create_kedro_settings_py(file_name: Path, patterns: list[str]) -> None:
 
 
 @fixture(scope="session")
-def temp_directory(tmpdir_factory: TempdirFactory) -> Path:
+def temp_directory(tmpdir_factory):
     # Use tmpdir_factory to create a temporary directory with session scope
     return tmpdir_factory.mktemp("session_temp_dir")  # type: ignore[no-any-return]
 
 
 @fixture(scope="session")
-def kedro_project(cli_runner: CliRunner, temp_directory) -> Path:  # type: ignore[no-untyped-def]
+def kedro_project(cli_runner, temp_directory):  # type: ignore[no-untyped-def]
     os.chdir(temp_directory)
 
     CliRunner().invoke(
@@ -97,8 +90,7 @@ def register_pipelines():
 
 
 @fixture(scope="session")
-def metadata(kedro_project: Path) -> dict[str, Any]:
-    # cwd() depends on ^ the isolated filesystem, created by CliRunner()
+def metadata(kedro_project):
     project_path = kedro_project.resolve()
     metadata = bootstrap_project(project_path)
     return metadata  # type: ignore[no-any-return]

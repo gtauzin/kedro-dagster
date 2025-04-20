@@ -1,7 +1,6 @@
 """Behave step definitions for the cli_scenarios feature."""
 
 import re
-import socket
 import textwrap
 import time
 from pathlib import Path
@@ -205,22 +204,25 @@ def grep_file(context: behave.runner.Context, filepath: str, text: str) -> None:
     assert found, f"String {text} not found in {absolute_filepath}"
 
 
-@then('the port "{port}" at host "{host}" should be occupied')
-def check_port_at_host_occupied(context: behave.runner.Context, port: str, host: str) -> None:
-    """Attempts to open a TCP connection to (host, port).
-    Fails the step if the port is not accepting connections.
-    """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1.0)  # 1 second timeout
-    try:
-        sock.connect((host, int(port)))
-        occupied = True
-    except (ConnectionRefusedError, socket.timeout, OSError):
-        occupied = False
-    finally:
-        sock.close()
-
-    assert occupied, f"Port {port} on {host} is not occupied"
+@then('the dagster UI should be served on "{host}:{port}"')
+def check_dagster_ui_url(context: behave.runner.Context, host: str, port: str) -> None:
+    """Check the dagster dev process output for the correct UI URL and absence of the default port."""
+    process = getattr(context, "process", None)
+    assert process is not None, "Dagster dev process was not started."
+    deadline = time.time() + 10
+    url_line = None
+    while time.time() < deadline:
+        line = process.stdout.readline() if hasattr(process, "stdout") and process.stdout else None
+        if line and isinstance(line, bytes):
+            line = line.decode(errors="replace")
+        if not line:
+            time.sleep(0.1)
+            continue
+        if "Serving dagster-webserver on" in line:
+            url_line = line.strip()
+            break
+    assert url_line is not None, "Did not receive Dagster UI startup message within 10 s"
+    assert f"{host}:{port}" in url_line, f"Expected UI on {host}:{port}, but got: {url_line}"
 
 
 def after_scenario(context: behave.runner.Context, scenario: behave.model.Scenario) -> None:

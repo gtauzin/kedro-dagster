@@ -1,6 +1,4 @@
 # mypy: ignore-errors
-
-import socket
 import subprocess
 import sys
 import time
@@ -10,7 +8,7 @@ from kedro_dagster.cli import commands
 
 
 def test_dagster_init(cli_runner, kedro_project, metadata):
-    """Check the generation and validity of a simple Dagster pipeline."""
+    """Test that 'kedro dagster init' creates the right files."""
     command = "dagster init --env local --force --silent"
     result = cli_runner.invoke(commands, command, obj=metadata)
     assert result.exit_code == 0, (result.exit_code, result.stdout)
@@ -22,10 +20,12 @@ def test_dagster_init(cli_runner, kedro_project, metadata):
 
 
 def test_dagster_dev(cli_runner, kedro_project, metadata):
-    """Test that 'kedro dagster dev' launches the Dagster UI and occupies the port."""
+    """When passing a custom port, verify Dagster UI launches on that port and never mentions 3030."""
     host = "127.0.0.1"
-    port = 3000
-    command = [
+    custom_port = 4040
+    default_port = 3030
+
+    cmd = [
         sys.executable,
         "-m",
         "kedro",
@@ -37,41 +37,49 @@ def test_dagster_dev(cli_runner, kedro_project, metadata):
         "info",
         "--log-format",
         "colored",
-        "--port",
-        str(port),
         "--host",
         host,
+        "--port",
+        str(custom_port),
         "--live-data-poll-rate",
         "2000",
     ]
-    # Start the process in a subprocess so we can terminate it
+
     proc = subprocess.Popen(
-        command,
+        cmd,
         cwd=kedro_project,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         text=True,
     )
+
     try:
-        # Wait for the server to start (increase timeout if needed)
-        timeout = 10
-        interval = 1
-        for _ in range(timeout):
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                result = sock.connect_ex((host, port))
-                if result == 0:
-                    break
-            time.sleep(interval)
-        else:
-            out, err = proc.communicate(timeout=5)
-            raise AssertionError(
-                f"Dagster dev did not start or port {port} not occupied.\nstdout:\n{out}\nstderr:\n{err}"
-            )
-        # If we reach here, the port is occupied
-        assert True
+        deadline = time.time() + 10
+        url_line = None
+
+        while time.time() < deadline:
+            line = proc.stdout.readline()
+            if not line:
+                time.sleep(0.1)
+                continue
+            # Only match the explicit UI startup message
+            if "Serving dagster-webserver on" in line:
+                url_line = line.strip()
+                break
+
+        assert url_line is not None, "Did not receive Dagster UI startup message within 10 s"
+
+        # Verify the custom port is used
+        assert f"{host}:{custom_port}" in url_line, f"Expected UI on {host}:{custom_port}, but got: {url_line}"
+
+        # Ensure the default port is not mentioned
+        assert str(default_port) not in url_line, (
+            f"Default port {default_port} must not appear in the UI URL: {url_line}"
+        )
+
     finally:
         proc.terminate()
         try:
-            proc.wait(timeout=10)
-        except Exception:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
             proc.kill()

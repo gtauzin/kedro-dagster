@@ -1,56 +1,58 @@
-from typing import Any
-from unittest.mock import MagicMock
+# mypy: ignore-errors
+
 
 import dagster as dg
 import pytest
+from kedro.framework.session import KedroSession
+from kedro.io import DataCatalog
 from kedro.pipeline import Pipeline
 
 from kedro_dagster.catalog import CatalogTranslator
 
 
 class DummyDataset:
-    def save(self, obj: str) -> None:
+    def save(self, obj):
         self.saved = obj
 
-    def load(self) -> str:
+    def load(self):
         self.loaded = True
         return "data"
 
-    def _describe(self) -> dict[str, Any]:
+    def _describe(self):
         return {"foo": "bar"}
 
 
-class DummyHookManager:
-    def __init__(self) -> None:
-        self.hook = MagicMock()
-
-
 class DummyPipeline(Pipeline):
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__(nodes=[])
 
-    def datasets(self) -> list[str]:
+    def datasets(self):
         return ["my_dataset"]
 
 
-class DummyCatalog:
-    def _get_dataset(self, name: str) -> DummyDataset:
-        return DummyDataset()
-
-
 @pytest.fixture
-def catalog_translator() -> CatalogTranslator:
+def catalog_translator(kedro_project, metadata):
+    # Create a Kedro session and context as in translator.py
+    session = KedroSession.create(project_path=kedro_project, env="base")
+    context = session.load_context()
+    catalog = DataCatalog(
+        datasets={"my_dataset": DummyDataset()},
+    )
+    hook_manager = getattr(context, "_hook_manager", None)
     return CatalogTranslator(
-        catalog=DummyCatalog(),
+        catalog=catalog,
         pipelines=[DummyPipeline()],
-        hook_manager=DummyHookManager(),
-        env="testenv",
+        hook_manager=hook_manager,
+        env="base",
     )
 
 
-def test_translate_dataset_returns_io_manager(catalog_translator: CatalogTranslator) -> None:
-    dataset = DummyDataset()
-    io_manager = catalog_translator._translate_dataset(dataset, "my_dataset")
+def test_translate_dataset_returns_io_manager(catalog_translator):
+    # Use a real dataset from the catalog if available, else fallback
+    dataset_name = next(iter(catalog_translator._catalog._datasets), "my_dataset")
+    dataset = catalog_translator._catalog._datasets.get(dataset_name, DummyDataset())
+    io_manager = catalog_translator._translate_dataset(dataset, dataset_name)
+
     assert isinstance(io_manager, dg.ConfigurableIOManager)
     assert hasattr(io_manager, "handle_output")
     assert hasattr(io_manager, "load_input")

@@ -1,34 +1,24 @@
-from unittest.mock import MagicMock
+# mypy: ignore-errors
 
 import pytest
 
 from kedro_dagster.translator import DagsterCodeLocation, KedroProjectTranslator
 
 
-class DummyContext:
-    catalog = MagicMock()
-    _hook_manager = MagicMock()
-    mlflow = MagicMock()
-
-
-class DummyProjectMetadata:
-    package_name = "fake_project"
-
-
 @pytest.fixture
-def kedro_project_translator() -> KedroProjectTranslator:
+def kedro_project_translator(kedro_project):
     return KedroProjectTranslator(
-        project_path=None,
-        env="testenv",
+        project_path=kedro_project,
+        env="base",
         conf_source=None,
     )
 
 
-def test_translator_initialization(kedro_project_translator: KedroProjectTranslator) -> None:
+def test_translator_initialization(kedro_project_translator):
     assert isinstance(kedro_project_translator, KedroProjectTranslator)
 
 
-def test_dagster_code_location_fields() -> None:
+def test_dagster_code_location_fields():
     location = DagsterCodeLocation(
         named_ops={},
         named_assets={},

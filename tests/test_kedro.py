@@ -1,26 +1,24 @@
-from unittest.mock import MagicMock
+# mypy: ignore-errors
 
 import pytest
+from kedro.framework.session import KedroSession
 
 from kedro_dagster.kedro import KedroRunTranslator
 
 
-class DummyContext:
-    catalog = MagicMock()
-    _hook_manager = MagicMock()
-
-
 @pytest.fixture
-def kedro_run_translator() -> KedroRunTranslator:
+def kedro_run_translator(kedro_project, metadata):
+    session = KedroSession.create(project_path=kedro_project, env="base")
+    context = session.load_context()
     return KedroRunTranslator(
-        context=DummyContext(),
-        project_path="/tmp",
-        env="testenv",
-        session_id="sess",
+        context=context,
+        project_path=str(kedro_project),
+        env="base",
+        session_id=session.session_id,
     )
 
 
-def test_kedro_run_translator_to_dagster(kedro_run_translator: KedroRunTranslator) -> None:
+def test_kedro_run_translator_to_dagster(kedro_run_translator):
     resource = kedro_run_translator.to_dagster(
         pipeline_name="__default__",
         filter_params={},
