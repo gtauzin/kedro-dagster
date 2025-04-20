@@ -1,14 +1,24 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/docs/assets/logo-light.png">
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/docs/assets/logo-dark.png">
-    <img src="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/.github/logo-light.png" alt="Kedro-Dagster">
-  </picture>
-</p>
+![](images/logo_dark.png#only-dark){width=800}
+![](images/logo_light.png#only-light){width=800}
+
+**TODO**
+
+- Make use of annotations
+- Make use of admnonition
+- https://squidfunk.github.io/mkdocs-material/reference/formatting/
+- Go through the whole code and check that everything is explained in the docs
+- Review README
+- Review kedro-dagster-example repos (metdata description, README, point to kedro-dagster release)
 
 # Welcome to Kedro-Dagster's documentation
 
-Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables seamless integration between [Kedro](https://kedro.readthedocs.io/), a framework for creating reproducible and maintainable data science code, and [Dagster](https://dagster.io/), a data orchestrator for data (and machine learning) pipelines. This plugin makes use of Dagster's orchestration capabilities to deploy, automate, and monitor Kedro pipelines effectively.
+Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables seamless integration between [Kedro](https://kedro.readthedocs.io/), a framework for creating reproducible and maintainable data science code, and [Dagster](https://dagster.io/), a data orchestrator for data (and machine learning) pipelines. This plugin enables the use of Dagster's orchestration capabilities to deploy, automate, and monitor Kedro pipelines effectively.
+
+<figure markdown>
+![Lineage graph of assets involved in the specified jobs](images/getting-started/asset_graph_dark.png#only-dark)
+![Lineage graph of assets involved in the specified jobs](images/getting-started/asset_graph_light.png#only-light)
+<figcaption>Example of an Asset Lineage Graph.</figcaption>
+</figure>
 
 ## Table of Contents
 
@@ -18,10 +28,10 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 
 - [What Is Kedro?](pages/intro.md#what-is-kedro)
 - [What Is Dagster?](pages/intro.md#what-is-dagster)
-- [Why Choose Kedro‑Dagster?](pages/intro.md#why-choose-kedrodagster)
+- [Why Kedro‑Dagster?](pages/intro.md#why-kedrodagster)
 - [Key features](pages/intro.md#key-features)
-- [Limitations & Considerations](pages/intro.md#limitations--considerations)
-- [Contributing & Community](pages/intro.md#contributing--community)
+- [Limitations & Considerations](pages/intro.md#limitations-and-considerations)
+- [Contributing & Community](pages/intro.md#contributing-and-community)
 - [Next Steps](pages/intro.md#next-steps)
 
 ### [Getting Started](pages/getting-started.md)

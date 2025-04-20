@@ -38,7 +38,19 @@ kedro dagster init --env local
 This creates:
 
 - `src/definitions.py`: Dagster entrypoint file that exposes all translated Kedro objects as Dagster objects.
+
+``` title="definitions.py"
+--8<-- "src/kedro_dagster/templates/definitions.py"
+```
+
+There's no need to modify the Dagster definitions file to get started. Checkout the [Technical Documentation](technical.md) to find out how to customize it.
+
 - `conf/local/dagster.yml`: Dagster configuration file for the `local` Kedro environment.
+
+``` title="definitions.py"
+--8<-- "src/kedro_dagster/templates/dagster.yml"
+```
+
 
 ## 4. Configure Jobs, Executors, and Schedules
 
@@ -53,24 +65,40 @@ We can edit the automatically generated `conf/local/dagster.yml` to customize jo
 
 ```yaml
 schedules:
-  daily_schedule:
-    cron_schedule: "0 0 * * *" # Create a daily schedule
+  daily: # Schedule name
+    cron_schedule: "0 0 * * *" # Schedule parameters
 
-executors:
-  sequential_executor:
+executors: # Executor name
+  sequential: # Executor parameters
     in_process:
 
-multiprocess_executor:
+  multiprocess:
     multiprocess:
       max_concurrent: 2
 
 jobs:
-  my_job: # Job name
-    pipeline: # Pipeline specification
+  default: # Job name
+    pipeline: # Pipeline filter parameters
       pipeline_name: __default__
+    executor: sequential
 
-    executor: my_executor
-    schedule: daily_schedule
+  parallel_data_processing:
+    pipeline:
+      pipeline_name: data_processing
+      node_names:
+      - preprocess_companies_node
+      - preprocess_shuttles_node
+    schedule: daily
+    executor: multiprocess
+
+  data_science:
+    pipeline:
+      pipeline_name: data_processing
+      node_names:
+      - preprocess_companies_node
+      - preprocess_shuttles_node
+    schedule: daily
+    executor: sequential
 
 ```
 
@@ -85,7 +113,68 @@ kedro dagster dev --env local
 ```
 
 The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000) by default.
-You can trigger jobs, monitor runs, and inspect assets and their lineage from the UI.
+
+You can inspect assets jobs and resources, trigger, automatize jobs, and monitor runs from the UI.
+
+### Assets
+
+Moving to the "Assets" tab, you'll find the list of assets generated from the Kedro datasets involved in the filtered pipelines specified in `dasgter.yml`.
+
+<figure markdown>
+![List of assets involved in the specified jobs](../images/getting-started/asset_list_dark.png#only-dark){data-gallery="assets-dark"}
+![List of assets involved in the specified jobs](../images/getting-started/asset_list_light.png#only-light){data-gallery="assets-light"}
+<figcaption>Asset List.</figcaption>
+</figure>
+
+<figure markdown>
+![Lineage graph of assets involved in the specified jobs](../images/getting-started/asset_graph_dark.png#only-dark){data-gallery="assets-dark"}
+![Lineage graph of assets involved in the specified jobs](../images/getting-started/asset_graph_light.png#only-light){data-gallery="assets-light"}
+<figcaption>Asset Lineage Graph.</figcaption>
+</figure>
+
+### Resources
+
+<figure markdown>
+![List of the resources involved in the specified jobs](../images/getting-started/resource_list_dark.png#only-dark){data-gallery="resources-dark"}
+![List of the resources involved in the specified jobs](../images/getting-started/resource_list_light.png#only-light){data-gallery="resources-light"}
+<figcaption>Resource list.</figcaption>
+</figure>
+
+### Jobs
+
+<figure markdown>
+![List of the specified jobs](../images/getting-started/job_list_dark.png#only-dark){data-gallery="jobs-dark"}
+![List of the specified jobs](../images/getting-started/job_list_light.png#only-light){data-gallery="jobs-light"}
+<figcaption>Job List.</figcaption>
+</figure>
+
+<figure markdown>
+![Graph describing the "parallel_data_processing" job](../images/getting-started/job_graph_dark.png#only-dark){data-gallery="jobs-dark"}
+![Graph describing the "parallel_data_processing" job](../images/getting-started/job_graph_light.png#only-light){data-gallery="jobs-light"}
+<figcaption>Job Graph.</figcaption>
+</figure>
+
+<figure markdown>
+![Launchpad for the "parallel_data_processing" job](../images/getting-started/job_launchpad_dark.png#only-dark){data-gallery="jobs-dark"}
+![Launchpad for the "parallel_data_processing" job](../images/getting-started/job_launchpad_light.png#only-light){data-gallery="jobs-light"}
+<figcaption>Job Laumchpad.</figcaption>
+</figure>
+
+<figure markdown>
+![Running the "parallel_data_processing" job](../images/getting-started/job_running_dark.png#only-dark){data-gallery="jobs-dark"}
+![Running the "parallel_data_processing" job](../images/getting-started/job_running_light.png#only-light){data-gallery="jobs-light"}
+<figcaption>Job Run Timeline.</figcaption>
+</figure>
+
+### Automation
+
+<figure markdown>
+![List of the schedules and sensors involved in the specified jobs](../images/getting-started/automation_list_dark.png#only-dark){data-gallery="automation-dark"}
+![List of the schedules and sensors involved in the specified jobs](../images/getting-started/automation_list_light.png#only-light){data-gallery="automation-light"}
+<figcaption>Resource List.</figcaption>
+</figure>
+
+---
 
 ## Next Steps
 

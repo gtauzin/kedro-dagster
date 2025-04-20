@@ -17,7 +17,7 @@ Kedro‑Dagster is a  plugin that seamlessly connects your **Kedro** data scienc
 
 Dagster scales from local development to enterprise deployments, emphasizing testability and modularity every step of the way.
 
-## Why Choose Kedro‑Dagster?
+## Why Kedro‑Dagster?
 
 Kedro and Dagster share an asset-first philosophy. In Kedro, assets are datasets passed between modular nodes that make up a pipeline. Dagster mirrors this by treating the output of each computation as an asset with associated lineage, metadata, and execution semantics. This alignment allows Kedro pipelines to be translated into Dagster assets with minimal effort, preserving structure and enabling rich observability out of the box.&#x20;
 
@@ -61,7 +61,7 @@ Harness the capabilities of MLflow using [Kedro-MLflow](https://github.com/Galil
 
 Unifies Kedro and Dagster logging. TODO + say it is a WIP
 
-## Limitations & Considerations
+## Limitations and Considerations
 
 While Kedro‑Dagster's objective is to provides a powerful bridge between Kedro and Dagster, there are a few important caveats to be aware of:
 
@@ -74,9 +74,7 @@ While Kedro‑Dagster's objective is to provides a powerful bridge between Kedro
 3. **Compatibility:**
    Both Kedro and Dagster are under active development. Breaking changes in either framework can temporarily affect Kedro‑Dagster integration until a new plugin release addresses them. Always pin your Kedro, Dagster, and Kedro‑Dagster versions and test changes before bumping them.
 
----
-
-## Contributing & Community
+## Contributing and Community
 
 We welcome contributions, feedback, and questions:
 

@@ -113,7 +113,7 @@ class NodeTranslator:
         """Return a list of all asset names in the pipelines."""
         if not hasattr(self, "_asset_names"):
             asset_names = []
-            for dataset_name in sum(self._pipelines).datasets():
+            for dataset_name in sum(self._pipelines, Pipeline([])).datasets():
                 asset_name = dagster_format(dataset_name)
                 asset_names.append(asset_name)
 
@@ -174,7 +174,7 @@ class NodeTranslator:
                 node=node,
                 catalog=self._catalog,
                 inputs=inputs,
-                is_async=False,
+                is_async=False,  # TODO: Should this be True?
                 session_id=self._session_id,
             )
 

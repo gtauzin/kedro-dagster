@@ -60,12 +60,15 @@ theme:
         name: Switch to system preference
 
 markdown_extensions:
-  - toc:
-      permalink: true
-
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
   - pymdownx.highlight
   - pymdownx.superfences
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      # auto_append: ["../LICENSE"] # TODO
+      base_path: ["."]  # for root of repo
 
 plugins:
   - git-revision-date-localized:
@@ -73,6 +76,22 @@ plugins:
       type: date
   - search:
       separator: '[\s\u200b\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      slide_effect: slide
+      width: 100%
+      height: auto
+      zoomable: true
+      draggable: true
+      skip_classes:
+        - custom-skip-class-name
+      auto_caption: true
+      caption_position: bottom
+      background: white
+      shadow: true
+      manual: false
   - mkdocstrings:
       handlers:
         python:

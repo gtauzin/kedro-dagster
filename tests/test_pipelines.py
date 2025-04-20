@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 
+import dagster as dg
 import pytest
 
 from kedro_dagster.pipelines import PipelineTranslator
@@ -18,6 +19,7 @@ class DummyPipeline:
     def all_outputs(self):
         return set(["output1"])
 
+    @property
     def grouped_nodes(self):
         return []
 
@@ -44,5 +46,10 @@ def pipeline_translator():
 
 def test_materialize_input_assets_empty(pipeline_translator):
     pipeline = DummyPipeline()
-    result = pipeline_translator._materialize_input_assets(pipeline)
-    assert isinstance(result, dict)
+    result = pipeline_translator.translate_pipeline(
+        pipeline=pipeline,
+        pipeline_name="test_pipeline",
+        filter_params={},
+        job_name="test_job",
+    )
+    assert isinstance(result, dg.JobDefinition)

@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 
 import dagster as dg
 import pytest
+from kedro.pipeline import Pipeline
 
 from kedro_dagster.catalog import CatalogTranslator
 
@@ -27,9 +28,9 @@ class DummyHookManager:
         self.hook = MagicMock()
 
 
-class DummyPipeline:
+class DummyPipeline(Pipeline):
     def __init__(self):
-        self.nodes = []
+        super().__init__(nodes=[])
 
     def datasets(self):
         return ["my_dataset"]

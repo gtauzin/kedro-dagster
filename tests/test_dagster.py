@@ -21,7 +21,7 @@ def test_executor_creator_instantiation(dagster_config):
 
 
 def test_logger_translator_instantiation(dagster_config):
-    translator = LoggerTranslator(dagster_config=dagster_config, package_name="foo", pipelines={})
+    translator = LoggerTranslator(dagster_config=dagster_config, package_name="foo")
     assert isinstance(translator, LoggerTranslator)
 
 

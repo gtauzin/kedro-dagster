@@ -8,19 +8,19 @@ dev:
 
 # Dagster schedules configuration
 schedules:
-  daily_schedule: # Schedule name
-    cron_schedule: "0 0 * * *" # Schedule specifications
+  daily: # Schedule name
+    cron_schedule: "0 0 * * *" # Schedule parameters
 
 # Dagster executors configuration
 executors:
-  sequential_executor: # Executor name
-    in_process: # Executor specifications
+  sequential: # Executor name
+    in_process: # Executor parameters
 
 # Dagster jobs configuration
 jobs:
   # You may filter pipelines by using e.g. `node_names`` to define a job
   # data_processing: # Job name
-  #   pipeline: # Pipeline specification
+  #   pipeline: # Pipeline filter parameters
   #     pipeline_name: data_processing
   #     node_names:
   #     - preprocess_companies_node
@@ -29,5 +29,5 @@ jobs:
   default:
     pipeline:
       pipeline_name: __default__
-    schedule: daily_schedule
-    executor: sequential_executor
+    schedule: daily
+    executor: sequential
