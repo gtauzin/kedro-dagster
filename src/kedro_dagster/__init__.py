@@ -1,8 +1,5 @@
 """Kedro plugin for running a project with Dagster."""
 
-# TODO
-__version__ = "0.0.1"
-
 import logging
 
 from .catalog import CatalogTranslator

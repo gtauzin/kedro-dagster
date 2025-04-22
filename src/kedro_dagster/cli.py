@@ -116,7 +116,6 @@ def init(env: str, force: bool, silent: bool) -> None:
             python_package=package_name,
         )
         if not silent:
-            # TODO: Use logging library instead? Check kedro-plugins
             click.secho(
                 click.style(
                     f"'src/{package_name}/{definitions_py}' successfully updated.",

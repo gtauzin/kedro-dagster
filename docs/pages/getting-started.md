@@ -140,8 +140,6 @@ Clicking on the "Asset lineage" link at the top right of the window leads to the
 
 Kedro‑Dagster defines one Dagster IO Manager per Kedro Dataset to handle their saving/loading. As with assets, they are defined per Kedro environment and their name is prefixed accordingly.
 
-#### TODO naming convention section in technical doc
-
 <figure markdown>
 ![List of the resources involved in the specified jobs](../images/getting-started/resource_list_dark.png#only-dark){data-gallery="resources-dark"}
 ![List of the resources involved in the specified jobs](../images/getting-started/resource_list_light.png#only-light){data-gallery="resources-light"}

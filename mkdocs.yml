@@ -67,7 +67,6 @@ markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
   - pymdownx.snippets:
-      # auto_append: ["../LICENSE"] # TODO
       base_path: ["."]  # for root of repo
 
 plugins:
