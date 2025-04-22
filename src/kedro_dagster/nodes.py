@@ -78,12 +78,13 @@ class NodeTranslator:
             __config__=ConfigDict(extra="allow", frozen=False),
         )
 
-    def _get_out_asset_params(self, dataset_name: str, asset_name: str) -> dict[str, Any]:
+    def _get_out_asset_params(self, dataset_name: str, asset_name: str, return_kinds: bool = False) -> dict[str, Any]:
         """Get the output asset parameters for a dataset.
 
         Args:
             dataset_name (str): The dataset name.
             asset_name (str): The corresponding asset name.
+            return_kinds (bool): Whether to return the kinds of the asset. Defaults to False.
 
         Returns:
             dict[str, Any]: The output asset parameters.
@@ -101,13 +102,19 @@ class NodeTranslator:
 
             except DatasetNotFoundError:
                 pass
-
-        return dict(
+        out_asset_params = dict(
             io_manager_key=io_manager_key,
             metadata=metadata,
             description=description,
-            kinds={"kedro"},
         )
+
+        if return_kinds:
+            kinds = {"kedro"}
+            if is_mlflow_enabled():
+                kinds.add("mlflow")
+            out_asset_params["kinds"] = kinds
+
+        return out_asset_params
 
     @property
     def asset_names(self) -> list[str]:
@@ -234,7 +241,7 @@ class NodeTranslator:
         for dataset_name in node.outputs:
             asset_name = dagster_format(dataset_name)
             asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
-            out_asset_params = self._get_out_asset_params(dataset_name, asset_name)
+            out_asset_params = self._get_out_asset_params(dataset_name, asset_name, return_kinds=True)
             outs[asset_name] = dg.AssetOut(key=asset_key, **out_asset_params)
 
         NodeParametersConfig = self._get_node_parameters_config(node)
