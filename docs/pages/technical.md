@@ -3,7 +3,7 @@
 This section provides an in-depth look at the architecture, configuration, and core concepts behind Kedro-Dagster. Here you'll find details on how Kedro projects are mapped to Dagster constructs, how to configure orchestration, and how to customize the integration for advanced use cases.
 
 !!! danger
-    This documentation section is a work in progress. The translation configuration logic is not yet fully defined here. Please check back later for a more complete guide!
+    This documentation section is a work in progress. The translation configuration and logic are not fully defined here. Please check back later for a more complete guide!
 
 ## Project Configuration
 
