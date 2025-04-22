@@ -13,8 +13,6 @@
 [![Run tests and checks](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml/badge.svg)](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml)
 [![Slack Organisation](https://img.shields.io/badge/slack-chat-blueviolet.svg?label=Kedro%20Slack&logo=slack)](https://slack.kedro.org)
 
-> **Important**: This package is under active development but is not yet ready for production.
-
 ## What is Kedro-Dagster?
 
 The Kedro-Dagster plugin enables seamless integration between [Kedro](https://kedro.readthedocs.io/), a framework for creating reproducible and maintainable data science code, and [Dagster](https://dagster.io/), a data orchestrator for machine learning and data pipelines. This plugin makes use of Dagster's orchestration capabilities to automate and monitor Kedro pipelines effectively.
@@ -57,25 +55,41 @@ pip install kedro-dagster
 
    Define your job executors and schedules in the `dagster.yml` configuration file located in your Kedro project's `conf/<ENV_NAME>` directory. This file allows you to filter Kedro pipelines and assign specific executors and schedules to them.
 
-   ```yaml
-   # conf/base/dagster.yml
-   schedules:
-     my_job_schedule:
-       cron_schedule: "0 0 * * *"
+  ```yaml
+  # conf/local/dagster.yml
+  schedules:
+    daily: # Schedule name
+      cron_schedule: "0 0 * * *" # Schedule parameters
 
-   executors:
-     my_executor:
-        retries: 3
+  executors: # Executor name
+    sequential: # Executor parameters
+      in_process:
 
-   jobs:
-     my_job:
-       pipeline:
-         pipeline_name: __default__
+    multiprocess:
+      multiprocess:
+        max_concurrent: 2
 
-       executor: my_executor
-       schedule: my_job_schedule
+  jobs:
+    default: # Job name
+      pipeline: # Pipeline filter parameters
+        pipeline_name: __default__
+      executor: sequential
 
-   ```
+    parallel_data_processing:
+      pipeline:
+        pipeline_name: data_processing
+        node_names:
+        - preprocess_companies_node
+        - preprocess_shuttles_node
+      schedule: daily
+      executor: multiprocess
+
+    data_science:
+      pipeline:
+        pipeline_name: data_science
+      schedule: daily
+      executor: sequential
+  ```
 
 4. **Launch the Dagster UI**:
 
