@@ -8,7 +8,7 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 <figure markdown>
 ![Lineage graph of assets involved in the specified jobs](images/getting-started/asset_graph_dark.png#only-dark)
 ![Lineage graph of assets involved in the specified jobs](images/getting-started/asset_graph_light.png#only-light)
-<figcaption>Example of an Asset Lineage Graph.</figcaption>
+<figcaption>Example of a Dagster Asset Lineage Graph generated from a Kedro project.</figcaption>
 </figure>
 
 ## Table of Contents
@@ -32,7 +32,7 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 - [Create a Kedro Project (Optional)](pages/getting-started.md#2-create-a-kedro-project-optional)
 - [Initialize Dagster Integration](pages/getting-started.md#3-initialize-dagster-integration)
 - [Configure Jobs, Executors, and Schedules](pages/getting-started.md#4-configure-jobs-executors-and-schedules)
-- [Run the Dagster UI](pages/getting-started.md#5-run-the-dagster-ui)
+- [Browse the Dagster UI](pages/getting-started.md#5-browse-the-dagster-ui)
 
 ### [Example](pages/example.md)
 

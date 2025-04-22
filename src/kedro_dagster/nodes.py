@@ -106,6 +106,7 @@ class NodeTranslator:
             io_manager_key=io_manager_key,
             metadata=metadata,
             description=description,
+            kinds={"kedro"},
         )
 
     @property

@@ -85,7 +85,7 @@ pip install kedro-dagster
    kedro dagster dev --env <ENV_NAME>
    ```
 
-For a concrete use-case of `kedro-dagster`, have a look at the the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
+For a concrete use-case of Kedro-Dagster, have a look at the the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
 
 ## How do I use Kedro-Dagster?
 

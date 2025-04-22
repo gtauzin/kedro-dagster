@@ -1,6 +1,6 @@
 # Technical Documentation
 
-## Project Structure and Configuration
+## Projet Configuration
 
 Kedro-Dagster expects a standard Kedro project structure. The main configuration file for Dagster integration is `dagster.yml`, located in your Kedro project's `conf/<ENV_NAME>/` directory.
 
@@ -111,7 +111,7 @@ Kedro-Dagster translates core Kedro concepts into their Dagster equivalents. Und
 | **Parameters**  | Config,&nbsp;Resources    | Kedro parameters are passed as Dagster config or resources. |
 | **Logging**     | Logger               | Kedro logging is integrated with Dagster's logging system. |
 
-### Catalog Integration
+### Catalog
 
 Kedro-Dagster translates Kedro datasets into Dagster assets and IO managers. This allows you to use Kedro's Data Catalog with Dagster's asset materialization and IO management features.
 
@@ -120,7 +120,7 @@ Kedro-Dagster translates Kedro datasets into Dagster assets and IO managers. Thi
 
 See the API reference for `CatalogTranslator` for more details.
 
-### Node Translation
+### Node
 
 Kedro nodes are translated into Dagster ops and assets. Each node becomes a Dagster op, and, additionally, nodes that returns outputs are mapped to Dagster multi-assets.
 
@@ -130,8 +130,7 @@ Kedro nodes are translated into Dagster ops and assets. Each node becomes a Dags
 
 See the API reference for `NodeTranslator` for more details.
 
-
-### Pipeline Translation
+### Pipeline
 
 Kedro pipelines are translated into Dagster jobs. Each job can be filtered, scheduled, and assigned an executor via configuration.
 
@@ -141,9 +140,11 @@ Kedro pipelines are translated into Dagster jobs. Each job can be filtered, sche
 
 See the API reference for `PipelineTranslator` for more details.
 
-### Hook Integration
+### Hook
 
-Kedro-Dagster preserves Kedro hooks in the Dagster context. Supported hooks include:
+Kedro-Dagster preserves all Kedro hooks in the Dagster context. Supported hooks include:
+
+Catalog and Node hooks are called
 
 - `after_context_created`
 - `before_pipeline_run`

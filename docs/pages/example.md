@@ -1,12 +1,8 @@
 # Example
 
-This section provides practical, real-world examples and advanced usage patterns for Kedro-Dagster.
+This section is a guide to deploying an an advanced Kedro project with Dagster. It is based on the [Kedro-Dagster Example Repository](https://github.com/gtauzin/kedro-dagster-example).
 
----
 
-# Kedro-Dagster Example
-
-Guide to deploying a Kedro project with Dagster based on the [Kedro-Dagster Example Repository](https://github.com/gtauzin/kedro-dagster-example).
 
 ## Multi-Environment Setup
 

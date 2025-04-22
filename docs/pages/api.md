@@ -41,11 +41,123 @@ uv run kedro dagster dev --env <ENV_NAME> --log-level <LEVEL> --log-format <FORM
 - `--host`: Host address for the Dagster UI.
 - `--live-data-poll-rate`: Polling rate for live data in milliseconds.
 
-If specified, those options will override the ones specified in your `dagster.yml`.
+If specified, those options will override the ones specified in your `conf/<ENV_NAME>/dagster.yml`.
 
 ## Configuration
 
-TODO pydantic classes
+The following classes define the configuration schema for Kedro-Dagster, using Pydantic models:
+
+### `KedroDagsterConfig`
+
+Main configuration class for Kedro-Dagster, representing the structure of the `dagster.yml` file.
+
+::: kedro_dagster.config.kedro_dagster.KedroDagsterConfig
+
+---
+
+### `JobOptions`
+
+Configuration options for a Dagster job, including pipeline filtering, executor, and schedule.
+
+::: kedro_dagster.config.job.JobOptions
+
+---
+
+### `PipelineOptions`
+
+Options for filtering and configuring Kedro pipelines within jobs.
+
+::: kedro_dagster.config.job.PipelineOptions
+
+---
+
+### `ExecutorOptions`
+
+Base class for executor configuration. See also specific executor option classes below.
+
+::: kedro_dagster.config.execution.ExecutorOptions
+
+---
+
+### `InProcessExecutorOptions`
+
+Options for the in-process executor.
+
+::: kedro_dagster.config.execution.InProcessExecutorOptions
+
+---
+
+### `MultiprocessExecutorOptions`
+
+Options for the multiprocess executor.
+
+::: kedro_dagster.config.execution.MultiprocessExecutorOptions
+
+---
+
+### `DaskExecutorOptions`
+
+Options for the Dask executor.
+
+::: kedro_dagster.config.execution.DaskExecutorOptions
+
+---
+
+### `DockerExecutorOptions`
+
+Options for the Docker-based executor.
+
+::: kedro_dagster.config.execution.DockerExecutorOptions
+
+---
+
+### `CeleryExecutorOptions`
+
+Options for the Celery-based executor.
+
+::: kedro_dagster.config.execution.CeleryExecutorOptions
+
+---
+
+### `CeleryDockerExecutorOptions`
+
+Options for the Celery executor with Docker support.
+
+::: kedro_dagster.config.execution.CeleryDockerExecutorOptions
+
+---
+
+### `K8sJobExecutorOptions`
+
+Options for the Kubernetes-based executor.
+
+::: kedro_dagster.config.execution.K8sJobExecutorOptions
+
+---
+
+### `CeleryK8sJobExecutorOptions`
+
+Options for the Celery executor with Kubernetes support.
+
+::: kedro_dagster.config.execution.CeleryK8sJobExecutorOptions
+
+---
+
+### `ScheduleOptions`
+
+Options for defining Dagster schedules.
+
+::: kedro_dagster.config.automation.ScheduleOptions
+
+---
+
+### `DevOptions`
+
+Development options for the `kedro dagster dev` command.
+
+::: kedro_dagster.config.dev.DevOptions
+
+---
 
 ## Translation Modules
 
@@ -53,7 +165,7 @@ The following classes are responsible for translating Kedro concepts into Dagste
 
 ### `KedroProjectTranslator`
 
-Translates an entire Kedro project into a Dagster code location, orchestrating the translation of pipelines, datasets, resources, jobs, schedules, sensors, and loggers.
+Translates an entire Kedro project into a Dagster code location, orchestrating the translation of pipelines, datasets, hooks, and loggers.
 
 ::: kedro_dagster.translator.KedroProjectTranslator
 
@@ -61,7 +173,7 @@ Translates an entire Kedro project into a Dagster code location, orchestrating t
 
 ### `DagsterCodeLocation`
 
-Represents the collection of Dagster definitions (jobs, assets, resources, etc.) generated from a Kedro project.
+Collects the Dagster job, asset, resource, executor, schedule, sensor, and loggers definitions generated for the Kedro project-based Dagster code location.
 
 ::: kedro_dagster.translator.DagsterCodeLocation
 
@@ -77,7 +189,7 @@ Translates Kedro datasets into Dagster IO managers and assets, enabling seamless
 
 ### `NodeTranslator`
 
-Converts Kedro nodes into Dagster ops and assets, handling parameter passing, output mapping, and hook integration.
+Converts Kedro nodes into Dagster ops and assets, handling Kedro parameter passing.
 
 ::: kedro_dagster.nodes.NodeTranslator
 
@@ -101,7 +213,7 @@ Manages translation of Kedro run parameters and hooks into Dagster resources and
 
 ### `ExecutorCreator`
 
-Creates Dagster executors from configuration, allowing for flexible job execution strategies.
+Creates Dagster executors from configuration, allowing for granular execution strategies.
 
 ::: kedro_dagster.dagster.ExecutorCreator
 

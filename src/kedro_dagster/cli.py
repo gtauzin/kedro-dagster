@@ -53,7 +53,7 @@ def dagster_commands() -> None:
 def init(env: str, force: bool, silent: bool) -> None:
     """Updates the template of a kedro project.
 
-    Running this command is mandatory to use kedro-dagster.
+    Running this command is mandatory to use Kedro-Dagster.
 
     This adds:
      - "conf/base/dagster.yml": This is a configuration file
