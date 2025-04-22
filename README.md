@@ -8,7 +8,7 @@
 
 [![Powered by Kedro](https://img.shields.io/badge/powered_by-kedro-ffc900?logo=kedro)](https://kedro.org)
 [![Python Version](https://img.shields.io/pypi/pyversions/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
-[![License](https://img.shields.io/github/license/gtauzin/kedro-dagster)](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/gtauzin/kedro-dagster)](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE.md)
 [![PyPI Version](https://img.shields.io/pypi/v/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
 [![Run tests and checks](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml/badge.svg)](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml)
 [![Slack Organisation](https://img.shields.io/badge/slack-chat-blueviolet.svg?label=Kedro%20Slack&logo=slack)](https://slack.kedro.org)
@@ -35,15 +35,17 @@ pip install kedro-dagster
 
 ## How to get started with Kedro-Dagster?
 
-1. **Initialize the Plugin in Your Kedro Project**:
+1. **Installation**:
 
-   Navigate to your Kedro project directory and install the plugin:
+  Install the plugin with `pip`:
 
-   ```bash
-   pip install kedro-dagster
-   ```
+  ```bash
+  pip install kedro-dagster
+  ```
 
-2. **Generate Dagster Definitions and Configuration**:
+  or add `kedro-dagster` to your project's `requirements.txt` or `pyproject.toml`.
+
+1. **Initialize the plugin in your Kedro project**:
 
    Use the following command to generate a `definitions.py` file, where all translated Kedro objects are available as Dagster objects, and a `dagster.yml` configuration file:
 
@@ -51,7 +53,7 @@ pip install kedro-dagster
    kedro dagster init --env <ENV_NAME>
    ```
 
-3. **Configure Jobs, Executors, and Schedules**:
+1. **Configure Jobs, Executors, and Schedules**:
 
    Define your job executors and schedules in the `dagster.yml` configuration file located in your Kedro project's `conf/<ENV_NAME>` directory. This file allows you to filter Kedro pipelines and assign specific executors and schedules to them.
 
@@ -91,13 +93,14 @@ pip install kedro-dagster
       executor: sequential
   ```
 
-4. **Launch the Dagster UI**:
+1. **Launch the Dagster UI**:
 
    Start the Dagster UI to monitor and manage your pipelines using the following command:
 
    ```bash
    kedro dagster dev --env <ENV_NAME>
    ```
+
    The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
 For a concrete use-case, see the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
@@ -122,7 +125,7 @@ There is a growing community around the Kedro project and we encourage you to be
 
 ## License
 
-This project is licensed under the terms of the [Apache 2.0 License](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE).
+This project is licensed under the terms of the [Apache 2.0 License](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE.md).
 
 ## Acknowledgements
 
