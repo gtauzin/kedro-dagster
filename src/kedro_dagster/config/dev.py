@@ -9,7 +9,15 @@ from pydantic import BaseModel
 
 
 class DevOptions(BaseModel):
-    """Development configuration options for the `kedro dagster dev` command."""
+    """Development configuration options for the `kedro dagster dev` command.
+
+    Attributes:
+        log_level (Literal["critical", "error", "warning", "info", "debug"]): Logging level.
+        log_format (Literal["colored", "json", "rich"]): Format for log output.
+        port (str): Port for the dev server.
+        host (str): Host for the dev server.
+        live_data_poll_rate (str): Poll rate for live data updates in milliseconds.
+    """
 
     log_level: Literal["critical", "error", "warning", "info", "debug"] = "info"
     log_format: Literal["colored", "json", "rich"] = "colored"

@@ -36,7 +36,7 @@ Refer to the [Dagster Documentation](https://docs.dagster.io) and in particular 
 - **Structure your projects and configurations:** Kedro enforces a modular project structure and configuration management out of the box. By adopting Kedro, Dagster users benefit from a standardized folder layout, environment-specific configuration files, and a clear separation between code, data, and settings. This makes it easier to manage complex projects, collaborate across teams, and maintain reproducibility across environments.
 - **Straightforward asset and workflow creation:** Kedro makes it simple to define pipelines as sequences of modular, reusable nodes without worrying about orchestration logic. These pipelines are automatically translated into Dagster assets, enabling you to develop locally and immediately visualize and orchestrate your work in Dagster’s UI with minimal configuration.
 - **Built‑in data connectors:** Kedro’s `DataCatalog` provides a centralized and declarative way to manage all data inputs and outputs across environments. It supports a wide range of data sources out of the box, from local CSVs and Parquet files to cloud storage like S3 and GCS.
-- **Full control over Kedro-based Dagster objects:** Kedro projects are seamlessly translated into Dagster code locations. Any aspect of the generated Dagster assets, jobs, executors, or resources can be modified in the Dagster UI without modifying the Kedro code.
+- **Full control over Kedro-based Dagster objects:** Kedro projects are seamlessly translated into Dagster code locations. Any aspect of the generated Dagster assets, jobs, executors, or resources can be modified in the Dagster UI Launchpad without modifying the Kedro code.
 
 ## Key Features
 

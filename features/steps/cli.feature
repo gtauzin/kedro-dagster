@@ -12,6 +12,6 @@ Feature: dagster commands in new projects
     And A definitions.py file should exist
 
   Scenario: Execute dagster dev
-    When I execute the kedro command "dagster dev --env local ---port 3030 --host 127.0.0.1"
+    When I execute the kedro command "dagster dev --env local --port 3030 --host 127.0.0.1"
     Then I should get a successful exit code
     And the dagster UI should be served on "127.0.0.1:3030"

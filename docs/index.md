@@ -28,19 +28,25 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 
   *Step-by-step guide to installing and setting up Kedro-Dagster in your project.*
 
-- [Installation](pages/getting-started.md#1-installation)
-- [Create a Kedro Project (Optional)](pages/getting-started.md#2-create-a-kedro-project-optional)
-- [Initialize Dagster Integration](pages/getting-started.md#3-initialize-dagster-integration)
-- [Configure Jobs, Executors, and Schedules](pages/getting-started.md#4-configure-jobs-executors-and-schedules)
-- [Browse the Dagster UI](pages/getting-started.md#5-browse-the-dagster-ui)
+- [1. Create a Kedro Project (Optional)](pages/getting-started.md#1-create-a-kedro-project-optional)
+- [2. Installation](pages/getting-started.md#2-installation)
+- [3. Initialize Dagster Integration](pages/getting-started.md#3-initialize-dagster-integration)
+- [4. Configure Jobs, Executors, and Schedules](pages/getting-started.md#4-configure-jobs-executors-and-schedules)
+- [5. Browse the Dagster UI](pages/getting-started.md#5-browse-the-dagster-ui)
 
 ### [Example](pages/example.md)
 
   *A practical example demonstrating how to use Kedro-Dagster in a real project.*
 
+- [Project Overview](pages/example.md#project-overview)
+- [Quick Start](pages/example.md#quick-start)
+
 ### [Technical Documentation](pages/technical.md)
 
   *In-depth documentation on the design, architecture, and core concepts of the plugin.*
+
+- [Project Configuration](pages/technical.md#project-configuration)
+- [Kedro-Dagster Concept Mapping](pages/technical.md#kedro-dagster-concept-mapping)
 
 ### [API Reference](pages/api.md)
 

@@ -304,6 +304,7 @@ class NodeTranslator:
                     group_name="external",
                     description=description,
                     metadata=metadata,
+                    kinds={"kedro"},
                 ).with_io_manager_key(io_manager_key=io_manager_key)
                 named_assets[external_asset_name] = external_asset
 

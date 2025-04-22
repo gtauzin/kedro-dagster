@@ -1,16 +1,8 @@
 # Getting Started
 
-This guide walks you through setting up and running a Kedro project with Dagster orchestration using the Kedro‑Dagster plugin. The examples below use the Kedro `spaceflights-pandas` starter project, but you can use any Kedro project.
+This guide walks you through setting up and deploying a Kedro project with Dagster using the Kedro‑Dagster plugin. The examples below use the Kedro `spaceflights-pandas` starter project, but you can use your own Kedro project. If you do, skip step 1.
 
-## 1. Installation
-
-In your Kedro project directory, install the plugin:
-
-```bash
-pip install kedro-dagster
-```
-
-## 2. Create a Kedro Project (Optional)
+## 1. Create a Kedro Project (Optional)
 
 *Skip this step if you already have a Kedro project you want to deploy with Dagster.*
 
@@ -25,6 +17,14 @@ Follow the prompts to set up your project. Once it is done, install the dependen
 ```bash
 cd spaceflights-pandas
 pip install -r requirements.txt
+```
+
+## 2. Installation
+
+Install the plugin with `pip`:
+
+```bash
+pip install kedro-dagster
 ```
 
 ## 3. Initialize Dagster Integration
@@ -43,13 +43,13 @@ This creates:
 --8<-- "src/kedro_dagster/templates/definitions.py"
 ```
 
-There's no need to modify the Dagster definitions file to get started. Check out the [Technical Documentation](technical.md) to find out how to customize it.
-
 - `conf/local/dagster.yml`: Dagster configuration file for the `local` Kedro environment.
 
 ``` title="dagster.yml"
 --8<-- "src/kedro_dagster/templates/dagster.yml"
 ```
+
+There's no need to modify the Dagster `definitions.py` file to get started, but let's have a deeper look on the `dagster.yml` file.
 
 ## 4. Configure Jobs, Executors, and Schedules
 
@@ -91,13 +91,12 @@ jobs:
 
   data_science:
     pipeline:
-      pipeline_name: data_processing
-      node_names:
-      - preprocess_companies_node
-      - preprocess_shuttles_node
+      pipeline_name: data_science
     schedule: daily
     executor: sequential
 ```
+
+Here, we have added a "parallel_data_processing" and a "data_science" job to the jobs configuration. The first one makes use of the `node_names` Kedro pipeline filter arguments, to create a sub-pipeline of the Kedro "data_processing" pipeline from a list of two Kedro nodes: "preprocess_companies_node" and "preprocess_shuttles_node". Both jobs are to run daily using the "daily" schedule based on the `cron_schedule` "0 0 * * *". "parallel_data_processing" is to run using a "multiprocess" executor with 2 `max_concurrent` and "data_science" will run sequentially.
 
 See the [Technical Documentation](technical.md) for more on customizing the Dagster configuration file.
 
@@ -109,8 +108,9 @@ Use [`kedro dagster dev`](api.md#kedro-dagster-dev) to start the Dagster develop
 kedro dagster dev --env local
 ```
 
-!! NOTE
-The `dagster.yml` file also include a **dev** section, containing default parameters for the [`kedro dagster dev`](api.md#kedro-dagster-dev) command. Check out
+!!! note
+
+    The `dagster.yml` file also include a **dev** section, containing the default parameters of the command. Check out the [API Reference](api.md#kedro-dagster-dev) for more info.
 
 The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000) by default.
 
@@ -126,15 +126,9 @@ Moving to the "Assets" tab leads to the list of assets generated from the Kedro 
 <figcaption>Asset List.</figcaption>
 </figure>
 
-Each asset is prefixed by the Kedro environment that was passed to the [`KedroProjectTranslator`](api.md#kedroprojecttranslator) in [`definitions.py`](api.md#definitionspy). If the Kedro dataset was generated from a [dataset factory](), the namespace that prefixed its name will also appear as a prefix, allowing easy browsing of assets per environment and per namespace.
-
-!! NOTE
-`base` environment
+Each asset is prefixed by the Kedro environment that was passed to the [`KedroProjectTranslator`](api.md#kedroprojecttranslator) in [`definitions.py`](technical.md#definitionspy). If the Kedro dataset was generated from a [dataset factory](https://docs.kedro.org/en/stable/data/kedro_dataset_factories.html), the namespace that prefixed its name will also appear as a prefix, allowing easy browsing of assets per environment and per namespace.
 
 Clicking on the "Asset lineage" link at the top right of the window leads to the Dagster asset lineage graph, where you can observe the dependencies between assets and check their status and description.
-
-!! NOTE
-description in metadata
 
 <figure markdown>
 ![Lineage graph of assets involved in the specified jobs](../images/getting-started/asset_graph_dark.png#only-dark){data-gallery="assets-dark"}

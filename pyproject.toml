@@ -73,11 +73,6 @@ tests = [
   "pyaml>=25.1",
 ]
 
-# TODO: Remove
-[tool.uv.sources]
-dagster = { git = "https://github.com/gtauzin/dagster.git", subdirectory = "python_modules/dagster", branch = "add-kedro-kind" }
-dagster-webserver = { git = "https://github.com/gtauzin/dagster.git", subdirectory = "python_modules/dagster-webserver", branch = "add-kedro-kind" }
-
 [project.entry-points."kedro.project_commands"]
 dagster = "kedro_dagster.cli:commands"
 

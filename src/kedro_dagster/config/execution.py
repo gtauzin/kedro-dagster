@@ -9,7 +9,11 @@ LOGGER = getLogger(__name__)
 
 
 class InProcessExecutorOptions(BaseModel):
-    """Options for the inprocess executor."""
+    """Options for the in-process executor.
+
+    Attributes:
+        retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
+    """
 
     class RetriesEnableOptions(BaseModel):
         enabled: dict = {}  # type: ignore[type-arg]
@@ -24,7 +28,12 @@ class InProcessExecutorOptions(BaseModel):
 
 
 class MultiprocessExecutorOptions(InProcessExecutorOptions):
-    """Options for the multiprocess executor."""
+    """Options for the multiprocess executor.
+
+    Attributes:
+        retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
+        max_concurrent (int | None): Maximum number of concurrent processes.
+    """
 
     max_concurrent: int | None = Field(
         default=None,
@@ -36,27 +45,59 @@ class MultiprocessExecutorOptions(InProcessExecutorOptions):
     )
 
 
-class DaskExecutorOptions(BaseModel):
-    """Options for the Dask executor."""
+class DaskClusterConfig(BaseModel):
+    """Configuration for the Dask cluster.
 
-    class DaskClusterConfig(BaseModel):
-        existing: dict[str, str] | None = Field(default=None, description="Connect to an existing scheduler.")
-        local: dict[str, Any] | None = Field(default=None, description="Local cluster configuration.")
-        yarn: dict[str, Any] | None = Field(default=None, description="YARN cluster configuration.")
-        ssh: dict[str, Any] | None = Field(default=None, description="SSH cluster configuration.")
-        pbs: dict[str, Any] | None = Field(default=None, description="PBS cluster configuration.")
-        moab: dict[str, Any] | None = Field(default=None, description="Moab cluster configuration.")
-        sge: dict[str, Any] | None = Field(default=None, description="SGE cluster configuration.")
-        lsf: dict[str, Any] | None = Field(default=None, description="LSF cluster configuration.")
-        slurm: dict[str, Any] | None = Field(default=None, description="SLURM cluster configuration.")
-        oar: dict[str, Any] | None = Field(default=None, description="OAR cluster configuration.")
-        kube: dict[str, Any] | None = Field(default=None, description="Kubernetes cluster configuration.")
+    Attributes:
+        existing (dict[str, str] | None): Connect to an existing scheduler.
+        local (dict[str, Any] | None): Local cluster configuration.
+        yarn (dict[str, Any] | None): YARN cluster configuration.
+        ssh (dict[str, Any] | None): SSH cluster configuration.
+        pbs (dict[str, Any] | None): PBS cluster configuration.
+        moab (dict[str, Any] | None): Moab cluster configuration.
+        sge (dict[str, Any] | None): SGE cluster configuration.
+        lsf (dict[str, Any] | None): LSF cluster configuration.
+        slurm (dict[str, Any] | None): SLURM cluster configuration.
+        oar (dict[str, Any] | None): OAR cluster configuration.
+        kube (dict[str, Any] | None): Kubernetes cluster configuration.
+    """
+
+    existing: dict[str, str] | None = Field(default=None, description="Connect to an existing scheduler.")
+    local: dict[str, Any] | None = Field(default=None, description="Local cluster configuration.")
+    yarn: dict[str, Any] | None = Field(default=None, description="YARN cluster configuration.")
+    ssh: dict[str, Any] | None = Field(default=None, description="SSH cluster configuration.")
+    pbs: dict[str, Any] | None = Field(default=None, description="PBS cluster configuration.")
+    moab: dict[str, Any] | None = Field(default=None, description="Moab cluster configuration.")
+    sge: dict[str, Any] | None = Field(default=None, description="SGE cluster configuration.")
+    lsf: dict[str, Any] | None = Field(default=None, description="LSF cluster configuration.")
+    slurm: dict[str, Any] | None = Field(default=None, description="SLURM cluster configuration.")
+    oar: dict[str, Any] | None = Field(default=None, description="OAR cluster configuration.")
+    kube: dict[str, Any] | None = Field(default=None, description="Kubernetes cluster configuration.")
+
+
+class DaskExecutorOptions(BaseModel):
+    """Options for the Dask executor.
+
+    Attributes:
+        cluster (DaskClusterConfig): Configuration for the Dask cluster.
+    """
 
     cluster: DaskClusterConfig = Field(default=DaskClusterConfig(), description="Configuration for the Dask cluster.")
 
 
 class DockerExecutorOptions(MultiprocessExecutorOptions):
-    """Options for the Docker-based executor."""
+    """Options for the Docker-based executor.
+
+    Attributes:
+        retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
+        max_concurrent (int | None): Maximum number of concurrent processes.
+        image (str | None): Docker image to use.
+        network (str | None): Name of the network to connect the container at creation time.
+        registry (dict[str, str] | None): Information for using a non local/public docker registry.
+        env_vars (list[str]): Environment variables for the container.
+        container_kwargs (dict[str, Any] | None): Key-value pairs for containers.create.
+        networks (list[str]): Names of the networks to connect the container at creation time.
+    """
 
     image: str | None = Field(
         default=None, description="The docker image to be used if the repository does not specify one."
@@ -89,7 +130,15 @@ class DockerExecutorOptions(MultiprocessExecutorOptions):
 
 
 class CeleryExecutorOptions(BaseModel):
-    """Options for the Celery-based executor."""
+    """Options for the Celery-based executor.
+
+    Attributes:
+        broker (str | None): Celery broker URL.
+        backend (str | None): Celery backend URL.
+        include (list[str]): List of modules every worker should import.
+        config_source (dict[str, Any] | None): Additional settings for the Celery app.
+        retries (int | None): Number of retries for the Celery tasks.
+    """
 
     broker: str | None = Field(
         default=None,
@@ -109,28 +158,77 @@ class CeleryExecutorOptions(BaseModel):
 
 
 class CeleryDockerExecutorOptions(CeleryExecutorOptions, DockerExecutorOptions):
-    """Options for the celery-based executor which launches tasks as Docker containers."""
+    """Options for the Celery-based executor which launches tasks as Docker containers.
+
+    Attributes:
+        broker (str | None): Celery broker URL.
+        backend (str | None): Celery backend URL.
+        include (list[str]): List of modules every worker should import.
+        config_source (dict[str, Any] | None): Additional settings for the Celery app.
+        retries (int | None): Number of retries for the Celery tasks.
+        image (str | None): Docker image to use.
+        network (str | None): Name of the network to connect the container at creation time.
+        registry (dict[str, str] | None): Information for using a non local/public docker registry.
+        env_vars (list[str]): Environment variables for the container.
+        container_kwargs (dict[str, Any] | None): Key-value pairs for containers.create.
+        networks (list[str]): Names of the networks to connect the container at creation time.
+        max_concurrent (int | None): Maximum number of concurrent processes.
+        retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
+    """
 
     pass
 
 
-class K8sJobExecutorOptions(MultiprocessExecutorOptions):
-    """Options for the Kubernetes-based executor."""
+class K8sJobConfig(BaseModel):
+    """Configuration for Kubernetes jobs.
 
-    class K8sJobConfig(BaseModel):
-        container_config: dict[str, Any] | None = Field(
-            default=None, description="Configuration for the Kubernetes container."
-        )
-        pod_spec_config: dict[str, Any] | None = Field(
-            default=None, description="Configuration for the Kubernetes Pod specification."
-        )
-        pod_template_spec_metadata: dict[str, Any] | None = Field(
-            default=None, description="Metadata for the Kubernetes Pod template specification."
-        )
-        job_spec_config: dict[str, Any] | None = Field(
-            default=None, description="Configuration for the Kubernetes Job specification."
-        )
-        job_metadata: dict[str, Any] | None = Field(default=None, description="Metadata for the Kubernetes Job.")
+    Attributes:
+        container_config (dict[str, Any] | None): Configuration for the Kubernetes container.
+        pod_spec_config (dict[str, Any] | None): Configuration for the Pod specification.
+        pod_template_spec_metadata (dict[str, Any] | None): Metadata for the Pod template specification.
+        job_spec_config (dict[str, Any] | None): Configuration for the Job specification.
+        job_metadata (dict[str, Any] | None): Metadata for the Job.
+    """
+
+    container_config: dict[str, Any] | None = Field(
+        default=None, description="Configuration for the Kubernetes container."
+    )
+    pod_spec_config: dict[str, Any] | None = Field(
+        default=None, description="Configuration for the Kubernetes Pod specification."
+    )
+    pod_template_spec_metadata: dict[str, Any] | None = Field(
+        default=None, description="Metadata for the Kubernetes Pod template specification."
+    )
+    job_spec_config: dict[str, Any] | None = Field(
+        default=None, description="Configuration for the Kubernetes Job specification."
+    )
+    job_metadata: dict[str, Any] | None = Field(default=None, description="Metadata for the Kubernetes Job.")
+
+
+class K8sJobExecutorOptions(MultiprocessExecutorOptions):
+    """Options for the Kubernetes-based executor.
+
+    Attributes:
+        retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
+        max_concurrent (int | None): Maximum number of concurrent processes.
+        job_namespace (str | None): Kubernetes namespace for jobs.
+        load_incluster_config (bool | None): Whether the executor is running within a k8s cluster.
+        kubeconfig_file (str | None): Path to a kubeconfig file to use.
+        step_k8s_config (K8sJobConfig): Raw Kubernetes configuration for each step.
+        per_step_k8s_config (dict[str, K8sJobConfig]): Per op k8s configuration overrides.
+        image_pull_policy (str | None): Image pull policy for Pods.
+        image_pull_secrets (list[dict[str, str]] | None): Credentials for pulling images.
+        service_account_name (str | None): Kubernetes service account name.
+        env_config_maps (list[str] | None): ConfigMapEnvSource names for environment variables.
+        env_secrets (list[str] | None): Secret names for environment variables.
+        env_vars (list[str] | None): Environment variables for the job.
+        volume_mounts (list[dict[str, str]]): Volume mounts for the container.
+        volumes (list[dict[str, str]]): Volumes for the Pod.
+        labels (dict[str, str]): Labels for created pods.
+        resources (dict[str, dict[str, str]] | None): Compute resource requirements.
+        scheduler_name (str | None): Custom Kubernetes scheduler for Pods.
+        security_context (dict[str, str]): Security settings for the container.
+    """
 
     job_namespace: str | None = Field(default=None, is_required=False)
     load_incluster_config: bool | None = Field(
@@ -224,7 +322,33 @@ class K8sJobExecutorOptions(MultiprocessExecutorOptions):
 
 
 class CeleryK8sJobExecutorOptions(CeleryExecutorOptions, K8sJobExecutorOptions):
-    """Options for the celery-based executor which launches tasks as Kubernetes Jobs."""
+    """Options for the Celery-based executor which launches tasks as Kubernetes jobs.
+
+    Attributes:
+        broker (str | None): Celery broker URL.
+        backend (str | None): Celery backend URL.
+        include (list[str]): List of modules every worker should import.
+        config_source (dict[str, Any] | None): Additional settings for the Celery app.
+        retries (int | None): Number of retries for the Celery tasks.
+        job_namespace (str | None): Kubernetes namespace for jobs.
+        load_incluster_config (bool | None): Whether the executor is running within a k8s cluster.
+        kubeconfig_file (str | None): Path to a kubeconfig file to use.
+        step_k8s_config (K8sJobConfig): Raw Kubernetes configuration for each step.
+        per_step_k8s_config (dict[str, K8sJobConfig]): Per op k8s configuration overrides.
+        image_pull_policy (str | None): Image pull policy for Pods.
+        image_pull_secrets (list[dict[str, str]] | None): Credentials for pulling images.
+        service_account_name (str | None): Kubernetes service account name.
+        env_config_maps (list[str] | None): ConfigMapEnvSource names for environment variables.
+        env_secrets (list[str] | None): Secret names for environment variables.
+        env_vars (list[str] | None): Environment variables for the job.
+        volume_mounts (list[dict[str, str]]): Volume mounts for the container.
+        volumes (list[dict[str, str]]): Volumes for the Pod.
+        labels (dict[str, str]): Labels for created pods.
+        resources (dict[str, dict[str, str]] | None): Compute resource requirements.
+        scheduler_name (str | None): Custom Kubernetes scheduler for Pods.
+        security_context (dict[str, str]): Security settings for the container.
+        job_wait_timeout (float): Wait time in seconds for a job to complete before marking as failed.
+    """
 
     job_wait_timeout: float = Field(
         default=86400.0,

@@ -16,7 +16,14 @@ LOGGER = getLogger(__name__)
 
 
 class KedroDagsterConfig(BaseModel):
-    """Configuration for Kedro-Dagster."""
+    """Main configuration class for Kedro-Dagster, representing the structure of the `dagster.yml` file.
+
+    Attributes:
+        dev (DevOptions | None): Options for `kedro dagster dev` command.
+        executors (dict[str, ExecutorOptions] | None): Mapping of executor names to executor options.
+        schedules (dict[str, ScheduleOptions] | None): Mapping of schedule names to schedule options.
+        jobs (dict[str, JobOptions] | None): Mapping of job names to job options.
+    """
 
     dev: DevOptions | None = None
     executors: dict[str, ExecutorOptions] | None = None

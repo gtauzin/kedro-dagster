@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/docs/images/logo_light.png">
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/docs/images/logo_dark.png">
-    <img src="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/.github/logo-light.png" alt="Kedro-Dagster">
+    <img src="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/docs/images/logo_light.png" alt="Kedro-Dagster">
   </picture>
 </p>
 
@@ -21,11 +21,11 @@ The Kedro-Dagster plugin enables seamless integration between [Kedro](https://ke
 
 ## What are the features of Kedro-Dagster?
 
-- **Dataset Translation**: Converts Kedro datasets into Dagster assets and IO managers, facilitating smooth data handling between the two frameworks.
-- **Pipeline Translation**: Transforms Kedro pipelines into Dagster jobs, enabling their execution and scheduling.
-- **Configuration-Driven Execution and Automation**: Utilizes Kedro's configuration to specify job executors and define schedules, allowing for flexible and dynamic pipeline management.
-- **Hook Support**: Preserves Kedro hooks within the Dagster context, ensuring that custom behaviors and plugins are maintained during pipeline execution.
-- **Logger Integration**: Integrates Kedro's logging with Dagster's logging system, providing unified and comprehensive logging across both platforms.
+- **Configuration‑Driven Workflows:** Centralize orchestration settings in a `dagster.yml` file for each Kedro environment. Define jobs from filtered Kedro pipelines, assign executors, retries, resource limits, and cron-based schedules.
+- **Customization:** The core integration lives in the auto‑generated Dagster `definitions.py`. For advanced use cases, you can extend or override these definitions.
+- **Kedro Hooks Preservation:** Kedro hooks are preserved and called at the appropriate time during pipeline execution, so custom logic (e.g., data validation, logging) continues to work seamlessly.
+- **MLflow Compatibility:** Use [Kedro-MLflow](https://github.com/Galileo-Galilei/kedro-mlflow) with Dagster’s [MLflow integration](https://dagster.io/integrations/dagster-mlflow) to track experiments, log models, and register artifacts.
+- **Logger Integration:** Unifies Kedro and Dagster logging so logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug.
 
 ## How to install Kedro-Dagster?
 
@@ -84,8 +84,9 @@ pip install kedro-dagster
    ```bash
    kedro dagster dev --env <ENV_NAME>
    ```
+   The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
-For a concrete use-case of Kedro-Dagster, have a look at the the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
+For a concrete use-case, see the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
 
 ## How do I use Kedro-Dagster?
 
@@ -93,7 +94,13 @@ Full documentation is available at [https://gtauzin.github.io/kedro-dagster/](ht
 
 ## Can I contribute?
 
-Yes! We welcome all kinds of contributions. Check out our [guide to contributing](https://github.com/gtauzin/kedro-dagster/blob/main/CONTRIBUTING.md).
+We welcome contributions, feedback, and questions:
+
+- **Report issues or request features:** [GitHub Issues](https://github.com/gtauzin/kedro-dagster/issues)
+- **Join the discussion:** [Kedro Slack](https://slack.kedro.org/)
+- **Contributing Guide:** [CONTRIBUTING.md](https://github.com/gtauzin/kedro-dagster/blob/main/CONTRIBUTING.md)
+
+If you are interested in becoming a maintainer or taking a more active role, please reach out on the [Kedro Slack](https://slack.kedro.org/).
 
 ## Where can I learn more?
 

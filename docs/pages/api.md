@@ -41,17 +41,25 @@ uv run kedro dagster dev --env <ENV_NAME> --log-level <LEVEL> --log-format <FORM
 - `--host`: Host address for the Dagster UI.
 - `--live-data-poll-rate`: Polling rate for live data in milliseconds.
 
-If specified, those options will override the ones specified in your `conf/<ENV_NAME>/dagster.yml`.
+If specified, those options will override the ones specified in your `conf/<ENV_NAME>/dagster.yml`. See [`DevOptions`](#devoptions).
 
 ## Configuration
 
-The following classes define the configuration schema for Kedro-Dagster, using Pydantic models:
+The following classes define the configuration schema for Kedro-Dagster's `dagster.yml`, using Pydantic models.
 
 ### `KedroDagsterConfig`
 
 Main configuration class for Kedro-Dagster, representing the structure of the `dagster.yml` file.
 
 ::: kedro_dagster.config.kedro_dagster.KedroDagsterConfig
+
+---
+
+### `DevOptions`
+
+Options for the `kedro dagster dev` command.
+
+::: kedro_dagster.config.dev.DevOptions
 
 ---
 
@@ -73,13 +81,13 @@ Options for filtering and configuring Kedro pipelines within jobs.
 
 ### `ExecutorOptions`
 
-Base class for executor configuration. See also specific executor option classes below.
+Base class for executor configuration. See specific executor option classes below.
 
 ::: kedro_dagster.config.execution.ExecutorOptions
 
 ---
 
-### `InProcessExecutorOptions`
+#### `InProcessExecutorOptions`
 
 Options for the in-process executor.
 
@@ -87,7 +95,7 @@ Options for the in-process executor.
 
 ---
 
-### `MultiprocessExecutorOptions`
+#### `MultiprocessExecutorOptions`
 
 Options for the multiprocess executor.
 
@@ -95,15 +103,19 @@ Options for the multiprocess executor.
 
 ---
 
-### `DaskExecutorOptions`
+#### `DaskExecutorOptions`
 
 Options for the Dask executor.
 
 ::: kedro_dagster.config.execution.DaskExecutorOptions
 
+where `DaskClusterConfig` is defined as:
+
+::: kedro_dagster.config.execution.DaskClusterConfig
+
 ---
 
-### `DockerExecutorOptions`
+#### `DockerExecutorOptions`
 
 Options for the Docker-based executor.
 
@@ -111,7 +123,7 @@ Options for the Docker-based executor.
 
 ---
 
-### `CeleryExecutorOptions`
+#### `CeleryExecutorOptions`
 
 Options for the Celery-based executor.
 
@@ -119,7 +131,7 @@ Options for the Celery-based executor.
 
 ---
 
-### `CeleryDockerExecutorOptions`
+#### `CeleryDockerExecutorOptions`
 
 Options for the Celery executor with Docker support.
 
@@ -127,19 +139,27 @@ Options for the Celery executor with Docker support.
 
 ---
 
-### `K8sJobExecutorOptions`
+#### `K8sJobExecutorOptions`
 
 Options for the Kubernetes-based executor.
 
 ::: kedro_dagster.config.execution.K8sJobExecutorOptions
 
+where `K8sJobConfig` is defined as:
+
+::: kedro_dagster.config.execution.K8sJobConfig
+
 ---
 
-### `CeleryK8sJobExecutorOptions`
+#### `CeleryK8sJobExecutorOptions`
 
 Options for the Celery executor with Kubernetes support.
 
 ::: kedro_dagster.config.execution.CeleryK8sJobExecutorOptions
+
+where `K8sJobConfig` is defined as:
+
+::: kedro_dagster.config.execution.K8sJobConfig
 
 ---
 
@@ -148,14 +168,6 @@ Options for the Celery executor with Kubernetes support.
 Options for defining Dagster schedules.
 
 ::: kedro_dagster.config.automation.ScheduleOptions
-
----
-
-### `DevOptions`
-
-Development options for the `kedro dagster dev` command.
-
-::: kedro_dagster.config.dev.DevOptions
 
 ---
 

@@ -1,44 +1,55 @@
 # Technical Documentation
 
-## Projet Configuration
+This section provides an in-depth look at the architecture, configuration, and core concepts behind Kedro-Dagster. Here you'll find details on how Kedro projects are mapped to Dagster constructs, how to configure orchestration, and how to customize the integration for advanced use cases.
 
-Kedro-Dagster expects a standard Kedro project structure. The main configuration file for Dagster integration is `dagster.yml`, located in your Kedro project's `conf/<ENV_NAME>/` directory.
+!!! danger
+    This documentation section is a work in progress. The translation configuration logic is not yet fully defined here. Please check back later for a more complete guide!
+
+## Project Configuration
+
+Kedro-Dagster expects a standard [Kedro project structure](https://docs.kedro.org/en/stable/get_started/kedro_concepts.html#kedro-project-directory-structure). The main configuration file for Dagster integration is `dagster.yml`, located in your Kedro project's `conf/<ENV_NAME>/` directory.
 
 ### dagster.yml
 
-This YAML file defines jobs, executors, and schedules for your project. Example:
+This YAML file defines jobs, executors, and schedules for your project.
 
-```yaml
-schedules:
-  my_job_schedule:
-    cron_schedule: "0 0 * * *"
+!!! example
+  ```yaml
+  schedules:
+    my_job_schedule: # Name of the schedule
+      cron_schedule: "0 0 * * *" # Parameterst of the schedule
 
-executors:
-  my_executor:
-    multiprocess:
-      max_concurrent: 2
+  executors:
+    my_executor: # Name of the executor
+      multiprocess: # Parameters of the executor
+        max_concurrent: 2
 
-jobs:
-  my_job:
-    pipeline:
-      pipeline_name: __default__
-    executor: my_executor
-    schedule: my_job_schedule
-```
+  jobs:
+    my_job: # Name of the job
+      pipeline: # Parameters of its corresponding pipeline
+        pipeline_name: __default__
+        node_namespace: my_namespace
+      executor: my_executor
+      schedule: my_job_schedule
+  ```
 
-- **jobs**: Map Kedro pipelines to Dagster jobs, with optional filtering.
-- **executors**: Define how jobs are executed (in-process, multiprocess, k8s, etc).
+- **jobs**: Map [Kedro pipelines](https://docs.kedro.org/en/stable/nodes_and_pipelines/pipeline_introduction.html) to Dagster jobs, with optional [filtering](https://docs.kedro.org/en/stable/api/kedro.pipeline.Pipeline.html#kedro.pipeline.Pipeline.filter).
+- **executors**: Define how jobs are executed (in-process, multiprocess, k8s, etc) by picking executors from those [implemented in Dagster](https://docs.dagster.io/guides/operate/run-executors#example-executors).
 - **schedules**: Set up cron-based or custom schedules for jobs.
 
-### Customizing Schedules
+#### Customizing Schedules
 
-TODO
+You can define multiple schedules for your jobs using cron syntax. See the [Dagster scheduling documentation](https://docs.dagster.io/concepts/partitions-schedules-sensors/schedules) and the [API Reference](api.md#scheduleoptions) for more details.
 
-### Customizing Executors
+#### Customizing Executors
 
 Kedro-Dagster supports several executor types for running your jobs, such as in-process, multiprocess, Dask, Docker, Celery, and Kubernetes. You can customize executor options in your `dagster.yml` file under the `executors` section.
 
-#### Example: Custom Multiprocess Executor
+For each [available Dagster executor](https://docs.dagster.io/guides/operate/run-executors#example-executors), there is a corresponding configuration Pydantic model documented in the [API Reference](api.md#executoroptions).
+
+##### Example: Custom Multiprocess Executor
+
+We can select `multiprocess` as the executor type corresponding to the [multiprocess Dagster executor](https://docs.dagster.io/api/dagster/execution#dagster.multiprocess_executor) and specify the mulitprocess executor according to the [MultiprocessExecutorOptions](api.md#multiprocessexecutoroptions).
 
 ```yaml
 executors:
@@ -47,56 +58,39 @@ executors:
       max_concurrent: 4
 ```
 
-#### Example: Custom Docker Executor
+##### Example: Custom Docker Executor
+
+Similarly, we can configure a [Docker Dagster executor](https://docs.dagster.io/api/libraries/dagster-docker#dagster_docker.docker_executor) with the available parameters defined in [`DockerExecutorOptions`](api.md#dockerexecutoroptions).
 
 ```yaml
 executors:
   my_docker_executor:
     docker_executor:
       image: my-custom-image:latest
-      env_vars:
-        - ENV=prod
-      networks:
-        - my_network
+      registry: "my_registry.com"
+      network: "my_network"
+      networks: ["my_network_1", "my_network_2"]
+      container_kwargs:
+        volumes:
+          - "/host/path:/container/path"
+        environment:
+          - "ENV_VAR=value"
 ```
 
-#### Example: Custom Kubernetes Executor
+!!! note
+    The `docker_executor` requires the `dagster-docker package.
 
-```yaml
-executors:
-  my_k8s_executor:
-    k8s_job_executor:
-      job_namespace: my-namespace
-      image_pull_policy: Always
-      env_vars:
-        - ENV=prod
-      resources:
-        limits:
-          cpu: "2"
-          memory: "4Gi"
-```
+#### Customizing Jobs
 
-### Customizing Jobs
+You can filter which nodes, tags, or inputs/outputs are included in each job. Each job can be associated with a pre-defined executor and/or schedule. See the [Kedro pipeline documentation](https://docs.kedro.org/en/stable/api/kedro.pipeline.Pipeline.html#kedro.pipeline.Pipeline.filter) for more on pipelines and filtering. The accepted pipeline parameters are documented in the associated Pydantic model, [`PipelineOptions](api.md#pipelineoptions).
 
-TODO explain that pipeline filtering is supported
-TODO specify that each job can be associated with a pre-defined executor and/or schedule
+To each job, you can assign a schedule and/or an executor by name if it was previously defined in the configuration file.
 
 ### definitions.py
 
-The `definitions.py` file is auto-generated by the plugin and serves as the main entry point for Dagster to discover all translated Kedro objects. It contains the Dagster `Definitions` object, which registers all jobs, assets, resources, and schedules derived from your Kedro project.
+The `definitions.py` file is auto-generated by the plugin and serves as the main entry point for Dagster to discover all translated Kedro objects. It contains the Dagster [`Definitions`](https://docs.dagster.io/api/dagster/definitions#dagster.Definitions) object, which registers all jobs, assets, resources, schedules, and sensors derived from your Kedro project.
 
-- **Purpose:** Allows Dagster to load your Kedro pipelines, datasets, and configuration as Dagster jobs, assets, and resources.
-- **Location:** Placed at the root of your Kedro project.
-- **Regeneration:** Re-run `kedro dagster init` to update this file if your Kedro project structure changes.
-
-Typical contents include:
-
-- All Dagster jobs corresponding to Kedro pipelines.
-- Asset definitions for datasets.
-- Resource definitions for IO managers and configuration.
-- Schedule and sensor definitions if configured in `dagster.yml`.
-
-You should not manually edit `definitions.py`; instead, update your Kedro project or configuration and regenerate as needed.
+In most cases, you should not manually edit `definitions.py`; instead, update your Kedro project or `dagster.yml` configuration.
 
 ## Kedro-Dagster Concept Mapping
 
@@ -104,51 +98,55 @@ Kedro-Dagster translates core Kedro concepts into their Dagster equivalents. Und
 
 | Kedro Concept   | Dagster Concept      | Description |
 |-----------------|----------------------|-------------|
-| **Node**        | Op,&nbsp;Asset            | Each Kedro node becomes a Dagster op. Node parameters are passed as config. |
-| **Pipeline**    | Job                  | Each Kedro pipeline is translated into a Dagster job. Jobs can be filtered and scheduled. |
-| **Dataset**     | Asset,&nbsp;IO&nbsp;Manager    | Kedro datasets become Dagster assets (if named as such) and are managed by custom IO managers. |
-| **Hooks**       | Hooks,&nbsp;Sensors       | Kedro hooks (before/after pipeline run, on error, etc.) are executed at the appropriate points in the Dagster job lifecycle. |
-| **Parameters**  | Config,&nbsp;Resources    | Kedro parameters are passed as Dagster config or resources. |
-| **Logging**     | Logger               | Kedro logging is integrated with Dagster's logging system. |
+| **Node**        | Op,&nbsp;Asset            | Each [Kedro node](https://docs.kedro.org/en/stable/nodes_and_pipelines/nodes.html) becomes a Dagster op. Node parameters are passed as config. |
+| **Pipeline**    | Job                  | Each [Kedro pipeline](https://docs.kedro.org/en/stable/nodes_and_pipelines/pipeline_introduction.html) is translated into a Dagster job. Jobs can be filtered and scheduled and can target executors. |
+| **Dataset**     | Asset,&nbsp;IO&nbsp;Manager    | Each [Kedro data catalog](https://docs.kedro.org/en/stable/data/data_catalog.html)'s dataset become Dagster assets managed by a dedicated IO managers. |
+| **Hooks**       | Hooks,&nbsp;Sensors       | [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) are executed at the appropriate points in the Dagster job lifecycle. |
+| **Parameters**  | Config,&nbsp;Resources    | [Kedro parameters](https://docs.kedro.org/en/stable/configuration/parameters.html) are passed as Dagster config. |
+| **Logging**     | Logger               | [Kedro logging](https://docs.kedro.org/en/stable/logging/index.html) is integrated with Dagster's logging system. |
 
 ### Catalog
 
-Kedro-Dagster translates Kedro datasets into Dagster assets and IO managers. This allows you to use Kedro's Data Catalog with Dagster's asset materialization and IO management features.
+Kedro-Dagster translates Kedro datasets into Dagster assets and IO managers. This allows you to use Kedro's [Data Catalog](https://docs.kedro.org/en/stable/data/data_catalog.html) with Dagster's asset materialization and IO management features.
 
-- **External assets**: Datasets not generated by Dagster are registered as external assets.
-- **IO Managers**: Custom IO managers are created for each dataset type, supporting both in-memory and persistent datasets.
+For the Kedro pipelines specified in `dagster.yml`, the following Dagster objects are defined:
 
-See the API reference for `CatalogTranslator` for more details.
+- **External assets**: Input datasets to the pipelines are registered as Dagster external assets.
+- **Assets**: Output datasets to the pipelines are defined as Dagster assets
+- **IO Managers**: Custom Dagster IO managers are created for each dataset involved in the deployed pipelines mapping both their save and load functions.
+
+See the API reference for [`CatalogTranslator`](api.md#catalogtranslator) for more details.
 
 ### Node
 
-Kedro nodes are translated into Dagster ops and assets. Each node becomes a Dagster op, and, additionally, nodes that returns outputs are mapped to Dagster multi-assets.
+Kedro nodes are translated into Dagster ops and assets. Each node becomes a Dagster op, and, additionally, nodes that return outputs are mapped to Dagster multi-assets.
 
-- **Ops**: Each Kedro node is mapped to a Dagster op.
-- **Assets**: Outputs that are asset-named are registered as Dagster assets.
-- **Parameters**: Node parameters are passed as Dagster config.
+For the Kedro pipelines specified in `dagster.yml`, the following Dagster objects are defined:
 
-See the API reference for `NodeTranslator` for more details.
+- **Ops**: Each Kedro node within the pipelines is mapped to a Dagster op.
+- **Assets**: Kedro nodes that return output datasets are registered as Dagster multi-assets.
+- **Parameters**: Node parameters are passed as Dagster config to enable them to be modified in a Dagster run launchpad.
+
+See the API reference for [`NodeTranslator`](api.md#nodetranslator) for more details.
 
 ### Pipeline
 
 Kedro pipelines are translated into Dagster jobs. Each job can be filtered, scheduled, and assigned an executor via configuration.
 
 - **Jobs**: Each pipeline is mapped to a Dagster job.
-- **Filtering**: Jobs can filter nodes, tags, and inputs/outputs.
-- **Hooks**: Before/after pipeline run hooks are supported.
+- **Filtering**: Jobs are defined granuarily from Kedro pipelines by allowing the filtering of their nodes, namespaces, tags, and inputs/outputs.
 
-See the API reference for `PipelineTranslator` for more details.
+See the API reference for [`PipelineTranslator`](api.md#pipelinetranslator) for more details.
 
 ### Hook
 
-Kedro-Dagster preserves all Kedro hooks in the Dagster context. Supported hooks include:
+Kedro-Dagster preserves all [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) in the Dagster context. Hooks are executed at the appropriate points in the Dagster job lifecycle. Catalog hooks are called in the `handle_output` and `load_input` function of each Dagster IO manager. Node hooks are plugged in the appropriate Dagster Op. As for the Context hook, they are called within a Dagster Op running at the beginning of each job along with the `before_pipeline_run` pipeline hook. The `after_pipeline_run` is called in a Dagster op running at the end of each job. Finally the `on_pipeline_error` pipeline, is embedded in a dedicated Dagster sensor that is triggered by a run failure.
 
-Catalog and Node hooks are called
+---
 
-- `after_context_created`
-- `before_pipeline_run`
-- `after_pipeline_run`
-- `on_pipeline_error`
+## Next Steps
 
-Hooks are executed at the appropriate points in the Dagster job lifecycle. See the API reference for details on hook translation.
+- **Getting Started:** Follow the [step-by-step tutorial](getting-started.md) to set up Kedro-Dagster in your project.
+- **Example:** See the [Example Documentation](example.md) for a real-world use case.
+- **API Reference:** Explore the [API Reference](api.md) for details on available classes, functions, and configuration options.
+- **External Documentation:** For more on Kedro concepts, see the [Kedro documentation](https://kedro.readthedocs.io/en/stable/). For Dagster concepts, see the [Dagster documentation](https://docs.dagster.io/).
