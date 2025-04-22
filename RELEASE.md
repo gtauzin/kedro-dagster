@@ -1,6 +1,8 @@
 
 # Unreleased
 
+# Release 0.2.0
+
 This release is a complete refactoring of Kedro-Dagster and its first stable version.
 
 ## Thanks for supporting contributions

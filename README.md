@@ -8,12 +8,10 @@
 
 [![Powered by Kedro](https://img.shields.io/badge/powered_by-kedro-ffc900?logo=kedro)](https://kedro.org)
 [![Python Version](https://img.shields.io/pypi/pyversions/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
-[![License](https://img.shields.io/github/license/gtauzin/kedro-dagster)](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/gtauzin/kedro-dagster)](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE.md)
 [![PyPI Version](https://img.shields.io/pypi/v/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
 [![Run tests and checks](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml/badge.svg)](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml)
 [![Slack Organisation](https://img.shields.io/badge/slack-chat-blueviolet.svg?label=Kedro%20Slack&logo=slack)](https://slack.kedro.org)
-
-> **Important**: This package is under active development but is not yet ready for production.
 
 ## What is Kedro-Dagster?
 
@@ -37,54 +35,73 @@ pip install kedro-dagster
 
 ## How to get started with Kedro-Dagster?
 
-1. **Initialize the Plugin in Your Kedro Project**:
+1. **Installation**
 
-   Navigate to your Kedro project directory and install the plugin:
+Install the plugin with `pip`:
 
-   ```bash
-   pip install kedro-dagster
-   ```
+```bash
+pip install kedro-dagster
+```
 
-2. **Generate Dagster Definitions and Configuration**:
+or add `kedro-dagster` to your project's `requirements.txt` or `pyproject.toml`.
 
-   Use the following command to generate a `definitions.py` file, where all translated Kedro objects are available as Dagster objects, and a `dagster.yml` configuration file:
+2. **Initialize the plugin in your Kedro project**
 
-   ```bash
-   kedro dagster init --env <ENV_NAME>
-   ```
+Use the following command to generate a `definitions.py` file, where all translated Kedro objects are available as Dagster objects, and a `dagster.yml` configuration file:
 
-3. **Configure Jobs, Executors, and Schedules**:
+```bash
+kedro dagster init --env <ENV_NAME>
+```
 
-   Define your job executors and schedules in the `dagster.yml` configuration file located in your Kedro project's `conf/<ENV_NAME>` directory. This file allows you to filter Kedro pipelines and assign specific executors and schedules to them.
+3. **Configure Jobs, Executors, and Schedules**
 
-   ```yaml
-   # conf/base/dagster.yml
-   schedules:
-     my_job_schedule:
-       cron_schedule: "0 0 * * *"
+Define your job executors and schedules in the `dagster.yml` configuration file located in your Kedro project's `conf/<ENV_NAME>` directory. This file allows you to filter Kedro pipelines and assign specific executors and schedules to them.
 
-   executors:
-     my_executor:
-        retries: 3
+```yaml
+# conf/local/dagster.yml
+schedules:
+  daily: # Schedule name
+    cron_schedule: "0 0 * * *" # Schedule parameters
 
-   jobs:
-     my_job:
-       pipeline:
-         pipeline_name: __default__
+executors: # Executor name
+  sequential: # Executor parameters
+    in_process:
 
-       executor: my_executor
-       schedule: my_job_schedule
+  multiprocess:
+    multiprocess:
+      max_concurrent: 2
 
-   ```
+jobs:
+  default: # Job name
+    pipeline: # Pipeline filter parameters
+      pipeline_name: __default__
+    executor: sequential
 
-4. **Launch the Dagster UI**:
+  parallel_data_processing:
+    pipeline:
+      pipeline_name: data_processing
+      node_names:
+      - preprocess_companies_node
+      - preprocess_shuttles_node
+    schedule: daily
+    executor: multiprocess
 
-   Start the Dagster UI to monitor and manage your pipelines using the following command:
+  data_science:
+    pipeline:
+      pipeline_name: data_science
+    schedule: daily
+    executor: sequential
+```
 
-   ```bash
-   kedro dagster dev --env <ENV_NAME>
-   ```
-   The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000).
+4. **Launch the Dagster UI**
+
+Start the Dagster UI to monitor and manage your pipelines using the following command:
+
+```bash
+kedro dagster dev --env <ENV_NAME>
+```
+
+The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
 For a concrete use-case, see the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
 
@@ -100,7 +117,7 @@ We welcome contributions, feedback, and questions:
 - **Join the discussion:** [Kedro Slack](https://slack.kedro.org/)
 - **Contributing Guide:** [CONTRIBUTING.md](https://github.com/gtauzin/kedro-dagster/blob/main/CONTRIBUTING.md)
 
-If you are interested in becoming a maintainer or taking a more active role, please reach out on the [Kedro Slack](https://slack.kedro.org/).
+If you are interested in becoming a maintainer or taking a more active role, please reach out to Guillaume Tauzin on the [Kedro Slack](https://slack.kedro.org/).
 
 ## Where can I learn more?
 
@@ -108,7 +125,7 @@ There is a growing community around the Kedro project and we encourage you to be
 
 ## License
 
-This project is licensed under the terms of the [Apache 2.0 License](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE).
+This project is licensed under the terms of the [Apache 2.0 License](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE.md).
 
 ## Acknowledgements
 
