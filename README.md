@@ -37,73 +37,73 @@ pip install kedro-dagster
 
 1. **Installation**
 
-  Install the plugin with `pip`:
+Install the plugin with `pip`:
 
-  ```bash
-  pip install kedro-dagster
-  ```
+```bash
+pip install kedro-dagster
+```
 
-  or add `kedro-dagster` to your project's `requirements.txt` or `pyproject.toml`.
+or add `kedro-dagster` to your project's `requirements.txt` or `pyproject.toml`.
 
 2. **Initialize the plugin in your Kedro project**
 
-  Use the following command to generate a `definitions.py` file, where all translated Kedro objects are available as Dagster objects, and a `dagster.yml` configuration file:
+Use the following command to generate a `definitions.py` file, where all translated Kedro objects are available as Dagster objects, and a `dagster.yml` configuration file:
 
-  ```bash
-  kedro dagster init --env <ENV_NAME>
-  ```
+```bash
+kedro dagster init --env <ENV_NAME>
+```
 
 3. **Configure Jobs, Executors, and Schedules**
 
-  Define your job executors and schedules in the `dagster.yml` configuration file located in your Kedro project's `conf/<ENV_NAME>` directory. This file allows you to filter Kedro pipelines and assign specific executors and schedules to them.
+Define your job executors and schedules in the `dagster.yml` configuration file located in your Kedro project's `conf/<ENV_NAME>` directory. This file allows you to filter Kedro pipelines and assign specific executors and schedules to them.
 
-  ```yaml
-  # conf/local/dagster.yml
-  schedules:
-    daily: # Schedule name
-      cron_schedule: "0 0 * * *" # Schedule parameters
+```yaml
+# conf/local/dagster.yml
+schedules:
+  daily: # Schedule name
+    cron_schedule: "0 0 * * *" # Schedule parameters
 
-  executors: # Executor name
-    sequential: # Executor parameters
-      in_process:
+executors: # Executor name
+  sequential: # Executor parameters
+    in_process:
 
+  multiprocess:
     multiprocess:
-      multiprocess:
-        max_concurrent: 2
+      max_concurrent: 2
 
-  jobs:
-    default: # Job name
-      pipeline: # Pipeline filter parameters
-        pipeline_name: __default__
-      executor: sequential
+jobs:
+  default: # Job name
+    pipeline: # Pipeline filter parameters
+      pipeline_name: __default__
+    executor: sequential
 
-    parallel_data_processing:
-      pipeline:
-        pipeline_name: data_processing
-        node_names:
-        - preprocess_companies_node
-        - preprocess_shuttles_node
-      schedule: daily
-      executor: multiprocess
+  parallel_data_processing:
+    pipeline:
+      pipeline_name: data_processing
+      node_names:
+      - preprocess_companies_node
+      - preprocess_shuttles_node
+    schedule: daily
+    executor: multiprocess
 
-    data_science:
-      pipeline:
-        pipeline_name: data_science
-      schedule: daily
-      executor: sequential
-  ```
+  data_science:
+    pipeline:
+      pipeline_name: data_science
+    schedule: daily
+    executor: sequential
+```
 
-4. **Launch the Dagster UI**:
+4. **Launch the Dagster UI**
 
-  Start the Dagster UI to monitor and manage your pipelines using the following command:
+Start the Dagster UI to monitor and manage your pipelines using the following command:
 
-  ```bash
-  kedro dagster dev --env <ENV_NAME>
-  ```
+```bash
+kedro dagster dev --env <ENV_NAME>
+```
 
-  The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000).
+The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
-  For a concrete use-case, see the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
+For a concrete use-case, see the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
 
 ## How do I use Kedro-Dagster?
 
@@ -117,7 +117,7 @@ We welcome contributions, feedback, and questions:
 - **Join the discussion:** [Kedro Slack](https://slack.kedro.org/)
 - **Contributing Guide:** [CONTRIBUTING.md](https://github.com/gtauzin/kedro-dagster/blob/main/CONTRIBUTING.md)
 
-If you are interested in becoming a maintainer or taking a more active role, please reach out on the [Kedro Slack](https://slack.kedro.org/).
+If you are interested in becoming a maintainer or taking a more active role, please reach out to Guillaume Tauzin on the [Kedro Slack](https://slack.kedro.org/).
 
 ## Where can I learn more?
 
