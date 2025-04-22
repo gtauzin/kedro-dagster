@@ -1,4 +1,5 @@
 """Behave environment setup commands"""
+# mypy: ignore-errors
 
 import os
 import shutil

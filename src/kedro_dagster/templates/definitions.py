@@ -1,34 +1,27 @@
 """Dagster definitions."""
 
 import dagster as dg
-from dagster_aws.s3 import S3PickleIOManager, S3Resource
-from kedro_dagster import (
-    translate_kedro,
-)
 
-ENV = "base"
+from kedro_dagster import KedroProjectTranslator
 
-assets, resources, jobs, schedules, loggers, executors = translate_kedro(env=ENV)
+translator = KedroProjectTranslator(env="local")
+dagster_code_location = translator.to_dagster()
 
+resources = dagster_code_location.named_resources
 # The "io_manager" key handles how Kedro MemoryDatasets are handled by Dagster
-if ENV == "base":
-    resources |= {
-        "io_manager": dg.fs_io_manager,
-    }
-elif ENV == "dev":
-    resources |= {
-        "io_manager": S3PickleIOManager(
-            s3_resource=S3Resource(),
-            s3_bucket="<MY_BUCKET>",
-            s3_prefix="<MY_PREFIX>",
-        ),
-    }
+resources |= {
+    "io_manager": dg.fs_io_manager,
+}
+
+# Define the default executor for Dagster jobs
+default_executor = dg.multiprocess_executor.configured(dict(max_concurrent=2))
 
 defs = dg.Definitions(
-    assets=assets,
+    assets=list(dagster_code_location.named_assets.values()),
     resources=resources,
-    jobs=jobs,
-    schedules=schedules,
-    loggers=loggers,
-    executor=executors["my_exec"],  # TODO: Clarify
+    jobs=list(dagster_code_location.named_jobs.values()),
+    schedules=list(dagster_code_location.named_schedules.values()),
+    sensors=list(dagster_code_location.named_sensors.values()),
+    loggers=dagster_code_location.named_loggers,
+    executor=default_executor,
 )

@@ -5,6 +5,14 @@ repo_url: https://github.com/gtauzin/kedro-dagster
 
 edit_uri: edit/main/docs/
 
+nav:
+  - Home: index.md
+  - Introduction: pages/intro.md
+  - Getting Started: pages/getting-started.md
+  - Example: pages/example.md
+  - Technical Documentation: pages/technical.md
+  - API Reference: pages/api.md
+
 theme:
   name: material
   custom_dir: docs/material/overrides
@@ -45,11 +53,21 @@ theme:
 
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: black
-      accent: indigo
+      primary: indigo
+      accent: amber
       toggle:
         icon: material/toggle-switch-off
         name: Switch to system preference
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ["."]  # for root of repo
 
 plugins:
   - git-revision-date-localized:
@@ -57,28 +75,42 @@ plugins:
       type: date
   - search:
       separator: '[\s\u200b\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      slide_effect: slide
+      width: 100%
+      height: auto
+      zoomable: true
+      draggable: true
+      skip_classes:
+        - custom-skip-class-name
+      auto_caption: true
+      caption_position: bottom
+      background: white
+      shadow: true
+      manual: false
   - mkdocstrings:
       handlers:
         python:
           options:
+            heading_level: 4
+            show_root_heading: false
+            show_root_toc_entry: false
             show_source: true
             docstring_style: google
             merge_init_into_class: true
             docstring_section_style: list
             separate_signature: true
-            #   filters: ["!^_"]
-            show_root_heading: true
+            filters: ["!^_"]
             docstring_options:
               ignore_init_summary: true
               warn_unknown_params: false
               returns_named_value: false
           paths: [src]
-
 extra:
   version:
     provider: mike
 
 copyright: Copyright &copy; 2024 - 2025 Guillaume Tauzin
-
-nav:
-    - Home: index.md

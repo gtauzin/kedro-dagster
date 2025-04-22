@@ -1,11 +1,21 @@
 """Configuration definitions for Kedro-Dagster."""
 
+from typing import Any
+
 from pydantic import BaseModel
 
 
-# TODO: Map name
 class ScheduleOptions(BaseModel):
+    """Options for defining Dagster schedules.
+
+    Attributes:
+        cron_schedule (str): Cron expression for the schedule.
+        execution_timezone (str | None): Timezone in which the schedule should execute.
+        description (str | None): Optional description of the schedule.
+        metadata (dict[str, Any] | None): Additional metadata for the schedule.
+    """
+
     cron_schedule: str
     execution_timezone: str | None = None
     description: str | None = None
-    metadata: dict | None = None
+    metadata: dict[str, Any] | None = None

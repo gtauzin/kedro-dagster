@@ -1,9 +1,4 @@
-"""
-This file contains the fixtures that are reusable by any tests within
-this directory. You don't need to import the fixtures as pytest will
-discover them automatically. More info here:
-https://docs.pytest.org/en/latest/fixture.html
-"""
+# mypy: ignore-errors
 
 from __future__ import annotations
 
@@ -22,7 +17,7 @@ def cli_runner():
     yield runner
 
 
-def _create_kedro_settings_py(file_name: Path, patterns: list[str]):
+def _create_kedro_settings_py(file_name, patterns):
     patterns_str = ", ".join([f'"{p}"' for p in patterns])
     content = f"""CONFIG_LOADER_ARGS = {{
     "base_env": "base",
@@ -36,7 +31,15 @@ def _create_kedro_settings_py(file_name: Path, patterns: list[str]):
 
 
 @fixture(scope="session")
-def kedro_project(cli_runner):
+def temp_directory(tmpdir_factory):
+    # Use tmpdir_factory to create a temporary directory with session scope
+    return tmpdir_factory.mktemp("session_temp_dir")  # type: ignore[no-any-return]
+
+
+@fixture(scope="session")
+def kedro_project(cli_runner, temp_directory):  # type: ignore[no-untyped-def]
+    os.chdir(temp_directory)
+
     CliRunner().invoke(
         # Supply name, tools, and example to skip interactive prompts
         kedro_cli,
@@ -76,7 +79,7 @@ def register_pipelines():
     }
     """
 
-    project_path = Path().cwd() / "fake-project"
+    project_path = Path(temp_directory.join("fake-project"))
     (project_path / "src" / "fake_project" / "pipeline_registry.py").write_text(pipeline_registry_py)
 
     settings_file = project_path / "src" / "fake_project" / "settings.py"
@@ -88,7 +91,6 @@ def register_pipelines():
 
 @fixture(scope="session")
 def metadata(kedro_project):
-    # cwd() depends on ^ the isolated filesystem, created by CliRunner()
     project_path = kedro_project.resolve()
     metadata = bootstrap_project(project_path)
-    return metadata
+    return metadata  # type: ignore[no-any-return]

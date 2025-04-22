@@ -8,7 +8,7 @@ The following sections describe our vision and the contribution process.
 
 The Kedro team pledges to foster and maintain a welcoming and friendly community in all of our spaces. All members of our community are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md), and we will do our best to enforce those principles and build a happy environment where everyone is treated with respect and dignity.
 
-# Get started
+## Get started
 
 We use [GitHub Issues](https://github.com/gtauzin/kedro-dagster/issues) to keep track of known bugs. We keep a close eye on them and try to make it clear when we have an internal fix in progress. Before reporting a new issue, please do your best to ensure your problem hasn't already been reported. If so, it's often better to just leave a comment on an existing issue, rather than create a new one. Old issues also can often include helpful tips and solutions to common problems.
 
@@ -70,31 +70,54 @@ We use a branching model that helps us keep track of branches in a logical, cons
  2. Develop your contribution in a new branch.
  3. Make sure all your commits are signed off by using `-s` flag with `git commit`.
  4. Open a PR against the `main` branch and sure that the PR title follows the [Conventional Commits specs](https://www.conventionalcommits.org/en/v1.0.0/).
- 5. Make sure the CI builds are green (have a look at the section [Running checks locally](#running-checks-locally) below)
- 6. Update the PR according to the reviewer's comments
+ 5. Make sure the CI builds are green (have a look at the section [Testing](#testing) below)
+ 6. Ensure the documentation changes render properly (see section [Documentation](#documentation))
+ 7. Update the PR according to the reviewer's comments
 
-## CI / CD and running checks locally
-The project uses us, please refer to the [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/#installing-uv) to install it on your system.
+## Documentation
 
+- The main documentation is in the `docs/` directory and is built with [MkDocs](https://www.mkdocs.org/). To build or serve the documentation locally, use:
 
-### Running checks locally
+  ```bash
+  uvx nox -s build_docs
+  ```
 
-All checks run by our CI / CD pipeline can be run locally on your computer.
+  or
 
-#### Linting an formatting with `ruff`
+  ```bash
+  uv run mkdocs serve
+  ```
 
-```bash
-uvx ruff check src/kedro-dagster
-```
+- API reference and technical documentation are auto-generated from the code and docstrings. Please keep docstrings up to date when contributing code.
+- When adding new features or making changes, update the relevant documentation pages in `docs/pages/` and ensure the navigation in `mkdocs.yml` is correct.
 
-#### Unit tests, 100% coverage (`pytest`, `pytest-cov`)
+## Testing
 
-```bash
-uv run pytest tests
-```
+- **Unit tests** are in the `tests/` directory and use `pytest`. Run them with:
 
-#### End-to-end tests (`behave`)
+  ```bash
+  uv run pytest tests
+  ```
 
-```bash
-uv run behave
-```
+- **Behavior (end-to-end) tests** are in the `features/` directory and use `behave`. Run them with:
+
+  ```bash
+  uv run behave features
+  ```
+
+- **Linting and formatting** is enforced with `ruff` and can be run with:
+
+  ```bash
+  uvx ruff check src/kedro-dagster
+  ```
+
+- **All checks and tests** can be run using [nox](https://nox.thea.codes/):
+
+  ```bash
+  uvx nox -s fix
+  uvx nox -s tests
+  ```
+
+  This will run linting, formatting, unit tests, behavior tests, and coverage checks across supported Python versions.
+
+The CI/CD pipeline will run all of these checks automatically on pull requests. Please ensure your code passes locally before submitting a PR.

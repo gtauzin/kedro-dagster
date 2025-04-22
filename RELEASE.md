@@ -1,4 +1,15 @@
-# Release 0.1.1
+
+# Unreleased
+
+This release is a complete refactoring of Kedro-Dagster and its first stable version.
+
+## Thanks for supporting contributions
+
+[Guillaume Tauzin](https://github.com/gtauzin).
+
+We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
+
+# Pre-Release 0.1.1
 
 ## Major features and improvements
 
@@ -12,7 +23,9 @@
 
 [Guillaume Tauzin](https://github.com/gtauzin).
 
-# Release 0.1.0:
+We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
+
+# Pre-Release 0.1.0:
 
 Initial release of Kedro-Dagster.
 

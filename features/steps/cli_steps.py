@@ -2,6 +2,7 @@
 
 import re
 import textwrap
+import time
 from pathlib import Path
 
 import behave
@@ -14,13 +15,14 @@ OK_EXIT_CODE = 0
 
 
 @given("I have prepared a config file")
-def create_configuration_file(context):
+def create_configuration_file(context: behave.runner.Context) -> None:
     """Behave step to create a temporary config file
     (given the existing temp directory)
     and store it in the context.
     """
     context.config_file = context.temp_dir / "config"
     context.project_name = "project-dummy"
+    context.package_name = context.project_name.replace("-", "_")
 
     root_project_dir = context.temp_dir / context.project_name
     context.root_project_dir = root_project_dir
@@ -28,14 +30,14 @@ def create_configuration_file(context):
         "project_name": context.project_name,
         "repo_name": context.project_name,
         "output_dir": str(context.temp_dir),
-        "python_package": context.project_name.replace("-", "_"),
+        "python_package": context.package_name,
     }
     with context.config_file.open("w") as config_file:
         yaml.dump(config, config_file, default_flow_style=False)
 
 
 @given("I run a non-interactive kedro new using {starter_name} starter")
-def create_project_from_config_file(context, starter_name):
+def create_project_from_config_file(context: behave.runner.Context, starter_name: str) -> None:
     """Behave step to run kedro new
     given the config I previously created.
     """
@@ -95,7 +97,7 @@ def create_project_from_config_file(context, starter_name):
 
 
 @given('I have executed the kedro command "{command}"')
-def exec_kedro_command(context, command):
+def exec_kedro_command(context: behave.runner.Context, command: str) -> None:
     """Execute Kedro command and check the status."""
     make_cmd = [context.kedro] + command.split()
 
@@ -108,7 +110,7 @@ def exec_kedro_command(context, command):
 
 
 @given("I have installed the project dependencies")
-def pip_install_dependencies(context):
+def pip_install_dependencies(context: behave.runner.Context) -> None:
     """Install project dependencies using pip."""
     reqs_path = Path("requirements.txt")
     res = run(
@@ -124,37 +126,37 @@ def pip_install_dependencies(context):
 
 
 @when('I execute the kedro command "{command}"')
-def exec_kedro_target(context, command):
-    """Execute Kedro target"""
-    split_command = command.split()
-    make_cmd = [context.kedro] + split_command
-
-    if split_command[0] == "docker" and split_command[1] in ("ipython", "jupyter"):
-        context.result = ChildTerminatingPopen(make_cmd, env=context.env, cwd=str(context.root_project_dir))
+def exec_kedro_target(context: behave.runner.Context, command: str) -> None:
+    """Execute Kedro target. For 'dagster dev', run as background process."""
+    if command.startswith("dagster dev"):
+        make_cmd = [context.kedro] + command.split()
+        # Start dagster dev as a background process
+        context.process = ChildTerminatingPopen(make_cmd, env=context.env, cwd=str(context.root_project_dir))
+        # Give the server time to start
+        time.sleep(10)
+        # No exit code to check here; port check will follow
+        context.result = None
     else:
+        make_cmd = [context.kedro] + command.split()
         context.result = run(make_cmd, env=context.env, cwd=str(context.root_project_dir))
-
-
-@when('I occupy port "{port}"')
-def occupy_port(context, port):
-    """Execute  target"""
-    ChildTerminatingPopen(
-        ["nc", "-l", "0.0.0.0", port],
-        env=context.env,
-        cwd=str(context.root_project_dir),
-    )
+        if context.result.returncode != OK_EXIT_CODE:
+            print(context.result.stdout)
+            print(context.result.stderr)
+            assert False
 
 
 @then("I should get a successful exit code")
-def check_status_code(context):
-    if context.result.returncode != OK_EXIT_CODE:
-        print(context.result.stdout)
-        print(context.result.stderr)
-        assert False, f"Expected exit code /= {OK_EXIT_CODE} but got {context.result.returncode}"
+def check_status_code(context: behave.runner.Context) -> None:
+    # Only check exit code if not running a background process
+    if getattr(context, "result", None) is not None:
+        if context.result.returncode != OK_EXIT_CODE:
+            print(context.result.stdout)
+            print(context.result.stderr)
+            assert False, f"Expected exit code /= {OK_EXIT_CODE} but got {context.result.returncode}"
 
 
 @then("I should get an error exit code")
-def check_failed_status_code(context):
+def check_failed_status_code(context: behave.runner.Context) -> None:
     if context.result.returncode == OK_EXIT_CODE:
         print(context.result.stdout)
         print(context.result.stderr)
@@ -162,7 +164,7 @@ def check_failed_status_code(context):
 
 
 @then("A {filename} file should exist")
-def check_if_file_exists(context: behave.runner.Context, filename: str):
+def check_if_file_exists(context: behave.runner.Context, filename: str) -> None:
     """Checks if file is present and has content.
 
     Args:
@@ -170,20 +172,25 @@ def check_if_file_exists(context: behave.runner.Context, filename: str):
         filepath: A path to a file to check for existence.
     """
     if filename == "definitions.py":
-        filepath = "src/" + context.project_name + "/definitions.py"
+        filepath = "src/" + context.package_name + "/definitions.py"
 
-    if filename == "dagster.yml":
-        filepath = "conf/base/dagster.yml"
+    elif filename == "dagster.yml":
+        filepath = Path("conf/base/dagster.yml")
 
-    print(filepath)
+    else:
+        raise ValueError("`filename` should be either `definitions.py` or `dagster.yml`.")
 
-    filepath: Path = context.root_project_dir / filepath
-    assert filepath.exists(), f"Expected {filepath} to exists but .exists() returns {filepath.exists()}"
-    assert filepath.stat().st_size > 0, f"Expected {filepath} to have size > 0 but has {filepath.stat().st_size}"
+    absolute_filepath: Path = context.root_project_dir / filepath
+    assert absolute_filepath.exists(), (
+        f"Expected {absolute_filepath} to exists but .exists() returns {absolute_filepath.exists()}"
+    )
+    assert absolute_filepath.stat().st_size > 0, (
+        f"Expected {absolute_filepath} to have size > 0 but has {absolute_filepath.stat().st_size}"
+    )
 
 
 @then("A {filepath} file should contain {text} string")
-def grep_file(context: behave.runner.Context, filepath: str, text: str):
+def grep_file(context: behave.runner.Context, filepath: str, text: str) -> None:
     """Checks if given file contains passed string.
 
     Args:
@@ -191,7 +198,36 @@ def grep_file(context: behave.runner.Context, filepath: str, text: str):
         filepath: A path to a file to grep.
         text: Text (or regex) to search for.
     """
-    filepath: Path = context.root_project_dir / filepath
-    with filepath.open("r") as file:
+    absolute_filepath: Path = context.root_project_dir / filepath
+    with absolute_filepath.open("r") as file:
         found = any(line and re.search(text, line) for line in file)
-    assert found, f"String {text} not found in {filepath}"
+    assert found, f"String {text} not found in {absolute_filepath}"
+
+
+@then('the dagster UI should be served on "{host}:{port}"')
+def check_dagster_ui_url(context: behave.runner.Context, host: str, port: str) -> None:
+    """Check the dagster dev process output for the correct UI URL and absence of the default port."""
+    process = getattr(context, "process", None)
+    assert process is not None, "Dagster dev process was not started."
+    deadline = time.time() + 10
+    url_line = None
+    while time.time() < deadline:
+        line = process.stdout.readline() if hasattr(process, "stdout") and process.stdout else None
+        if line and isinstance(line, bytes):
+            line = line.decode(errors="replace")
+        if not line:
+            time.sleep(0.1)
+            continue
+        if "Serving dagster-webserver on" in line:
+            url_line = line.strip()
+            break
+    assert url_line is not None, "Did not receive Dagster UI startup message within 10 s"
+    assert f"{host}:{port}" in url_line, f"Expected UI on {host}:{port}, but got: {url_line}"
+
+
+def after_scenario(context: behave.runner.Context, scenario: behave.model.Scenario) -> None:
+    # Terminate dagster dev process if it was started
+    if hasattr(context, "process"):
+        context.process.terminate()
+        context.process.wait()
+        del context.process

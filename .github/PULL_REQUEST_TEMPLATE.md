@@ -1,5 +1,5 @@
 ## Description
-<!-- Why was this PR created? -->
+<!-- Why was this PR created? List issues it fixes. -->
 
 ## Development notes
 <!-- What have you changed, and how has this been tested? -->
