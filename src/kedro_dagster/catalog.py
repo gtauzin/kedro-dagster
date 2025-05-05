@@ -9,7 +9,7 @@ from kedro.io import DatasetNotFoundError, MemoryDataset
 from kedro.pipeline import Pipeline
 from pydantic import ConfigDict, create_model
 
-from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_asset_name, dagster_format
+from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_asset_name, format_dataset_name, format_node_name
 
 if TYPE_CHECKING:
     from kedro.io import AbstractDataset, CatalogProtocol
@@ -67,7 +67,7 @@ class CatalogTranslator:
         )
 
         hook_manager = self._hook_manager
-        named_nodes = {dagster_format(node.name): node for node in sum(self._pipelines, start=Pipeline([])).nodes}
+        named_nodes = {format_node_name(node.name): node for node in sum(self._pipelines, start=Pipeline([])).nodes}
 
         class ConfigurableDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):  # type: ignore[valid-type]
             def handle_output(self, context: dg.OutputContext, obj) -> None:  # type: ignore[no-untyped-def]
@@ -141,7 +141,7 @@ class CatalogTranslator:
         """
         named_io_managers = {}
         for dataset_name in sum(self._pipelines, start=Pipeline([])).datasets():
-            asset_name = dagster_format(dataset_name)
+            asset_name = format_dataset_name(dataset_name)
             if _is_asset_name(asset_name):
                 try:
                     dataset = self._catalog._get_dataset(dataset_name)
