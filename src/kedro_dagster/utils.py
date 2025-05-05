@@ -1,5 +1,8 @@
 """Utility functions."""
 
+import hashlib
+import re
+from logging import getLogger
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -12,6 +15,8 @@ if TYPE_CHECKING:
     from kedro.pipeline import Pipeline
     from kedro.pipeline.node import Node
     from pydantic import BaseModel
+
+LOGGER = getLogger(__name__)
 
 
 def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> str:  # type: ignore[no-untyped-def]
@@ -74,8 +79,8 @@ def get_asset_key_from_dataset_name(dataset_name: str, env: str) -> dg.AssetKey:
     return dg.AssetKey([env] + dataset_name.split("."))
 
 
-def dagster_format(name: str) -> str:
-    """Format a name to Dagster's asset naming convention.
+def format_dataset_name(name: str) -> str:
+    """Convert a dataset name so that it is valid under Dagster's naming convention.
 
     Args:
         name (str): The name to format.
@@ -83,20 +88,34 @@ def dagster_format(name: str) -> str:
     Returns:
         str: The formatted name.
     """
-    # If the name contains parentheses, we need to escape them
-    # by replacing them with underscores. This won't allow to
-    # recover the original name, but it does not matter as
-    # `kedro_format` is only used for asset names and the presence
-    # of parentheses means it is a Kedro (unspecified) node name.
-    name = name.replace("(", "_").replace(")", "_")
-    name = name.replace("[", "_").replace("]", "_")
-    name = name.replace("-", "").replace(">", "").replace(" ", "")
 
     return name.replace(".", "__")
 
 
-def kedro_format(name: str) -> str:
-    """Convert a Dagster-formatted name back to Kedro's naming convention.
+def format_node_name(name: str) -> str:
+    """Convert a node name so that it is valid under Dagster's naming convention.
+
+    Args:
+        name (str): The node name to format.
+
+    Returns:
+        str: The formatted name.
+    """
+    dagster_name = name.replace(".", "__")
+
+    allowed_pattern = re.compile(r"^[A-Za-z0-9_]+$")
+    if not allowed_pattern.match(dagster_name):
+        dagster_name = f"unnamed_node_{hashlib.md5(name.encode('utf-8')).hexdigest()}"
+        LOGGER.warning(
+            "Node is either unnamed or not in regex ^[A-Za-z0-9_]+$. "
+            f"Node named `{name}` has been converted to `{dagster_name}`."
+        )
+
+    return dagster_name
+
+
+def unformat_asset_name(name: str) -> str:
+    """Convert a Dagster-formatted asset name back to Kedro's naming convention.
 
     Args:
         name (str): The Dagster-formatted name.
@@ -189,7 +208,7 @@ def _get_node_pipeline_name(node: "Node") -> str:
                 if node.name == pipeline_node.name:
                     if "." in node.name:
                         namespace = ".".join(node.name.split(".")[:-1])
-                        return dagster_format(f"{namespace}.{pipeline_name}")
+                        return f"{namespace}__{pipeline_name}"
                     return pipeline_name
 
     raise ValueError(f"Node `{node.name}` is not part of any pipelines.")

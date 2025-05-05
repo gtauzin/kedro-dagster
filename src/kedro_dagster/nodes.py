@@ -12,10 +12,11 @@ from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
     _is_asset_name,
-    dagster_format,
+    format_dataset_name,
+    format_node_name,
     get_asset_key_from_dataset_name,
     is_mlflow_enabled,
-    kedro_format,
+    unformat_asset_name,
 )
 
 if TYPE_CHECKING:
@@ -66,7 +67,7 @@ class NodeTranslator:
         """
         params = {}
         for dataset_name in node.inputs:
-            asset_name = dagster_format(dataset_name)
+            asset_name = format_dataset_name(dataset_name)
             if not _is_asset_name(asset_name):
                 params[asset_name] = self._catalog.load(dataset_name)
 
@@ -122,7 +123,7 @@ class NodeTranslator:
         if not hasattr(self, "_asset_names"):
             asset_names = []
             for dataset_name in sum(self._pipelines, Pipeline([])).datasets():
-                asset_name = dagster_format(dataset_name)
+                asset_name = format_dataset_name(dataset_name)
                 asset_names.append(asset_name)
 
             asset_names = list(set(asset_names))
@@ -141,22 +142,22 @@ class NodeTranslator:
         """
         ins = {}
         for dataset_name in node.inputs:
-            asset_name = dagster_format(dataset_name)
+            asset_name = format_dataset_name(dataset_name)
             if _is_asset_name(asset_name):
                 ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_name))
 
         out = {}
         for dataset_name in node.outputs:
-            asset_name = dagster_format(dataset_name)
+            asset_name = format_dataset_name(dataset_name)
             out_asset_params = self._get_out_asset_params(dataset_name, asset_name)
             out[asset_name] = dg.Out(**out_asset_params)
 
         NodeParametersConfig = self._get_node_parameters_config(node)
-        op_name = dagster_format(node.name)
+        op_name = format_node_name(node.name)
 
         required_resource_keys = []
         for dataset_name in node.inputs + node.outputs:
-            asset_name = dagster_format(dataset_name)
+            asset_name = format_dataset_name(dataset_name)
             if f"{self._env}__{asset_name}_io_manager" in self._named_resources:
                 required_resource_keys.append(f"{self._env}__{asset_name}_io_manager")
 
@@ -176,7 +177,9 @@ class NodeTranslator:
             context.log.info(f"Running node `{node.name}` in graph.")
 
             inputs |= config.model_dump()  # type: ignore[attr-defined]
-            inputs = {kedro_format(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()}
+            inputs = {
+                unformat_asset_name(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()
+            }
 
             self._hook_manager.hook.before_node_run(
                 node=node,
@@ -232,14 +235,14 @@ class NodeTranslator:
 
         ins = {}
         for dataset_name in node.inputs:
-            asset_name = dagster_format(dataset_name)
+            asset_name = format_dataset_name(dataset_name)
             if _is_asset_name(asset_name):
                 asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
                 ins[asset_name] = dg.AssetIn(key=asset_key)
 
         outs = {}
         for dataset_name in node.outputs:
-            asset_name = dagster_format(dataset_name)
+            asset_name = format_dataset_name(dataset_name)
             asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
             out_asset_params = self._get_out_asset_params(dataset_name, asset_name, return_kinds=True)
             outs[asset_name] = dg.AssetOut(key=asset_key, **out_asset_params)
@@ -251,7 +254,7 @@ class NodeTranslator:
             required_resource_keys = {"mlflow"}
 
         @dg.multi_asset(
-            name=f"{dagster_format(node.name)}_asset",
+            name=f"{format_node_name(node.name)}_asset",
             description=f"Kedro node {node.name} wrapped as a Dagster multi asset.",
             group_name=_get_node_pipeline_name(node),
             ins=ins,
@@ -264,7 +267,9 @@ class NodeTranslator:
             context.log.info(f"Running node `{node.name}` in asset.")
 
             inputs |= config.model_dump()  # type: ignore[attr-defined]
-            inputs = {kedro_format(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()}
+            inputs = {
+                unformat_asset_name(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()
+            }
 
             outputs = node.run(inputs)
 
@@ -288,7 +293,7 @@ class NodeTranslator:
         # registered with AssetSpec
         named_assets = {}
         for external_dataset_name in default_pipeline.inputs():
-            external_asset_name = dagster_format(external_dataset_name)
+            external_asset_name = format_dataset_name(external_dataset_name)
             if _is_asset_name(external_asset_name):
                 dataset = self._catalog._get_dataset(external_dataset_name)
                 metadata = getattr(dataset, "metadata", None) or {}
@@ -311,7 +316,7 @@ class NodeTranslator:
         # Create assets from Kedro nodes that have outputs
         named_ops = {}
         for node in default_pipeline.nodes:
-            op_name = dagster_format(node.name)
+            op_name = format_node_name(node.name)
             graph_op = self.create_op(node)
             named_ops[f"{op_name}_graph"] = graph_op
 

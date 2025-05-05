@@ -1,13 +1,13 @@
 # mypy: ignore-errors
 
-from kedro_dagster.utils import _is_asset_name, dagster_format, kedro_format
+from kedro_dagster.utils import _is_asset_name, format_dataset_name, unformat_asset_name
 
 
-def test_dagster_format_and_kedro_format_are_inverses():
+def test_format_and_unformat_asset_name_are_inverses():
     name = "my_dataset.with.dots"
-    dagster = dagster_format(name)
+    dagster = format_dataset_name(name)
     assert dagster == "my_dataset__with__dots"
-    assert kedro_format(dagster) == name
+    assert unformat_asset_name(dagster) == name
 
 
 def test_is_asset_name_true():
