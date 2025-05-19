@@ -23,6 +23,8 @@ def tests(session: nox.Session) -> None:
     session.run_install(
         "uv",
         "sync",
+        "--extra",
+        "mlflow",
         "--no-default-groups",
         "--group",
         "tests",
