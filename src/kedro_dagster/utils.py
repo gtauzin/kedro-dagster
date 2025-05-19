@@ -213,8 +213,7 @@ def _get_node_pipeline_name(node: "Node") -> str:
                     return pipeline_name
 
     LOGGER.warning(
-        f"Node `{node.name}` is not part of any pipelines. Assigning "
-        "'__none__' as its corresponding pipeline name."
+        f"Node `{node.name}` is not part of any pipelines. Assigning '__none__' as its corresponding pipeline name."
     )
 
     return "__none__"
