@@ -46,6 +46,7 @@ class PipelineTranslator:
         named_ops: dict[str, dg.OpDefinition],
         named_resources: dict[str, dg.ResourceDefinition],
         named_executors: dict[str, dg.ExecutorDefinition],
+        enable_mlflow: bool,
     ):
         self._dagster_config = dagster_config
         self._context = context
@@ -58,6 +59,7 @@ class PipelineTranslator:
         self._named_ops = named_ops
         self._named_resources = named_resources
         self._named_executors = named_executors
+        self._enable_mlflow = enable_mlflow
 
     def _create_pipeline_hook_ops(self, job_name: str, pipeline: Pipeline) -> tuple[dg.OpDefinition, dg.OpDefinition]:
         """Create the pipeline hook ops for before and after pipeline run.
@@ -71,7 +73,7 @@ class PipelineTranslator:
 
         """
         required_resource_keys = {"kedro_run"}
-        if is_mlflow_enabled():
+        if self._enable_mlflow and is_mlflow_enabled():
             required_resource_keys.add("mlflow")
 
         @dg.op(
@@ -220,7 +222,7 @@ class PipelineTranslator:
                     f"{self._env}__{asset_name}_io_manager"
                 ]
 
-        if is_mlflow_enabled():
+        if self._enable_mlflow and is_mlflow_enabled():
             resource_defs |= {"mlflow": self._named_resources["mlflow"]}
 
         job = pipeline_graph.to_job(

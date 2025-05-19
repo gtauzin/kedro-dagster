@@ -31,6 +31,9 @@ def tests(session: nox.Session) -> None:
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
 
+    # Clears all .coverage* files
+    session.run("coverage", "erase")
+
     # Run behavior tests
     session.run("behave", "-vv", "features", external=True)
 
@@ -38,19 +41,15 @@ def tests(session: nox.Session) -> None:
     session.run(
         "pytest",
         "--cov=src/kedro_dagster",
+        "--cov-branch",  # enable branch coverage
+        "--cov-append",  # append to existing cov
         f"--cov-report=html:{session.create_tmp()}/htmlcov",
         f"--cov-report=xml:coverage.{session.python}.xml",
         f"--junitxml=junit.{session.python}.xml",
-        "-n",
-        "auto",
         "tests",
         *session.posargs,
         external=True,
     )
-
-    # Run diff-cover
-    diff_against = session.env.get("DIFF_AGAINST", "origin/main")
-    session.run("diff-cover", "--compare-branch", diff_against, f"coverage.{session.python}.xml", external=True)
 
 
 @nox.session(venv_backend="uv")
