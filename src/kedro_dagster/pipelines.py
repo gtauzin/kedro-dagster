@@ -9,7 +9,8 @@ from kedro.pipeline import Pipeline
 from kedro_dagster.kedro import KedroRunTranslator
 from kedro_dagster.utils import (
     _is_asset_name,
-    dagster_format,
+    format_dataset_name,
+    format_node_name,
     get_asset_key_from_dataset_name,
     get_filter_params_dict,
     is_mlflow_enabled,
@@ -45,6 +46,7 @@ class PipelineTranslator:
         named_ops: dict[str, dg.OpDefinition],
         named_resources: dict[str, dg.ResourceDefinition],
         named_executors: dict[str, dg.ExecutorDefinition],
+        enable_mlflow: bool,
     ):
         self._dagster_config = dagster_config
         self._context = context
@@ -57,6 +59,7 @@ class PipelineTranslator:
         self._named_ops = named_ops
         self._named_resources = named_resources
         self._named_executors = named_executors
+        self._enable_mlflow = enable_mlflow
 
     def _create_pipeline_hook_ops(self, job_name: str, pipeline: Pipeline) -> tuple[dg.OpDefinition, dg.OpDefinition]:
         """Create the pipeline hook ops for before and after pipeline run.
@@ -70,7 +73,7 @@ class PipelineTranslator:
 
         """
         required_resource_keys = {"kedro_run"}
-        if is_mlflow_enabled():
+        if self._enable_mlflow and is_mlflow_enabled():
             required_resource_keys.add("mlflow")
 
         @dg.op(
@@ -90,11 +93,11 @@ class PipelineTranslator:
             )
 
         after_pipeline_run_hook_ins = {
-            f"{dagster_format(node.name)}_after_pipeline_run_hook_input": dg.In(dagster_type=dg.Nothing)
+            f"{format_node_name(node.name)}_after_pipeline_run_hook_input": dg.In(dagster_type=dg.Nothing)
             for node in pipeline.nodes
         }
         for dataset_name in pipeline.all_outputs():
-            asset_name = dagster_format(dataset_name)
+            asset_name = format_dataset_name(dataset_name)
             if _is_asset_name(asset_name):
                 after_pipeline_run_hook_ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_name))
 
@@ -109,7 +112,7 @@ class PipelineTranslator:
 
             run_results = {}
             for dataset_name in pipeline.outputs():
-                asset_name = dagster_format(dataset_name)
+                asset_name = format_dataset_name(dataset_name)
                 run_results[dataset_name] = materialized_assets[asset_name]
 
             self._hook_manager.hook.after_pipeline_run(
@@ -159,7 +162,7 @@ class PipelineTranslator:
             # Fil up materialized_assets with pipeline input assets
             materialized_input_assets = {}
             for dataset_name in pipeline.inputs():
-                asset_name = dagster_format(dataset_name)
+                asset_name = format_dataset_name(dataset_name)
                 if _is_asset_name(asset_name):
                     # First, we account for external assets
                     if asset_name in self._named_assets:
@@ -173,12 +176,12 @@ class PipelineTranslator:
             materialized_output_assets: dict[str, Any] = {}
             for layer in pipeline.grouped_nodes:
                 for node in layer:
-                    op_name = dagster_format(node.name) + "_graph"
+                    op_name = format_node_name(node.name) + "_graph"
                     op = self._named_ops[op_name]
 
                     materialized_input_assets_op = {}
                     for input_dataset_name in node.inputs:
-                        input_asset_name = dagster_format(input_dataset_name)
+                        input_asset_name = format_dataset_name(input_dataset_name)
                         if input_asset_name in materialized_input_assets:
                             materialized_input_assets_op[input_asset_name] = materialized_input_assets[input_asset_name]
 
@@ -213,13 +216,13 @@ class PipelineTranslator:
         resource_defs = {"kedro_run": kedro_run_resource}
 
         for dataset_name in pipeline.all_inputs() | pipeline.all_outputs():
-            asset_name = dagster_format(dataset_name)
+            asset_name = format_dataset_name(dataset_name)
             if f"{self._env}__{asset_name}_io_manager" in self._named_resources:
                 resource_defs[f"{self._env}__{asset_name}_io_manager"] = self._named_resources[
                     f"{self._env}__{asset_name}_io_manager"
                 ]
 
-        if is_mlflow_enabled():
+        if self._enable_mlflow and is_mlflow_enabled():
             resource_defs |= {"mlflow": self._named_resources["mlflow"]}
 
         job = pipeline_graph.to_job(

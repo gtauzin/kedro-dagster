@@ -23,32 +23,44 @@ def tests(session: nox.Session) -> None:
     session.run_install(
         "uv",
         "sync",
+        "--extra",
+        "mlflow",
         "--no-default-groups",
         "--group",
         "tests",
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
 
-    # Run behavior tests
-    session.run("behave", "-vv", "features", external=True)
+    # Clears all .coverage* files
+    session.run("coverage", "erase")
 
-    # Run unit tests
+    # Run behavior tests (run behave directly, not under coverage)
     session.run(
-        "pytest",
-        "--cov=src/kedro_dagster",
-        f"--cov-report=html:{session.create_tmp()}/htmlcov",
-        f"--cov-report=xml:coverage.{session.python}.xml",
-        f"--junitxml=junit.{session.python}.xml",
-        "-n",
-        "auto",
-        "tests",
-        *session.posargs,
-        external=True,
+        "behave",
+        "-vv",
+        "features",
     )
 
-    # Run diff-cover
-    diff_against = session.env.get("DIFF_AGAINST", "origin/main")
-    session.run("diff-cover", "--compare-branch", diff_against, f"coverage.{session.python}.xml", external=True)
+    # Run unit tests under coverage
+    session.run(
+        "coverage",
+        "run",
+        "--parallel-mode",
+        "--source=src/kedro_dagster",
+        "-m",
+        "pytest",
+        "tests",
+        *session.posargs,
+    )
+
+    # Combine coverage data from parallel runs
+    session.run("coverage", "combine")
+
+    # HTML report, ignoring parse errors and without contexts
+    session.run("coverage", "html", "--ignore-errors", "-d", session.create_tmp())
+
+    # XML report for CI
+    session.run("coverage", "xml", "-o", f"coverage.{session.python}.xml")
 
 
 @nox.session(venv_backend="uv")

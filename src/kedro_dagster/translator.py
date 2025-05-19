@@ -215,6 +215,7 @@ class KedroProjectTranslator:
             named_ops=named_ops,
             named_resources=named_resources,
             named_executors=named_executors,
+            enable_mlflow=is_mlflow_enabled(),
         )
         named_jobs = self.pipeline_translator.to_dagster()
 
