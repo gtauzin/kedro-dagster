@@ -34,22 +34,36 @@ def tests(session: nox.Session) -> None:
     # Clears all .coverage* files
     session.run("coverage", "erase")
 
-    # Run behavior tests
-    session.run("behave", "-vv", "features", external=True)
-
-    # Run unit tests
+    # Run behavior tests (run behave directly, not under coverage)
     session.run(
+        "behave",
+        "-vv",
+        "features",
+    )
+
+    # Run unit tests under coverage
+    session.run(
+        "coverage",
+        "run",
+        "--parallel-mode",
+        "--source=src/kedro_dagster",
+        "-m",
         "pytest",
-        "--cov=src/kedro_dagster",
-        "--cov-branch",  # enable branch coverage
-        "--cov-append",  # append to existing cov
-        f"--cov-report=html:{session.create_tmp()}/htmlcov",
-        f"--cov-report=xml:coverage.{session.python}.xml",
-        f"--junitxml=junit.{session.python}.xml",
         "tests",
         *session.posargs,
-        external=True,
     )
+
+    # Combine coverage data from parallel runs
+    session.run("coverage", "combine")
+
+    # Reports
+    session.run("coverage", "report", "--fail-under=80")
+
+    # HTML report, ignoring parse errors and without contexts
+    session.run("coverage", "html", "--ignore-errors", "-d", session.create_tmp())
+
+    # XML report for CI
+    session.run("coverage", "xml", "-o", f"coverage.{session.python}.xml")
 
 
 @nox.session(venv_backend="uv")

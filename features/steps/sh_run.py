@@ -15,21 +15,11 @@ def run(
     Args:
         cmd: A command string, or a command followed by program
             arguments that will be submitted to POpen to run.
-
         split: Flag that splits command to provide as multiple *args
             to Popen. Default is True.
-
         print_output: If True will print previously captured stdout.
             Default is False.
-
         kwargs: Extra options to pass to subprocess
-
-    Example:
-    ::
-        "ls"
-
-        "ls -la"
-        "chmod 754 local/file"
 
     Returns:
         Result with attributes args, returncode, stdout and

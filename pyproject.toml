@@ -64,10 +64,9 @@ fix = [
 ]
 tests = [
   "pytest>=8.3",
-  "pytest-cov>=5",
   "pytest-mock>=3.14",
   "covdefaults>=2.3",
-  "behave>=1.2",
+  "behave>=1.2.7.dev6",
   "psutil>=6.1",
   "pyaml>=25.1",
 ]
@@ -123,6 +122,12 @@ addopts = "--color=yes"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
 norecursedirs = "src/kedro_dagster/templates"
 
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+disable_error_code = ["misc", "import-untyped"]
+
 [tool.coverage]
 paths.source = ["src/kedro_dagster"]
 report.fail_under = 1
@@ -130,17 +135,14 @@ report.include_namespace_packages = true
 report.skip_covered = false
 html.show_contexts = true
 run.omit = [
+    "*/kedro/*",
     "tests/*",
     "*/tests/*",
 ]
 run.parallel = true
 run.branch = true
+run.sigterm = true
+run.concurrency = ["multiprocessing"]
 run.plugins = [
   "covdefaults",
 ]
-
-[tool.mypy]
-python_version = "3.12"
-strict = true
-ignore_missing_imports = true
-disable_error_code = ["misc", "import-untyped"]
