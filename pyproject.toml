@@ -66,6 +66,7 @@ tests = [
   "pytest>=8.3",
   "pytest-cov>=5",
   "pytest-xdist>=3.6",
+  "pytest-mock>=3.14",
   "covdefaults>=2.3",
   "diff-cover>=9.2",
   "behave>=1.2",

@@ -52,11 +52,22 @@ def node_translator(kedro_project, metadata):
 def test_create_op_returns_dagster_op(node_translator):
     op = node_translator.create_op(DummyNode())
     assert callable(op)
-    assert hasattr(op, "__call__")
 
 
-@pytest.mark.xfail(reason="This test is not implemented yet")
 def test_create_asset_returns_dagster_asset(node_translator):
     asset = node_translator.create_asset(DummyNode())
     assert callable(asset)
-    assert hasattr(asset, "__call__")
+    assert asset.key.parts == ("base", "output1")
+
+
+def test_create_op_auto_names_op(node_translator):
+    unnamed_node = Node(
+        func=lambda inputs: {"output1": "result"},
+        inputs=["input1"],
+        outputs=["output1"],
+        name=None,  # No name provided
+    )
+    op = node_translator.create_op(unnamed_node)
+    assert callable(op)
+    # Check if the name is auto-generated
+    assert op.name.startswith("unnamed_node_")

@@ -108,6 +108,7 @@ def format_node_name(name: str) -> str:
         dagster_name = f"unnamed_node_{hashlib.md5(name.encode('utf-8')).hexdigest()}"
         LOGGER.warning(
             "Node is either unnamed or not in regex ^[A-Za-z0-9_]+$. "
+            "Prefer naming your Kedro nodes directly using a `name`. "
             f"Node named `{name}` has been converted to `{dagster_name}`."
         )
 
@@ -211,7 +212,12 @@ def _get_node_pipeline_name(node: "Node") -> str:
                         return f"{namespace}__{pipeline_name}"
                     return pipeline_name
 
-    raise ValueError(f"Node `{node.name}` is not part of any pipelines.")
+    LOGGER.warning(
+        f"Node `{node.name}` is not part of any pipelines. Assigning "
+        "'__none__' as its corresponding pipeline name."
+    )
+
+    return "__none__"
 
 
 def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
