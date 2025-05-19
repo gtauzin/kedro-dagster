@@ -62,7 +62,7 @@ def test_dagster_dev(cli_runner, kedro_project, metadata):
                     break
             time.sleep(interval)
         else:
-            out, err = proc.communicate(timeout=5)
+            out, err = proc.communicate(timeout=10)
             raise AssertionError(
                 f"Dagster dev did not start or port {port} not occupied.\nstdout:\n{out}\nstderr:\n{err}"
             )
