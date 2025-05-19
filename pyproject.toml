@@ -135,7 +135,7 @@ report.include_namespace_packages = true
 report.skip_covered = false
 html.show_contexts = true
 run.omit = [
-    "*/kedro/*",
+    "src/kedro_dagster/cli.py", # Covered by behavior tests
     "tests/*",
     "*/tests/*",
 ]

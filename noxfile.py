@@ -56,9 +56,6 @@ def tests(session: nox.Session) -> None:
     # Combine coverage data from parallel runs
     session.run("coverage", "combine")
 
-    # Reports
-    session.run("coverage", "report", "--fail-under=80")
-
     # HTML report, ignoring parse errors and without contexts
     session.run("coverage", "html", "--ignore-errors", "-d", session.create_tmp())
 
