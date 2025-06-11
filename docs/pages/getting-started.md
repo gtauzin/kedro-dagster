@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks you through setting up and deploying a Kedro project with Dagster using the Kedro‑Dagster plugin. The examples below use the Kedro `spaceflights-pandas` starter project, but you can use your own Kedro project. If you do, skip step 1.
+This guide walks you through setting up and deploying a Kedro project with Dagster using the Kedro‑Dagster plugin. The example below uses the Kedro `spaceflights-pandas` starter project, but you can use your own Kedro project. If you wish to do so, skip step 1.
 
 ## 1. Create a Kedro Project (Optional)
 
@@ -27,6 +27,12 @@ Install the plugin with `pip`:
 pip install kedro-dagster
 ```
 
+alternatively, you can install it from GitHub:
+
+```bash
+pip install --upgrade git+https://github.com/gtauzin/kedro-dagster.git
+```
+
 ## 3. Initialize Dagster Integration
 
 Use [`kedro dagster init`](api.md#kedro-dagster-init) to initialize Kedro‑Dagster:
@@ -49,7 +55,7 @@ This creates:
 --8<-- "src/kedro_dagster/templates/dagster.yml"
 ```
 
-There's no need to modify the Dagster `definitions.py` file to get started, but let's have a deeper look on the `dagster.yml` file.
+There's no need to modify the Dagster `definitions.py` file to get started, so here we'll have a deeper look on the `dagster.yml` file.
 
 ## 4. Configure Jobs, Executors, and Schedules
 
@@ -59,7 +65,7 @@ The Kedro‑Dagster configuration file `dagster.yml` includes the following sect
 - **executors:** Used to specify the compute targets for jobs (in-process, multiprocess, k8s, etc).
 - **jobs:** Used to describe jobs through the filtering of Kedro pipelines.
 
-You can edit the automatically generated `conf/local/dagster.yml` to customize jobs, executors, and schedules:
+Let's edit the automatically generated `conf/local/dagster.yml` to customize jobs, executors, and schedules:
 
 ```yaml
 schedules:
@@ -96,7 +102,7 @@ jobs:
     executor: sequential
 ```
 
-Here, we have added a "parallel_data_processing" and a "data_science" job to the jobs configuration. The first one makes use of the `node_names` Kedro pipeline filter arguments, to create a sub-pipeline of the Kedro "data_processing" pipeline from a list of two Kedro nodes: "preprocess_companies_node" and "preprocess_shuttles_node". Both jobs are to run daily using the "daily" schedule based on the `cron_schedule` "0 0 * * *". "parallel_data_processing" is to run using a "multiprocess" executor with 2 `max_concurrent` and "data_science" will run sequentially.
+Here, we have added a "parallel_data_processing" and a "data_science" job to the jobs configuration. The first one makes use of the `node_names` Kedro pipeline filter argument to create a sub-pipeline of the Kedro "data_processing" pipeline from a list of two Kedro nodes: "preprocess_companies_node" and "preprocess_shuttles_node". Both jobs are to run daily using the "daily" schedule based on the `cron_schedule` "0 0 * * *". "parallel_data_processing" is to run using a "multiprocess" executor with 2 `max_concurrent` and "data_science" will run sequentially.
 
 See the [Technical Documentation](technical.md) for more on customizing the Dagster configuration file.
 
@@ -118,7 +124,7 @@ You can inspect assets, jobs, and resources, trigger or automate jobs, and monit
 
 ### Assets
 
-Moving to the "Assets" tab leads to the list of assets generated from the Kedro datasets involved in the filtered pipelines specified in `dagster.yml`.
+Moving to the "Assets" tab leads to the list of assets generated from the Kedro datasets that are involved in the filtered pipelines specified in `dagster.yml`.
 
 <figure markdown>
 ![List of assets involved in the specified jobs](../images/getting-started/asset_list_dark.png#only-dark){data-gallery="assets-dark"}
@@ -136,9 +142,12 @@ Clicking on the "Asset lineage" link at the top right of the window leads to the
 <figcaption>Asset Lineage Graph.</figcaption>
 </figure>
 
+!!! note
+    Assets can be materialized directly from the "Assets" tab. Clicking on "materialize" will trigger an asset job. Note that asset jobs are not based on Kedro pipelines and therefore do not preserve any Kedro hooks.
+
 ### Resources
 
-Kedro‑Dagster defines one Dagster IO Manager per Kedro Dataset to handle their saving/loading. As with assets, they are defined per Kedro environment and their name is prefixed accordingly.
+Kedro‑Dagster defines one Dagster IO Manager per Kedro Dataset to interface with their `save` and `load` method. As with assets, they are defined per Kedro environment and their name is prefixed with the environment followed by a double underscore separator.
 
 <figure markdown>
 ![List of the resources involved in the specified jobs](../images/getting-started/resource_list_dark.png#only-dark){data-gallery="resources-dark"}
@@ -148,7 +157,7 @@ Kedro‑Dagster defines one Dagster IO Manager per Kedro Dataset to handle their
 
 ### Automation
 
-Moving to the "Automation" tab, you can see a list of the defined schedules and sensors.
+Moving to the "Automation" tab, you can see a list of the defined schedules and sensors. Kedro-Dagster preserve Kedro hooks and uses a sensor to enable the `on_pipeline_error` hook.
 
 <figure markdown>
 ![List of the schedules and sensors involved in the specified jobs](../images/getting-started/automation_list_dark.png#only-dark){data-gallery="automation-dark"}
@@ -158,7 +167,7 @@ Moving to the "Automation" tab, you can see a list of the defined schedules and 
 
 ### Jobs
 
-To see the different jobs defined in `dagster.yml`, click on the "Jobs" tab.
+To see the different jobs defined in `dagster.yml`, click on the "Jobs" tab. You'll see the list of the defined jobs with names prefixed by the Kedro environment followed by a double underscore.
 
 <figure markdown>
 ![List of the specified jobs](../images/getting-started/job_list_dark.png#only-dark){data-gallery="jobs-dark"}
@@ -166,7 +175,7 @@ To see the different jobs defined in `dagster.yml`, click on the "Jobs" tab.
 <figcaption>Job List.</figcaption>
 </figure>
 
-Clicking on the "parallel_data_processing" job brings you to a graph representation of the corresponding Dagster-translated Kedro pipeline. `before_pipeline_run` and `after_pipeline_run` are included as the first and final nodes of the job graph.
+Clicking on the "parallel_data_processing" job brings you to a graph representation of the corresponding Dagster-translated Kedro pipeline. `before_pipeline_run` and `after_pipeline_run` are included as the first and final nodes of the job graph. As for the schedule, each of them has its name prefixed with the name of the job it is applied and a double underscore to so that they can be applied independently.
 
 <figure markdown>
 ![Graph describing the "parallel_data_processing" job](../images/getting-started/job_graph_dark.png#only-dark){data-gallery="jobs-dark"}
