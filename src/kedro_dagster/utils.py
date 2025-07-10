@@ -208,7 +208,7 @@ def _get_node_pipeline_name(node: "Node") -> str:
             for pipeline_node in pipeline.nodes:
                 if node.name == pipeline_node.name:
                     if "." in node.name:
-                        namespace = ".".join(node.name.split(".")[:-1])
+                        namespace = format_node_name(".".join(node.name.split(".")[:-1]))
                         return f"{namespace}__{pipeline_name}"
                     return pipeline_name
 
