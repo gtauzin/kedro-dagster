@@ -32,11 +32,11 @@ class MultiprocessExecutorOptions(InProcessExecutorOptions):
 
     Attributes:
         retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
-        max_concurrent (int | None): Maximum number of concurrent processes.
+        max_concurrent (int): Maximum number of concurrent processes.
     """
 
-    max_concurrent: int | None = Field(
-        default=None,
+    max_concurrent: int = Field(
+        default=1,
         description=(
             "The number of processes that may run concurrently. "
             "By default, this is set to be the return value of `multiprocessing.cpu_count()`."
@@ -183,26 +183,26 @@ class K8sJobConfig(BaseModel):
     """Configuration for Kubernetes jobs.
 
     Attributes:
-        container_config (dict[str, Any] | None): Configuration for the Kubernetes container.
-        pod_spec_config (dict[str, Any] | None): Configuration for the Pod specification.
-        pod_template_spec_metadata (dict[str, Any] | None): Metadata for the Pod template specification.
-        job_spec_config (dict[str, Any] | None): Configuration for the Job specification.
-        job_metadata (dict[str, Any] | None): Metadata for the Job.
+        container_config (dict[str, Any]): Configuration for the Kubernetes container.
+        pod_spec_config (dict[str, Any]): Configuration for the Pod specification.
+        pod_template_spec_metadata (dict[str, Any]): Metadata for the Pod template specification.
+        job_spec_config (dict[str, Any]): Configuration for the Job specification.
+        job_metadata (dict[str, Any]): Metadata for the Job.
     """
 
-    container_config: dict[str, Any] | None = Field(
-        default=None, description="Configuration for the Kubernetes container."
+    container_config: dict[str, Any] = Field(
+        default={}, description="Configuration for the Kubernetes container."
     )
-    pod_spec_config: dict[str, Any] | None = Field(
-        default=None, description="Configuration for the Kubernetes Pod specification."
+    pod_spec_config: dict[str, Any] = Field(
+        default={}, description="Configuration for the Kubernetes Pod specification."
     )
-    pod_template_spec_metadata: dict[str, Any] | None = Field(
-        default=None, description="Metadata for the Kubernetes Pod template specification."
+    pod_template_spec_metadata: dict[str, Any] = Field(
+        default={}, description="Metadata for the Kubernetes Pod template specification."
     )
-    job_spec_config: dict[str, Any] | None = Field(
-        default=None, description="Configuration for the Kubernetes Job specification."
+    job_spec_config: dict[str, Any] = Field(
+        default={}, description="Configuration for the Kubernetes Job specification."
     )
-    job_metadata: dict[str, Any] | None = Field(default=None, description="Metadata for the Kubernetes Job.")
+    job_metadata: dict[str, Any] = Field(default={}, description="Metadata for the Kubernetes Job.")
 
 
 class K8sJobExecutorOptions(MultiprocessExecutorOptions):
@@ -211,8 +211,8 @@ class K8sJobExecutorOptions(MultiprocessExecutorOptions):
     Attributes:
         retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
         max_concurrent (int | None): Maximum number of concurrent processes.
-        job_namespace (str | None): Kubernetes namespace for jobs.
-        load_incluster_config (bool | None): Whether the executor is running within a k8s cluster.
+        job_namespace (str): Kubernetes namespace for jobs.
+        load_incluster_config (bool): Whether the executor is running within a k8s cluster.
         kubeconfig_file (str | None): Path to a kubeconfig file to use.
         step_k8s_config (K8sJobConfig): Raw Kubernetes configuration for each step.
         per_step_k8s_config (dict[str, K8sJobConfig]): Per op k8s configuration overrides.
@@ -230,9 +230,9 @@ class K8sJobExecutorOptions(MultiprocessExecutorOptions):
         security_context (dict[str, str]): Security settings for the container.
     """
 
-    job_namespace: str | None = Field(default=None, is_required=False)
-    load_incluster_config: bool | None = Field(
-        default=None,
+    job_namespace: str = Field(default="dagster", is_required=False)
+    load_incluster_config: bool = Field(
+        default=False,
         description="""Whether or not the executor is running within a k8s cluster already. If
         the job is using the `K8sRunLauncher`, the default value of this parameter will be
         the same as the corresponding value on the run launcher.
