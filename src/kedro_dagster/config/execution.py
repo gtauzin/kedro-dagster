@@ -232,7 +232,7 @@ class K8sJobExecutorOptions(MultiprocessExecutorOptions):
 
     job_namespace: str = Field(default="dagster", is_required=False)
     load_incluster_config: bool = Field(
-        default=False,
+        default=True,
         description="""Whether or not the executor is running within a k8s cluster already. If
         the job is using the `K8sRunLauncher`, the default value of this parameter will be
         the same as the corresponding value on the run launcher.
