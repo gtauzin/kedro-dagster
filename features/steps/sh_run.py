@@ -30,6 +30,7 @@ def run(
     """
     if isinstance(cmd, str) and split:
         cmd = shlex.split(cmd)
+
     result = subprocess.run(cmd, input="", capture_output=True, **kwargs)  # type: ignore[call-overload]
     result.stdout = result.stdout.decode("utf-8")
     result.stderr = result.stderr.decode("utf-8")
