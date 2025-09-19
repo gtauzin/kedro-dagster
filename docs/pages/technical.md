@@ -99,7 +99,7 @@ Kedro-Dagster translates core Kedro concepts into their Dagster equivalents. Und
 | Kedro Concept   | Dagster Concept      | Description |
 |-----------------|----------------------|-------------|
 | **Node**        | Op,&nbsp;Asset            | Each [Kedro node](https://docs.kedro.org/en/stable/nodes_and_pipelines/nodes.html) becomes a Dagster op. Node parameters are passed as config. |
-| **Pipeline**    | Job                  | Each [Kedro pipeline](https://docs.kedro.org/en/stable/nodes_and_pipelines/pipeline_introduction.html) is translated into a Dagster job. Jobs can be filtered and scheduled and can target executors. |
+| **Pipeline**    | Job                  | [Kedro pipelines](https://docs.kedro.org/en/stable/nodes_and_pipelines/pipeline_introduction.html) are filtered and translated into a Dagster job. Jobs can be scheduled and can target executors. |
 | **Dataset**     | Asset,&nbsp;IO&nbsp;Manager    | Each [Kedro data catalog](https://docs.kedro.org/en/stable/data/data_catalog.html)'s dataset become Dagster assets managed by a dedicated IO managers. |
 | **Hooks**       | Hooks,&nbsp;Sensors       | [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) are executed at the appropriate points in the Dagster job lifecycle. |
 | **Parameters**  | Config,&nbsp;Resources    | [Kedro parameters](https://docs.kedro.org/en/stable/configuration/parameters.html) are passed as Dagster config. |
