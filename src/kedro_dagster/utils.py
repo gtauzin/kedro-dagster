@@ -98,7 +98,7 @@ def format_dataset_name(name: str) -> str:
         LOGGER.warning(
             f"Dataset name `{name}` is not valid under Dagster's naming convention. "
             "Prefer naming your Kedro datasets with valid Dagster names. "
-            f"Dataset named `{name}` has been converted to `{dagster_name}`."
+            f"Dataset named `{name}` has been converted to `{dataset_name}`."
         )
     return dataset_name
 
