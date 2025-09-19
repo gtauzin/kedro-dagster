@@ -190,9 +190,7 @@ class K8sJobConfig(BaseModel):
         job_metadata (dict[str, Any]): Metadata for the Job.
     """
 
-    container_config: dict[str, Any] = Field(
-        default={}, description="Configuration for the Kubernetes container."
-    )
+    container_config: dict[str, Any] = Field(default={}, description="Configuration for the Kubernetes container.")
     pod_spec_config: dict[str, Any] = Field(
         default={}, description="Configuration for the Kubernetes Pod specification."
     )
