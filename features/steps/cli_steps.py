@@ -128,8 +128,8 @@ def pip_install_dependencies(context: behave.runner.Context) -> None:
 @when('I execute the kedro command "{command}"')
 def exec_kedro_target(context: behave.runner.Context, command: str) -> None:
     """Execute Kedro target. For 'dagster dev', run as background process."""
+    make_cmd = [context.kedro] + command.split()
     if command.startswith("dagster dev"):
-        make_cmd = [context.kedro] + command.split()
         # Start dagster dev as a background process
         context.process = ChildTerminatingPopen(make_cmd, env=context.env, cwd=str(context.root_project_dir))
         # Give the server time to start
@@ -137,7 +137,6 @@ def exec_kedro_target(context: behave.runner.Context, command: str) -> None:
         # No exit code to check here; port check will follow
         context.result = None
     else:
-        make_cmd = [context.kedro] + command.split()
         context.result = run(make_cmd, env=context.env, cwd=str(context.root_project_dir))
         if context.result.returncode != OK_EXIT_CODE:
             print(context.result.stdout)

@@ -106,8 +106,22 @@ def test_format_and_unformat_asset_name_are_inverses():
     assert unformat_asset_name(dagster) == name
 
 
+def test_format_dataset_name_non_dot_chars():
+    name = "dataset-with-hyphen.and.dot"
+    dagster_name = format_dataset_name(name)
+    assert dagster_name == "dataset__with__hyphen__and__dot"
+    assert unformat_asset_name(dagster_name) != name
+
+
 def test_is_asset_name():
     assert _is_asset_name("my_asset")
     assert _is_asset_name("another_asset__with__underscores")
     assert not _is_asset_name("parameters")
     assert not _is_asset_name("params:my_param")
+
+
+def test_format_node_name_hashes_invalid_chars():
+    # Names with characters outside [A-Za-z0-9_] should be hashed
+    name = "node-with-hyphen"
+    formatted = format_node_name(name)
+    assert formatted.startswith("unnamed_node_")
