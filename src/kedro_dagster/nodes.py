@@ -8,6 +8,7 @@ from kedro.io import DatasetNotFoundError, MemoryDataset
 from kedro.pipeline import Pipeline
 from pydantic import ConfigDict
 
+from kedro_dagster.partition_dataset import DagsterPartitionedDataset
 from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
@@ -55,6 +56,33 @@ class NodeTranslator:
         self._session_id = session_id
         self._named_resources = named_resources
         self._env = env
+
+    def _get_node_multi_partition_definition(self, node: "Node") -> dg.MultiPartitionsDefinition | None:
+        """Get the multi-partition definition for a node if it has partitioned datasets.
+
+        Args:
+            node (Node): Kedro node.
+
+        Returns:
+            MultiPartitionsDefinition | None: The multi-partition definition or None.
+        """
+        partitioned_assets = {}
+
+        for dataset_name in node.inputs + node.outputs:
+            try:
+                dataset = self._catalog._get_dataset(dataset_name)
+                if isinstance(dataset, DagsterPartitionedDataset):
+                    partition = dataset._get_partitions_definition()
+                    partitioned_assets[dataset_name] = partition
+            except DatasetNotFoundError:
+                continue
+
+        if not partitioned_assets:
+            return None
+
+        multi_partitions_def = dg.MultiPartitionsDefinition(partitions_defs=partitioned_assets)
+
+        return multi_partitions_def
 
     def _get_node_parameters_config(self, node: "Node") -> dg.Config:
         """Get the node parameters as a Dagster config.
@@ -238,7 +266,8 @@ class NodeTranslator:
             asset_name = format_dataset_name(dataset_name)
             if _is_asset_name(asset_name):
                 asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
-                ins[asset_name] = dg.AssetIn(key=asset_key)
+                in_asset_params: dict[str, Any] = {}  # TODO: Partition mapping?
+                ins[asset_name] = dg.AssetIn(key=asset_key, **in_asset_params)
 
         outs = {}
         for dataset_name in node.outputs:
@@ -253,12 +282,15 @@ class NodeTranslator:
         if is_mlflow_enabled():
             required_resource_keys = {"mlflow"}
 
+        partitions_def = self._get_node_multi_partition_definition(node)
+
         @dg.multi_asset(
             name=f"{format_node_name(node.name)}_asset",
             description=f"Kedro node {node.name} wrapped as a Dagster multi asset.",
             group_name=_get_node_pipeline_name(node),
             ins=ins,
             outs=outs,
+            partitions_def=partitions_def,
             required_resource_keys=required_resource_keys,
             op_tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
         )

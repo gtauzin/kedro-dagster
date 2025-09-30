@@ -86,7 +86,11 @@ class CatalogTranslator:
                         node=node,
                     )
 
-                dataset.save(obj)
+                save_kwargs = {}
+                if context.has_asset_partitions:
+                    save_kwargs["partition"] = context.asset_partition_keys[dataset_name]
+
+                dataset.save(obj, **save_kwargs)
 
                 if is_node_multi_asset:
                     context.log.info("Executing `after_dataset_saved` Kedro hook.")
@@ -112,7 +116,11 @@ class CatalogTranslator:
                         node=node,
                     )
 
-                data = dataset.load()
+                load_kwargs = {}
+                if context.has_asset_partitions:
+                    load_kwargs["partition"] = context.asset_partition_keys[dataset_name]
+
+                data = dataset.load(**load_kwargs)
 
                 if is_node_multi_asset:
                     context.log.info("Executing `after_dataset_loaded` Kedro hook.")
