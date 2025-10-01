@@ -99,7 +99,7 @@ Kedro-Dagster translates core Kedro concepts into their Dagster equivalents. Und
 | Kedro Concept   | Dagster Concept      | Description |
 |-----------------|----------------------|-------------|
 | **Node**        | Op,&nbsp;Asset            | Each [Kedro node](https://docs.kedro.org/en/stable/nodes_and_pipelines/nodes.html) becomes a Dagster op. Node parameters are passed as config. |
-| **Pipeline**    | Job                  | Each [Kedro pipeline](https://docs.kedro.org/en/stable/nodes_and_pipelines/pipeline_introduction.html) is translated into a Dagster job. Jobs can be filtered and scheduled and can target executors. |
+| **Pipeline**    | Job                  | [Kedro pipelines](https://docs.kedro.org/en/stable/nodes_and_pipelines/pipeline_introduction.html) are filtered and translated into a Dagster job. Jobs can be scheduled and can target executors. |
 | **Dataset**     | Asset,&nbsp;IO&nbsp;Manager    | Each [Kedro data catalog](https://docs.kedro.org/en/stable/data/data_catalog.html)'s dataset become Dagster assets managed by a dedicated IO managers. |
 | **Hooks**       | Hooks,&nbsp;Sensors       | [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) are executed at the appropriate points in the Dagster job lifecycle. |
 | **Parameters**  | Config,&nbsp;Resources    | [Kedro parameters](https://docs.kedro.org/en/stable/configuration/parameters.html) are passed as Dagster config. |
@@ -141,6 +141,17 @@ See the API reference for [`PipelineTranslator`](api.md#pipelinetranslator) for 
 ### Hook
 
 Kedro-Dagster preserves all [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) in the Dagster context. Hooks are executed at the appropriate points in the Dagster job lifecycle. Catalog hooks are called in the `handle_output` and `load_input` function of each Dagster IO manager. Node hooks are plugged in the appropriate Dagster Op. As for the Context hook, they are called within a Dagster Op running at the beginning of each job along with the `before_pipeline_run` pipeline hook. The `after_pipeline_run` is called in a Dagster op running at the end of each job. Finally the `on_pipeline_error` pipeline, is embedded in a dedicated Dagster sensor that is triggered by a run failure.
+
+## Compatibility issues between Kedro and Dagster
+
+### Naming convention
+
+Dagster enforces strong constraints for asset, op, and job names  as they must match the regex `^[A-Za-z0-9_]+$`. As those Dagster objects are created directly from Kedro datasets, nodes, and pipelines, Kedro-Dagster applies a small set of deterministic transformations so Kedro names map predictably to Dagster names:
+
+- **Datasets**: only the dot "." namespace separator is converted to a double underscore "__" when mapping a Kedro dataset name to a Dagster-friendly identifier. Example: `my.dataset.name` -> `my__dataset__name`. Other characters (for example, hyphens `-`) are preserved by the formatter. Internally Kedro-Dagster will get back the dataset name from the asset name by replacing double underscored by dots.
+- **Nodes**: dots are replaced with double underscores to keep namespaces (`my.node` -> `my__node`). If the resulting node name still contains disallowed characters (anything outside A–Z, a–z, 0–9 and underscore), the node name is replaced with a stable hashed placeholder of the form `unnamed_node_<md5>` to ensure it meets Dagster's constraints.
+
+These rules are implemented in `src/kedro_dagster/utils.py` by `format_dataset_name`, `format_node_name`, and `unformat_asset_name` and are intentionally minimal and deterministic so names remain readable while complying with Dagster's requirements.
 
 ---
 

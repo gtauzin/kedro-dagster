@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     from pydantic import BaseModel
 
 LOGGER = getLogger(__name__)
+DAGSTER_ALLOWED_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
+KEDRO_DAGSTER_SEPARATOR = "__"
 
 
 def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> str:  # type: ignore[no-untyped-def]
@@ -89,7 +91,16 @@ def format_dataset_name(name: str) -> str:
         str: The formatted name.
     """
 
-    return name.replace(".", "__")
+    dataset_name = name.replace(".", KEDRO_DAGSTER_SEPARATOR)
+
+    if not DAGSTER_ALLOWED_PATTERN.match(dataset_name):
+        dataset_name = re.sub(r"[^A-Za-z0-9_]", KEDRO_DAGSTER_SEPARATOR, dataset_name)
+        LOGGER.warning(
+            f"Dataset name `{name}` is not valid under Dagster's naming convention. "
+            "Prefer naming your Kedro datasets with valid Dagster names. "
+            f"Dataset named `{name}` has been converted to `{dataset_name}`."
+        )
+    return dataset_name
 
 
 def format_node_name(name: str) -> str:
@@ -101,10 +112,9 @@ def format_node_name(name: str) -> str:
     Returns:
         str: The formatted name.
     """
-    dagster_name = name.replace(".", "__")
+    dagster_name = name.replace(".", KEDRO_DAGSTER_SEPARATOR)
 
-    allowed_pattern = re.compile(r"^[A-Za-z0-9_]+$")
-    if not allowed_pattern.match(dagster_name):
+    if not DAGSTER_ALLOWED_PATTERN.match(dagster_name):
         dagster_name = f"unnamed_node_{hashlib.md5(name.encode('utf-8')).hexdigest()}"
         LOGGER.warning(
             "Node is either unnamed or not in regex ^[A-Za-z0-9_]+$. "
@@ -125,7 +135,7 @@ def unformat_asset_name(name: str) -> str:
         str: The original Kedro name.
     """
 
-    return name.replace("__", ".")
+    return name.replace(KEDRO_DAGSTER_SEPARATOR, ".")
 
 
 def _create_pydantic_model_from_dict(  # type: ignore[no-untyped-def]
@@ -208,7 +218,7 @@ def _get_node_pipeline_name(node: "Node") -> str:
             for pipeline_node in pipeline.nodes:
                 if node.name == pipeline_node.name:
                     if "." in node.name:
-                        namespace = ".".join(node.name.split(".")[:-1])
+                        namespace = format_node_name(".".join(node.name.split(".")[:-1]))
                         return f"{namespace}__{pipeline_name}"
                     return pipeline_name
 

@@ -62,7 +62,7 @@ Harness the capabilities of MLflow using [Kedro-MLflow](https://github.com/Galil
 
 ### Logger Integration
 
-Unifies Kedro and Dagster logging to provide a consistent logging experience across both frameworks, so logs from Kedro nodes appear together in the Dagster UI and are easy to trace and debug.
+Kedro and Dagster logging is unified to provide a consistent logging experience across both frameworks, so logs from Kedro nodes appear together in the Dagster UI and are easy to trace and debug.
 
 ## Limitations and Considerations
 
