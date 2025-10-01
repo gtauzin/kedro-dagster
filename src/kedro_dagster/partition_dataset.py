@@ -6,7 +6,7 @@ from typing import Any
 
 import dagster as dg
 from cachetools import cachedmethod
-from kedro.utils import _load_obj
+from kedro.utils import load_obj
 from kedro_datasets.partitions import PartitionedDataset
 
 TYPE_KEY = "type"
@@ -39,7 +39,7 @@ def parse_partition_definition(
         class_paths = (prefix + partition_type for prefix in _DEFAULT_PACKAGES)
 
         for class_path in class_paths:
-            tmp, error_msg = _load_obj(class_path)  # Load partition class, capture the warning
+            tmp, error_msg = load_obj(class_path)  # Load partition class, capture the warning
 
             if tmp is not None:
                 class_obj = tmp
