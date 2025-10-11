@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Any
 import dagster as dg
 from kedro.io import DatasetNotFoundError, MemoryDataset
 from kedro.pipeline import Pipeline
+from kedro_dagster.datasets.partitioned_dataset import DagsterPartitionedDataset
 from pydantic import ConfigDict, create_model
 
-from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_asset_name, format_dataset_name, format_node_name
+from kedro_dagster.utils import _create_pydantic_model_from_dict, _is_param_name, format_dataset_name, format_node_name
 
 if TYPE_CHECKING:
     from kedro.io import AbstractDataset, CatalogProtocol
@@ -47,6 +48,11 @@ class CatalogTranslator:
         Returns:
             IOManagerDefinition: A Dagster IO manager.
         """
+        partitions_def, partition_mappings = None, None
+        if isinstance(dataset, DagsterPartitionedDataset):
+            partitions_def = dataset._get_partitions_definition()
+            partition_mappings = dataset._get_partition_mappings()
+
         dataset_params = {"dataset": dataset.__class__.__name__}
         for param, value in dataset._describe().items():
             valid_value = value
@@ -58,6 +64,10 @@ class CatalogTranslator:
                 continue
 
             dataset_params[param] = valid_value
+
+        if dataset_params["dataset"].endswith("DagsterPartitionedDataset"):
+            # We need to pass the partitions and depends_on as dict
+                dataset_params["partition_key"] = None
 
         DatasetModel = _create_pydantic_model_from_dict(
             name="DatasetModel",
@@ -86,11 +96,36 @@ class CatalogTranslator:
                         node=node,
                     )
 
-                save_kwargs = {}
+                partition = None
                 if context.has_asset_partitions:
-                    save_kwargs["partition"] = context.asset_partition_keys[dataset_name]
+                    partition = context.asset_partition_key
+                elif "partition_key" in context.resource_config:
+                    partition = context.resource_config["partition_key"]
 
-                dataset.save(obj, **save_kwargs)
+                if partition is not None:
+                    obj = {partition: obj}
+
+                print("SAVING DATASET", dataset_name)
+                print("CONTEXT HAS ASSET PARTITIONS", context.has_asset_partitions)
+                print("CONTEXT HAS PARTITION KEY", context.has_partition_key)
+                try:
+                    print("CONTEXT PARTITION KEY", context.partition_key)
+                except:
+                    pass
+
+                try:
+                    print("CONTEXT ASSET PARTITION KEY", context.asset_partition_key)
+                except:
+                    pass
+
+                try:
+                    print("CONTEXT ASSET PARTITION KEYS", context.asset_partition_keys)
+                except:
+                    pass
+
+                print("RESOURCE CONFIG", context.resource_config)
+
+                dataset.save(obj)
 
                 if is_node_multi_asset:
                     context.log.info("Executing `after_dataset_saved` Kedro hook.")
@@ -116,11 +151,41 @@ class CatalogTranslator:
                         node=node,
                     )
 
-                load_kwargs = {}
-                if context.has_asset_partitions:
-                    load_kwargs["partition"] = context.asset_partition_keys[dataset_name]
+                # TODO: Make sure it works with multi partitions
+                print("LOADING DATASET", dataset_name)
+                print("CONTEXT HAS ASSET PARTITIONS", context.has_asset_partitions)
+                print("CONTEXT HAS PARTITION KEY", context.has_partition_key)
+                try:
 
-                data = dataset.load(**load_kwargs)
+                    print("CONTEXT PARTITION KEY", context.partition_key)
+                except:
+                    pass
+
+                try:
+                    print("CONTEXT ASSET PARTITION KEYS", context.asset_partition_key)
+                except:
+                    pass
+
+                try:
+                    print("CONTEXT ASSET PARTITION KEYS", context.asset_partition_keys)
+                except:
+                    pass
+
+                try:
+                    print("RESOURCE CONFIG", context.resource_config)
+                except:
+                    pass
+
+                data = dataset.load()
+
+                partition = None
+                if context.has_asset_partitions:
+                    partition = context.asset_partition_key
+                elif "partition_key" in context.resource_config:
+                    partition = context.resource_config["partition_key"]
+
+                if partition is not None:
+                    data = data[partition]()
 
                 if is_node_multi_asset:
                     context.log.info("Executing `after_dataset_loaded` Kedro hook.")
@@ -139,7 +204,7 @@ class CatalogTranslator:
         # Modify the description of the IO Manager in Dagster UI
         ConfigurableDatasetIOManager.__doc__ = f"""IO Manager for Kedro dataset `{dataset_name}`."""
 
-        return ConfigurableDatasetIOManager(**dataset_params)
+        return ConfigurableDatasetIOManager(**dataset_params), partitions_def, partition_mappings
 
     def to_dagster(self) -> dict[str, dg.IOManagerDefinition]:
         """Get the IO managers from Kedro datasets.
@@ -147,10 +212,11 @@ class CatalogTranslator:
         Returns:
             Dict[str, IOManagerDefinition]: A dictionary of DagsterIO managers.
         """
-        named_io_managers = {}
+        named_io_managers, asset_partitions = {}, {}
         for dataset_name in sum(self._pipelines, start=Pipeline([])).datasets():
-            asset_name = format_dataset_name(dataset_name)
-            if _is_asset_name(asset_name):
+            if not _is_param_name(dataset_name):
+                asset_name = format_dataset_name(dataset_name)
+
                 try:
                     dataset = self._catalog._get_dataset(dataset_name)
 
@@ -164,9 +230,15 @@ class CatalogTranslator:
                 if isinstance(dataset, MemoryDataset):
                     continue
 
-                named_io_managers[f"{self._env}__{asset_name}_io_manager"] = self._translate_dataset(
+                io_manager, partitions_def, partition_mappings = self._translate_dataset(
                     dataset,
                     dataset_name,
                 )
+                named_io_managers[f"{self._env}__{asset_name}_io_manager"] = io_manager
+                if partitions_def is not None:
+                    asset_partitions[asset_name] = {
+                        "partitions_def": partitions_def,
+                        "partition_mappings": partition_mappings,
+                    }
 
-        return named_io_managers
+        return named_io_managers, asset_partitions

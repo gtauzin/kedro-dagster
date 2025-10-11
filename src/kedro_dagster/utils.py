@@ -12,6 +12,7 @@ from kedro.framework.project import find_pipelines
 from pydantic import ConfigDict, create_model
 
 if TYPE_CHECKING:
+    from kedro.io.catalog_config_resolver import CatalogConfigResolver
     from kedro.pipeline import Pipeline
     from kedro.pipeline.node import Node
     from pydantic import BaseModel
@@ -78,7 +79,57 @@ def get_asset_key_from_dataset_name(dataset_name: str, env: str) -> dg.AssetKey:
     Returns:
         AssetKey: The corresponding Dagster AssetKey.
     """
-    return dg.AssetKey([env] + dataset_name.split("."))
+    # return dg.AssetKey([env] + dataset_name.split("."))
+    return [env] + dataset_name.split(".")
+
+
+def get_partition_mapping(
+    partition_mappings: dict[str, dg.PartitionMapping],
+    upstream_asset_name: str,
+    downstream_dataset_names: list[str],
+    config_resolver: "CatalogConfigResolver",
+) -> dg.PartitionMapping | None:
+    """Get the appropriate partition mapping for an asset based on its downstream datasets.
+    Args:
+        partition_mappings (dict[str, PartitionMapping]): A dictionary of partition mappings.
+        upstream_asset_name (str): The name of the upstream asset.
+        downstream_dataset_names (list[str]): A list of downstream dataset names.
+        config_resolver (CatalogConfigResolver): The catalog config resolver to match patterns.
+    Returns:
+        PartitionMapping | None: The appropriate partition mapping or None if not found.
+    """
+    mapped_downstream_asset_names = partition_mappings.keys()
+    if downstream_dataset_names:
+        mapped_downstream_dataset_name = None
+        for downstream_dataset_name in downstream_dataset_names:
+            downstream_asset_name = format_dataset_name(downstream_dataset_name)
+            if downstream_asset_name in mapped_downstream_asset_names:
+                mapped_downstream_dataset_name = downstream_dataset_name
+                break
+            else:
+                match_pattern = config_resolver.match_pattern(downstream_dataset_name)
+                if match_pattern is not None:
+                    mapped_downstream_dataset_name = match_pattern
+                    break
+
+        if mapped_downstream_dataset_name is not None:
+            mapped_downstream_asset_name = format_dataset_name(mapped_downstream_dataset_name)
+            if mapped_downstream_asset_name in partition_mappings:
+                return partition_mappings[mapped_downstream_asset_name]
+            else:
+                LOGGER.warning(
+                    f"Downstream dataset `{mapped_downstream_dataset_name}` of `{upstream_asset_name}` "
+                    "is not found in the partition mappings. "
+                    "The default partition mapping (i.e., `AllPartitionMapping`) will be used."
+                )
+        else:
+            LOGGER.warning(
+                f"None of the downstream datasets `{downstream_dataset_names}` of `{upstream_asset_name}` "
+                "is found in the partition mappings. "
+                "The default partition mapping (i.e., `AllPartitionMapping`) will be used."
+            )
+
+        return None
 
 
 def format_dataset_name(name: str) -> str:
@@ -190,16 +241,16 @@ def is_mlflow_enabled() -> bool:
         return False
 
 
-def _is_asset_name(dataset_name: str) -> bool:
-    """Determine if a dataset name should be treated as an asset.
+def _is_param_name(dataset_name: str) -> bool:
+    """Determine if a dataset name should be treated as a parameter.
 
     Args:
         dataset_name (str): The dataset name.
 
     Returns:
-        bool: True if the name is an asset, False otherwise.
+        bool: True if the name is a parameter, False otherwise.
     """
-    return not dataset_name.startswith("params:") and dataset_name != "parameters"
+    return dataset_name.startswith("params:") or dataset_name == "parameters"
 
 
 def _get_node_pipeline_name(node: "Node") -> str:

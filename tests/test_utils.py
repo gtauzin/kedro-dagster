@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
-    _is_asset_name,
+    _is_param_name,
     format_dataset_name,
     format_node_name,
     get_asset_key_from_dataset_name,
@@ -114,10 +114,10 @@ def test_format_dataset_name_non_dot_chars():
 
 
 def test_is_asset_name():
-    assert _is_asset_name("my_asset")
-    assert _is_asset_name("another_asset__with__underscores")
-    assert not _is_asset_name("parameters")
-    assert not _is_asset_name("params:my_param")
+    assert not _is_param_name("my_asset")
+    assert not _is_param_name("another_asset__with__underscores")
+    assert _is_param_name("parameters")
+    assert _is_param_name("params:my_param")
 
 
 def test_format_node_name_hashes_invalid_chars():

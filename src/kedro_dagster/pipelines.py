@@ -7,10 +7,12 @@ from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
 
 from kedro_dagster.kedro import KedroRunTranslator
+from kedro_dagster.datasets.partitioned_dataset import DagsterPartitionedDataset
 from kedro_dagster.utils import (
-    _is_asset_name,
+    _is_param_name,
     format_dataset_name,
     format_node_name,
+    unformat_asset_name,
     get_asset_key_from_dataset_name,
     get_filter_params_dict,
     is_mlflow_enabled,
@@ -43,6 +45,7 @@ class PipelineTranslator:
         env: str,
         session_id: str,
         named_assets: dict[str, dg.AssetsDefinition],
+        asset_partitions: dict[str, dict[str, dg.PartitionsDefinition | dg.PartitionMapping | None]],
         named_ops: dict[str, dg.OpDefinition],
         named_resources: dict[str, dg.ResourceDefinition],
         named_executors: dict[str, dg.ExecutorDefinition],
@@ -56,10 +59,67 @@ class PipelineTranslator:
         self._catalog = context.catalog
         self._hook_manager = context._hook_manager
         self._named_assets = named_assets
+        self._asset_partitions = asset_partitions
         self._named_ops = named_ops
         self._named_resources = named_resources
         self._named_executors = named_executors
         self._enable_mlflow = enable_mlflow
+
+    def _get_partitioned_config(self, pipeline: Pipeline) -> dict[str, Any]:
+        """Get the partitioned config for the pipeline.
+
+        Args:
+            pipeline (Pipeline): The Kedro pipeline.
+        Returns:
+            dict[str, Any]: The partitioned config.
+        """
+        partitions_definitions: dict[str, dg.PartitionsDefinition] = {}
+        for dataset_name in pipeline.all_inputs() | pipeline.all_outputs():
+            asset_name = format_dataset_name(dataset_name)
+            if not _is_param_name(dataset_name) and asset_name not in self._named_assets:
+                if asset_name in self._asset_partitions:
+                    partitions_def = self._asset_partitions[asset_name]["partitions_def"]
+                    partitions_definitions[asset_name] = partitions_def
+
+        if not partitions_definitions:
+            return None
+
+        if len(partitions_definitions) == 1:
+            is_partitions_def_multiple = False
+            partitions_def = list(partitions_definitions.values())[0]
+        else:
+            is_partitions_def_multiple = True
+            partitions_def = dg.MultiPartitionsDefinition(partitions_definitions)
+
+        def tags_for_partition_key_fn(partition_key: str) -> dict[str, str]:
+            partitioned_config: dict[str, Any] = {"resources": {}, "ops": {}}
+
+            for asset_name in partitions_definitions.keys():
+                if is_partitions_def_multiple:
+                    partition_key = partition_key[asset_name]
+
+                if asset_name in self._asset_partitions:
+                    partition_mapping = self._asset_partitions[asset_name]["partition_mapping"]
+                    io_manager_key = f"{self._env}__{asset_name}_io_manager"
+                    partitioned_config["resources"][io_manager_key] = {
+                        "config": {"partition_key": partition_key}
+                    }
+
+            for node in pipeline.nodes:
+                op_name = format_node_name(node.name)
+                partitioned_config["ops"][op_name] = {
+                    "config": {"partition_key": partition_key}
+                }
+
+            return partitioned_config
+
+        partitioned_config = dg.PartitionedConfig(
+            partitions_def=partitions_def,
+            tags_for_partition_key_fn=tags_for_partition_key_fn,
+            run_config_for_partition_key_fn=tags_for_partition_key_fn,
+        )
+
+        return partitioned_config
 
     def _create_pipeline_hook_ops(self, job_name: str, pipeline: Pipeline) -> tuple[dg.OpDefinition, dg.OpDefinition]:
         """Create the pipeline hook ops for before and after pipeline run.
@@ -97,8 +157,8 @@ class PipelineTranslator:
             for node in pipeline.nodes
         }
         for dataset_name in pipeline.all_outputs():
-            asset_name = format_dataset_name(dataset_name)
-            if _is_asset_name(asset_name):
+            if not _is_param_name(dataset_name):
+                asset_name = format_dataset_name(dataset_name)
                 after_pipeline_run_hook_ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_name))
 
         @dg.op(
@@ -162,8 +222,9 @@ class PipelineTranslator:
             # Fil up materialized_assets with pipeline input assets
             materialized_input_assets = {}
             for dataset_name in pipeline.inputs():
-                asset_name = format_dataset_name(dataset_name)
-                if _is_asset_name(asset_name):
+                if not _is_param_name(dataset_name):
+                    asset_name = format_dataset_name(dataset_name)
+
                     # First, we account for external assets
                     if asset_name in self._named_assets:
                         materialized_input_assets[asset_name] = self._named_assets[asset_name]
@@ -184,7 +245,7 @@ class PipelineTranslator:
                         input_asset_name = format_dataset_name(input_dataset_name)
                         if input_asset_name in materialized_input_assets:
                             materialized_input_assets_op[input_asset_name] = materialized_input_assets[input_asset_name]
-
+                    
                     materialized_outputs = op(
                         before_pipeline_run_hook_output=before_pipeline_run_hook_output,
                         **materialized_input_assets_op,
@@ -225,11 +286,15 @@ class PipelineTranslator:
         if self._enable_mlflow and is_mlflow_enabled():
             resource_defs |= {"mlflow": self._named_resources["mlflow"]}
 
+        partitioned_config = self._get_partitioned_config(pipeline)
+
+        # TODO: Description and tags?
         job = pipeline_graph.to_job(
             name=f"{self._env}__{job_name}",
             resource_defs=resource_defs,
             executor_def=executor_def,
             logger_defs=logger_defs,
+            config=partitioned_config
         )
 
         return job

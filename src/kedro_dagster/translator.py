@@ -186,7 +186,7 @@ class KedroProjectTranslator:
             hook_manager=self._context._hook_manager,
             env=self._env,
         )
-        named_io_managers = self.catalog_translator.to_dagster()
+        named_io_managers, asset_partitions = self.catalog_translator.to_dagster()
         named_resources |= named_io_managers
 
         LOGGER.info("Translating Kedro nodes to Dagster ops and assets...")
@@ -195,6 +195,7 @@ class KedroProjectTranslator:
             catalog=self._context.catalog,
             hook_manager=self._context._hook_manager,
             session_id=self._session_id,
+            asset_partitions=asset_partitions,
             named_resources=named_resources,
             env=self._env,
         )
@@ -212,6 +213,7 @@ class KedroProjectTranslator:
             env=self._env,
             session_id=self._session_id,
             named_assets=named_assets,
+            asset_partitions=asset_partitions,
             named_ops=named_ops,
             named_resources=named_resources,
             named_executors=named_executors,
