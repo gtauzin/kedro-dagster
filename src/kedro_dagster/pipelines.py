@@ -65,62 +65,6 @@ class PipelineTranslator:
         self._named_executors = named_executors
         self._enable_mlflow = enable_mlflow
 
-    def _get_partitioned_config(self, pipeline: Pipeline) -> dict[str, Any]:
-        """Get the partitioned config for the pipeline.
-
-        Args:
-            pipeline (Pipeline): The Kedro pipeline.
-        Returns:
-            dict[str, Any]: The partitioned config.
-        """
-        partitions_definitions: dict[str, dg.PartitionsDefinition] = {}
-        for dataset_name in pipeline.all_inputs() | pipeline.all_outputs():
-            asset_name = format_dataset_name(dataset_name)
-            if not _is_param_name(dataset_name) and asset_name not in self._named_assets:
-                if asset_name in self._asset_partitions:
-                    partitions_def = self._asset_partitions[asset_name]["partitions_def"]
-                    partitions_definitions[asset_name] = partitions_def
-
-        if not partitions_definitions:
-            return None
-
-        if len(partitions_definitions) == 1:
-            is_partitions_def_multiple = False
-            partitions_def = list(partitions_definitions.values())[0]
-        else:
-            is_partitions_def_multiple = True
-            partitions_def = dg.MultiPartitionsDefinition(partitions_definitions)
-
-        def tags_for_partition_key_fn(partition_key: str) -> dict[str, str]:
-            partitioned_config: dict[str, Any] = {"resources": {}, "ops": {}}
-
-            for asset_name in partitions_definitions.keys():
-                if is_partitions_def_multiple:
-                    partition_key = partition_key[asset_name]
-
-                if asset_name in self._asset_partitions:
-                    partition_mapping = self._asset_partitions[asset_name]["partition_mapping"]
-                    io_manager_key = f"{self._env}__{asset_name}_io_manager"
-                    partitioned_config["resources"][io_manager_key] = {
-                        "config": {"partition_key": partition_key}
-                    }
-
-            for node in pipeline.nodes:
-                op_name = format_node_name(node.name)
-                partitioned_config["ops"][op_name] = {
-                    "config": {"partition_key": partition_key}
-                }
-
-            return partitioned_config
-
-        partitioned_config = dg.PartitionedConfig(
-            partitions_def=partitions_def,
-            tags_for_partition_key_fn=tags_for_partition_key_fn,
-            run_config_for_partition_key_fn=tags_for_partition_key_fn,
-        )
-
-        return partitioned_config
-
     def _create_pipeline_hook_ops(self, job_name: str, pipeline: Pipeline) -> tuple[dg.OpDefinition, dg.OpDefinition]:
         """Create the pipeline hook ops for before and after pipeline run.
 
@@ -219,38 +163,77 @@ class PipelineTranslator:
         def pipeline_graph() -> None:
             before_pipeline_run_hook_output = before_pipeline_run_hook()
 
-            # Fil up materialized_assets with pipeline input assets
-            materialized_input_assets = {}
+            # Initialize inputs
+            materialized_input_assets: dict[str, Any] = {}
             for dataset_name in pipeline.inputs():
-                if not _is_param_name(dataset_name):
-                    asset_name = format_dataset_name(dataset_name)
+                if _is_param_name(dataset_name):
+                    continue
 
-                    # First, we account for external assets
-                    if asset_name in self._named_assets:
-                        materialized_input_assets[asset_name] = self._named_assets[asset_name]
-                    else:
-                        asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
-                        materialized_input_assets[asset_name] = dg.AssetSpec(
-                            key=asset_key,
-                        ).with_io_manager_key(f"{self._env}__{asset_name}_io_manager")
+                asset_name = format_dataset_name(dataset_name)
+
+                partitions_def = None
+                if asset_name in self._asset_partitions:
+                    partitions_def = self._asset_partitions[asset_name]["partitions_def"]
+
+                if asset_name in self._named_assets:
+                    asset_value = self._named_assets[asset_name]
+                else:
+                    asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
+                    # TODO: Add description, metadata, group_name and kinds?
+                    asset_value = dg.AssetSpec(
+                        key=asset_key,
+                        partitions_def=partitions_def,
+                    ).with_io_manager_key(f"{self._env}__{asset_name}_io_manager")
+
+                materialized_input_assets[asset_name] = asset_value
 
             materialized_output_assets: dict[str, Any] = {}
+            # Build the pipeline layer by layer
             for layer in pipeline.grouped_nodes:
                 for node in layer:
                     op_name = format_node_name(node.name) + "_graph"
                     op = self._named_ops[op_name]
 
-                    materialized_input_assets_op = {}
+                    # Prepare op inputs
+                    op_inputs = {}
+                    pipeline_input_asset_names = []
                     for input_dataset_name in node.inputs:
                         input_asset_name = format_dataset_name(input_dataset_name)
-                        if input_asset_name in materialized_input_assets:
-                            materialized_input_assets_op[input_asset_name] = materialized_input_assets[input_asset_name]
-                    
-                    materialized_outputs = op(
+
+                        if input_asset_name not in materialized_input_assets:
+                            continue
+
+                        upstream_value = materialized_input_assets[input_asset_name]
+
+                        # If the upstream op returned multiple outputs, extract the one matching this asset name
+                        if hasattr(upstream_value, input_asset_name):
+                            input_asset_value = getattr(upstream_value, input_asset_name)
+                        else:
+                            input_asset_value = upstream_value
+
+                        if isinstance(input_asset_value, dg.AssetSpec):
+                            pipeline_input_asset_names.append(input_asset_name)
+                        else:
+                            input_asset_value = input_asset_value.collect()
+
+                        op_inputs[input_asset_name] = input_asset_value
+
+                    print("OP INPUTS", op_inputs)
+
+                    materialized_outputs = op.configured(
+                        {
+                            "pipeline_input_asset_names": pipeline_input_asset_names
+                        },
+                        name=op.name,
+                    )(
                         before_pipeline_run_hook_output=before_pipeline_run_hook_output,
-                        **materialized_input_assets_op,
+                        **op_inputs,
                     )
 
+                    print("OP RESULTS", materialized_outputs)
+
+
+                    # Store for downstream ops
                     if len(node.outputs) == 0:
                         materialized_output_assets_op = {materialized_outputs.output_name: materialized_outputs}
                     else:
@@ -261,6 +244,12 @@ class PipelineTranslator:
                     materialized_input_assets |= materialized_output_assets_op
                     materialized_output_assets |= materialized_output_assets_op
 
+            materialized_output_assets = {
+                asset_name: asset_value.collect()
+                for asset_name, asset_value in materialized_output_assets.items()
+            }
+
+            # TODO: Modify the op so it handles the list from collect!
             after_pipeline_run_hook(**materialized_output_assets)
 
         # Overrides the kedro_run resource with the one created for the job
@@ -286,15 +275,12 @@ class PipelineTranslator:
         if self._enable_mlflow and is_mlflow_enabled():
             resource_defs |= {"mlflow": self._named_resources["mlflow"]}
 
-        partitioned_config = self._get_partitioned_config(pipeline)
-
         # TODO: Description and tags?
         job = pipeline_graph.to_job(
             name=f"{self._env}__{job_name}",
             resource_defs=resource_defs,
             executor_def=executor_def,
             logger_defs=logger_defs,
-            config=partitioned_config
         )
 
         return job

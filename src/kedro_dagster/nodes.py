@@ -102,7 +102,7 @@ class NodeTranslator:
             if _is_param_name(dataset_name):
                 params[dataset_name] = self._catalog.load(dataset_name)
 
-        params["partition_key"] = None
+        params["pipeline_input_asset_names"] = []
 
         # Node parameters are mapped to Dagster configs
         return _create_pydantic_model_from_dict(
@@ -140,10 +140,10 @@ class NodeTranslator:
         """
         out_ops_params = self._get_out_asset_params(dataset_name, asset_name)
 
-        if asset_name in self._asset_partitions:
-            return dg.Out(**out_ops_params) # DynamicOutput
+        # if asset_name in self._asset_partitions:
+        #     return dg.Out(**out_ops_params) # DynamicOutput
 
-        return dg.Out(**out_ops_params)
+        return dg.DynamicOut(**out_ops_params)
 
     def _get_in_asset_params(self, dataset_name: str, asset_name: str, output_dataset_names: list[str]) -> dict[str, Any]:
         """Get the input asset parameters for a dataset.
@@ -267,34 +267,92 @@ class NodeTranslator:
         @dg.op(
             name=f"{op_name}",
             description=f"Kedro node {node.name} wrapped as a Dagster op.",
-            ins=ins | {"before_pipeline_run_hook_output": dg.In(dagster_type=dg.Nothing)},
-            out=out | {f"{op_name}_after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
+            ins=ins | {
+                "partition_key": dg.In(
+                    dagster_type=dg.String,
+                    default_value="__default__",
+                    description="Partition key to run this op for; '__default__' if non-partitioned.",
+                ),
+                "before_pipeline_run_hook_output": dg.In(dagster_type=dg.Nothing)
+            },
+            out=out | {f"{op_name}_after_pipeline_run_hook_input": dg.DynamicOut(dagster_type=dg.Nothing)},
             required_resource_keys=required_resource_keys,
             tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
         )
-        def node_graph_op(context: dg.OpExecutionContext, config: NodeParametersConfig, **inputs):  # type: ignore[no-untyped-def, valid-type]
+        def node_graph_op(
+            context: dg.OpExecutionContext,
+            config: NodeParametersConfig,
+            partition_key: str | None = None,
+            **inputs
+        ):  # type: ignore[no-untyped-def, valid-type]
             """Execute the Kedro node as a Dagster op."""
             context.log.info(f"Running node `{node.name}` in graph.")
-            print("INPUTS:", inputs)
-            inputs |= config.model_dump()  # type: ignore[attr-defined]
-            partition_key = inputs.pop("partition_key", None)
-            print("CONFIG OP PARTITION KEY", partition_key)
 
-            print("INPUTS:", inputs)
-            inputs = {
-                unformat_asset_name(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()
-            }
+            print("PARTITION KEY", partition_key)
+
+            context.log.info(f"Using partition key: {partition_key}")
+
+            input_config = config.model_dump()  # type: ignore[attr-defined]
+            pipeline_input_asset_names = input_config.pop("pipeline_input_asset_names", [])
+            inputs |= input_config
+
+            node_inputs = {}
+            for input_asset_name, input_asset in inputs.items():
+                input_dataset_name = unformat_asset_name(input_asset_name)
+
+                node_input_val = input_asset
+                if not _is_param_name(input_dataset_name):
+                    if input_asset_name in pipeline_input_asset_names:
+                        node_input_val = input_asset
+                    elif partition_key == "__default__":
+                        node_input_val = input_asset[0]
+                    else:
+                        partition_keys = self._asset_partitions[input_asset_name].get_partition_keys()
+                        partition_idx = partition_keys.index(partition_key)
+                        node_input_val = input_asset[partition_idx]
+
+
+                if input_asset_name in self._asset_partitions:
+                    asset_partition_meta = self._asset_partitions[input_asset_name]
+                    partition_keys = asset_partition_meta["partitions_def"].get_partition_keys()
+
+                    # Resolve mapping if downstream asset partitioned
+                    if any(out in self._asset_partitions for out in node.outputs):
+                        for downstream_output_name in node.outputs:
+                            downstream_asset = format_dataset_name(downstream_output_name)
+                            mapping = asset_partition_meta["partition_mapping"].get(downstream_asset)
+
+                            if mapping:
+                                # Get upstream partitions corresponding to current downstream partition
+                                upstream_partitions = mapping.get_upstream_partitions_for_partition_range(
+                                    partition_key, partition_key
+                                )
+                                context.log.info(
+                                    f"Mapping upstream {input_asset_name} → downstream {downstream_asset}: "
+                                    f"{upstream_partitions}"
+                                )
+                                node_input_val = [
+                                    input_asset[partition_keys.index(up)] for up in upstream_partitions
+                                ]
+                                break
+                    else:
+                        # Default: 1-to-1 mapping by same partition key
+                        if partition_key in partition_keys:
+                            node_input_val = input_asset[partition_keys.index(partition_key)]
+
+                node_inputs[input_dataset_name] = node_input_val
+
 
             self._hook_manager.hook.before_node_run(
                 node=node,
                 catalog=self._catalog,
-                inputs=inputs,
+                inputs=node_inputs,
                 is_async=False,  # TODO: Should this be True?
                 session_id=self._session_id,
             )
 
             try:
-                outputs = node.run(inputs)
+                node_outputs = node.run(node_inputs)
 
             except Exception as exc:
                 self._hook_manager.hook.on_node_error(
@@ -311,31 +369,45 @@ class NodeTranslator:
                 node=node,
                 catalog=self._catalog,
                 inputs=inputs,
-                outputs=outputs,
+                outputs=node_outputs,
                 is_async=False,
                 session_id=self._session_id,
             )
 
+            # Emit materializations and wrap everything in DynamicOutput
+            outputs = []
             for output_dataset_name in node.outputs:
                 output_asset_key = get_asset_key_from_dataset_name(output_dataset_name, self._env)
+                output_asset_name = format_dataset_name(output_dataset_name)
+
                 context.log_event(
                     dg.AssetMaterialization(
                         asset_key=output_asset_key,
-                        partition=None,
+                        partition=None if partition_key == "__default__" else partition_key,                    )
+                )
+
+                value = node_outputs[output_dataset_name]
+
+                # Always wrap in DynamicOutput, even for non-partitioned assets
+                outputs.append(
+                    dg.DynamicOutput(
+                        value=value,
+                        mapping_key=str(partition_key),
+                        output_name=output_asset_name,
                     )
                 )
 
-                output_asset_name = format_dataset_name(output_dataset_name)
-                if output_asset_name in self._asset_partitions:
-                    outputs[output_dataset_name] = dg.DynamicOutput(
-                        value=outputs[output_dataset_name],
-                        mapping_key=partition_key or "default",
-                    )
+            # Trailing None DynamicOutput for after-pipeline-run hook
+            outputs.append(
+                dg.DynamicOutput(
+                    value=None,
+                    mapping_key=str(partition_key),
+                    output_name=f"{op_name}_after_pipeline_run_hook_input",
+                )
+            )
 
-            if len(outputs) > 0:
-                return tuple(outputs.values()) + (None,)
-
-            return None
+            # Emit all DynamicOutputs, then a trailing None for after-hook input
+            yield from outputs
 
         return node_graph_op
 
