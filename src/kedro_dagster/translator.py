@@ -200,7 +200,6 @@ class KedroProjectTranslator:
             env=self._env,
         )
         named_ops, named_assets = self.node_translator.to_dagster()
-
         LOGGER.info("Creating Dagster executors...")
         self.executor_creator = ExecutorCreator(dagster_config=dagster_config)
         named_executors = self.executor_creator.create_executors()

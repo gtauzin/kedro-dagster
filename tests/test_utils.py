@@ -114,8 +114,8 @@ def test_format_dataset_name_non_dot_chars():
 
 
 def test_is_asset_name():
-    assert not _is_param_name("my_asset")
-    assert not _is_param_name("another_asset__with__underscores")
+    assert not _is_param_name("my_dataset")
+    assert not _is_param_name("another_dataset__with__underscores")
     assert _is_param_name("parameters")
     assert _is_param_name("params:my_param")
 

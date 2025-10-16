@@ -11,7 +11,13 @@ from jinja2 import Environment, FileSystemLoader
 from kedro.framework.project import find_pipelines
 from pydantic import ConfigDict, create_model
 
+try:
+    from dagster_mlflow import mlflow_tracking  # type: ignore
+except Exception:  # pragma: no cover
+    mlflow_tracking = None  # type: ignore
+
 if TYPE_CHECKING:
+    # from kedro.io import CatalogProtocol  # unused
     from kedro.io.catalog_config_resolver import CatalogConfigResolver
     from kedro.pipeline import Pipeline
     from kedro.pipeline.node import Node
@@ -312,6 +318,8 @@ def get_mlflow_resource_from_config(mlflow_config: "BaseModel") -> dg.ResourceDe
         ResourceDefinition: Dagster resource definition for MLflow.
     """
     from dagster_mlflow import mlflow_tracking
+    if mlflow_tracking is None:
+        raise ImportError("dagster-mlflow is not installed. Please install it to use MLflow integration.")
 
     mlflow_resource = mlflow_tracking.configured({
         "experiment_name": mlflow_config.tracking.experiment.name,
