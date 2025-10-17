@@ -20,7 +20,7 @@ def test_translator_initialization(kedro_project_translator):
 
 def test_dagster_code_location_fields():
     location = DagsterCodeLocation(
-        named_ops={},
+        named_op_factories={},
         named_assets={},
         named_resources={},
         named_jobs={},
@@ -29,6 +29,6 @@ def test_dagster_code_location_fields():
         named_sensors={},
         named_loggers={},
     )
-    assert hasattr(location, "named_ops")
+    assert hasattr(location, "named_op_factories")
     assert hasattr(location, "named_assets")
     assert hasattr(location, "named_jobs")

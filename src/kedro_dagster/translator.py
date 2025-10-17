@@ -36,7 +36,6 @@ class DagsterCodeLocation:
     """Represents a Kedro-based Dagster code location.
 
     Attributes:
-        named_ops: A dictionary of named Dagster operations.
         named_assets: A dictionary of named Dagster assets.
         named_resources: A dictionary of named Dagster resources.
         named_jobs: A dictionary of named Dagster jobs.
@@ -46,7 +45,6 @@ class DagsterCodeLocation:
         named_loggers: A dictionary of named Dagster loggers.
     """
 
-    named_ops: dict[str, dg.OpDefinition]
     named_assets: dict[str, dg.AssetSpec | dg.AssetsDefinition]
     named_resources: dict[str, dg.ResourceDefinition]
     named_jobs: dict[str, dg.JobDefinition]
@@ -199,7 +197,7 @@ class KedroProjectTranslator:
             named_resources=named_resources,
             env=self._env,
         )
-        named_ops, named_assets = self.node_translator.to_dagster()
+        named_op_factories, named_assets = self.node_translator.to_dagster()
         LOGGER.info("Creating Dagster executors...")
         self.executor_creator = ExecutorCreator(dagster_config=dagster_config)
         named_executors = self.executor_creator.create_executors()
@@ -213,7 +211,7 @@ class KedroProjectTranslator:
             session_id=self._session_id,
             named_assets=named_assets,
             asset_partitions=asset_partitions,
-            named_ops=named_ops,
+            named_op_factories=named_op_factories,
             named_resources=named_resources,
             named_executors=named_executors,
             enable_mlflow=is_mlflow_enabled(),
@@ -232,7 +230,6 @@ class KedroProjectTranslator:
         return DagsterCodeLocation(
             named_resources=named_resources,
             named_assets=named_assets,
-            named_ops=named_ops,
             named_jobs=named_jobs,
             named_executors=named_executors,
             named_schedules=named_schedules,

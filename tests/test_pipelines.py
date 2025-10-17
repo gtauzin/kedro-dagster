@@ -44,7 +44,7 @@ def pipeline_translator(kedro_project):
         env="base",
         session_id=session.session_id,
         named_assets={},
-        named_ops={},
+        named_op_factories={},
         named_resources={},
         named_executors={},
         enable_mlflow=False,

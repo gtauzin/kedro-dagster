@@ -71,9 +71,6 @@ class CatalogTranslator:
                 continue
             dataset_params[param] = valid_value
 
-        if dataset_params["dataset"].endswith("DagsterPartitionedDataset"):
-            dataset_params["partition_key"] = None
-
         DatasetModel = _create_pydantic_model_from_dict(
             name="DatasetModel",
             params=dataset_params,
@@ -98,22 +95,13 @@ class CatalogTranslator:
                         node=node,
                     )
 
-                # Partition resolution priority
-                partition = None
-                mapping_key = None
-                try:
-                    mapping_key = context.mapping_key
-                except Exception:
-                    mapping_key = None
-
-                if mapping_key and mapping_key != "__default__":
-                    partition = mapping_key
+                partition = "__default__"
+                if "partition_key" in context.op_def.tags:
+                    partition = context.op_def.tags["partition_key"]
                 elif context.has_asset_partitions:
                     partition = context.asset_partition_key
-                elif "partition_key" in context.resource_config:
-                    partition = context.resource_config["partition_key"]
 
-                if partition is not None:
+                if partition != "__default__":
                     obj = {partition: obj}
 
                 dataset.save(obj)
@@ -140,22 +128,13 @@ class CatalogTranslator:
 
                 data = dataset.load()
 
-                # Partition resolution priority
-                partition = None
-                mapping_key = None
-                try:
-                    mapping_key = context.mapping_key
-                except Exception:
-                    mapping_key = None
-
-                if mapping_key and mapping_key != "__default__":
-                    partition = mapping_key
+                partition = "__default__"
+                if "partition_key" in context.op_def.tags:
+                    partition = context.op_def.tags["partition_key"]
                 elif context.has_asset_partitions:
                     partition = context.asset_partition_key
-                elif "partition_key" in context.resource_config:
-                    partition = context.resource_config["partition_key"]
 
-                if partition is not None and isinstance(data, dict):
+                if partition != "__default__" and isinstance(data, dict):
                     val = data.get(partition)
                     if callable(val):
                         data = val()

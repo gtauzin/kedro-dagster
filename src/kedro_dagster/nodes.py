@@ -1,5 +1,6 @@
 """Translation of Kedro nodes to Dagster ops and assets."""
 
+from functools import partial
 from logging import getLogger
 from typing import TYPE_CHECKING, Any
 
@@ -8,8 +9,6 @@ from kedro.io import DatasetNotFoundError, MemoryDataset
 from kedro.pipeline import Pipeline
 from pydantic import ConfigDict
 
-from kedro_dagster.datasets import DagsterNothingDataset  # type: ignore
-
 from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
@@ -17,12 +16,13 @@ from kedro_dagster.utils import (
     format_dataset_name,
     format_node_name,
     get_asset_key_from_dataset_name,
+    get_partition_mapping,
     is_mlflow_enabled,
+    is_nothing_asset_name,
     unformat_asset_name,
 )
 
 if TYPE_CHECKING:
-    from kedro.io.catalog_config_resolver import CatalogConfigResolver
     from kedro.io import CatalogProtocol
     from kedro.pipeline.node import Node
     from pluggy import PluginManager
@@ -30,53 +30,6 @@ if TYPE_CHECKING:
 
 LOGGER = getLogger(__name__)
 
-
-def get_partition_mapping(
-    partition_mappings: dict[str, dg.PartitionMapping],
-    upstream_asset_name: str,
-    downstream_dataset_names: list[str],
-    config_resolver: "CatalogConfigResolver",
-) -> dg.PartitionMapping | None:
-    """Get the appropriate partition mapping for an asset based on its downstream datasets.
-    Args:
-        partition_mappings (dict[str, PartitionMapping]): A dictionary of partition mappings.
-        upstream_asset_name (str): The name of the upstream asset.
-        downstream_dataset_names (list[str]): A list of downstream dataset names.
-        config_resolver (CatalogConfigResolver): The catalog config resolver to match patterns.
-    Returns:
-        PartitionMapping | None: The appropriate partition mapping or None if not found.
-    """
-    mapped_downstream_asset_names = partition_mappings.keys()
-    if downstream_dataset_names:
-        mapped_downstream_dataset_name = None
-        for downstream_dataset_name in downstream_dataset_names:
-            downstream_asset_name = format_dataset_name(downstream_dataset_name)
-            if downstream_asset_name in mapped_downstream_asset_names:
-                mapped_downstream_dataset_name = downstream_dataset_name
-                break
-            else:
-                match_pattern = config_resolver.match_pattern(downstream_dataset_name)
-                if match_pattern is not None:
-                    mapped_downstream_dataset_name = match_pattern
-                    break
-
-        if mapped_downstream_dataset_name is not None:
-            if mapped_downstream_dataset_name in partition_mappings:
-                return partition_mappings[mapped_downstream_dataset_name]
-            else:
-                LOGGER.warning(
-                    f"Downstream dataset `{mapped_downstream_dataset_name}` of `{upstream_asset_name}` "
-                    "is not found in the partition mappings. "
-                    "The default partition mapping (i.e., `AllPartitionMapping`) will be used."
-                )
-        else:
-            LOGGER.warning(
-                f"None of the downstream datasets `{downstream_dataset_names}` of `{upstream_asset_name}` "
-                "is found in the partition mappings. "
-                "The default partition mapping (i.e., `AllPartitionMapping`) will be used."
-            )
-
-        return None
 
 class NodeTranslator:
     """Translate Kedro nodes into Dagster ops and assets.
@@ -108,20 +61,6 @@ class NodeTranslator:
         self._asset_partitions = asset_partitions
         self._named_resources = named_resources
         self._env = env
-
-    def _is_nothing_asset_name(self, dataset_name: str) -> bool:
-        """Return True if the catalog entry is a DagsterNothingDataset."""
-        try:
-            dataset = self._catalog._get_dataset(dataset_name)  # type: ignore[attr-defined]
-        except Exception:
-            return False
-        if DagsterNothingDataset is not None:
-            try:
-                if isinstance(dataset, DagsterNothingDataset):  # type: ignore[arg-type]
-                    return True
-            except Exception:
-                pass
-        return False
 
     def _get_node_partitions_definition(self, node: "Node") -> dg.PartitionsDefinition | None:
         """Get the multi-partitions definition for a node if it has partitioned datasets.
@@ -162,8 +101,6 @@ class NodeTranslator:
         for dataset_name in node.inputs:
             if _is_param_name(dataset_name):
                 params[dataset_name] = self._catalog.load(dataset_name)
-
-        params["__partition_key"] = "__default__"
 
         # Node parameters are mapped to Dagster configs
         return _create_pydantic_model_from_dict(
@@ -253,7 +190,12 @@ class NodeTranslator:
 
         return self._asset_names
 
-    def create_op(self, node: "Node") -> dg.OpDefinition:
+    def create_op(
+        self,
+        node: "Node",
+        partition_key: str | None = None,
+        partition_keys_per_input_asset_names: dict[str, str] | None = None,
+    ) -> dg.OpDefinition:
         """Create a Dagster op from a Kedro node for use in a Dagster graph.
 
         Args:
@@ -265,8 +207,12 @@ class NodeTranslator:
         ins = {}
         for dataset_name in node.inputs:
             asset_name = format_dataset_name(dataset_name)
-            if self._is_nothing_asset_name(dataset_name):
-                ins[asset_name] = dg.In(dagster_type=dg.Nothing)
+            if is_nothing_asset_name(self._catalog, dataset_name):
+                if partition_keys_per_input_asset_names is None or asset_name not in partition_keys_per_input_asset_names:
+                        ins[asset_name] = dg.In(dagster_type=dg.Nothing)
+                else:
+                    for input_partition_key in partition_keys_per_input_asset_names[asset_name]:
+                        ins[asset_name + f"__{input_partition_key}"] = dg.In(dagster_type=dg.Nothing)
             elif not _is_param_name(dataset_name):
                 asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
                 ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_key))
@@ -274,7 +220,7 @@ class NodeTranslator:
         out = {}
         for dataset_name in node.outputs:
             asset_name = format_dataset_name(dataset_name)
-            if self._is_nothing_asset_name(dataset_name):
+            if is_nothing_asset_name(self._catalog, dataset_name):
                 out[asset_name] = dg.Out(dagster_type=dg.Nothing)
             else:
                 out_asset_params = self._get_out_asset_params(dataset_name, asset_name)
@@ -282,6 +228,8 @@ class NodeTranslator:
 
         NodeParametersConfig = self._get_node_parameters_config(node)
         op_name = format_node_name(node.name)
+        if partition_key is not None:
+            op_name += f"__{format_node_name(partition_key)}"
 
         required_resource_keys = []
         for dataset_name in node.inputs + node.outputs:
@@ -292,13 +240,17 @@ class NodeTranslator:
         if is_mlflow_enabled():
             required_resource_keys.append("mlflow")
 
+        tags = {f"kedro_tag_{i + 1}": tag for i, tag in enumerate(node.tags)}
+        if partition_key is not None:
+            tags["partition_key"] = str(partition_key)
+
         @dg.op(
-            name=f"{op_name}",
+            name=op_name,
             description=f"Kedro node {node.name} wrapped as a Dagster op.",
             ins=ins | {"before_pipeline_run_hook_output": dg.In(dagster_type=dg.Nothing)},
             out=out | {f"{op_name}_after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
             required_resource_keys=required_resource_keys,
-            tags={f"node_tag_{i + 1}": tag for i, tag in enumerate(node.tags)},
+            tags=tags,
         )
         def node_graph_op(context: dg.OpExecutionContext, config: NodeParametersConfig, **inputs):  # type: ignore[no-untyped-def, valid-type]
             """Execute the Kedro node as a Dagster op."""
@@ -306,7 +258,7 @@ class NodeTranslator:
 
             # Merge node parameters into inputs while filtering out reserved keys (e.g., partition key)
             config_values = config.model_dump()  # type: ignore[attr-defined]
-            partition_key = config_values.pop("__partition_key", "__default__")
+            partition_key = config_values.pop("partition_key", "__default__")
 
             inputs |= config_values
             inputs = {
@@ -314,7 +266,7 @@ class NodeTranslator:
             }
 
             for input_dataset_name in node.inputs:
-                if self._is_nothing_asset_name(input_dataset_name):
+                if is_nothing_asset_name(self._catalog, input_dataset_name):
                     inputs[input_dataset_name] = None
 
             self._hook_manager.hook.before_node_run(
@@ -350,10 +302,6 @@ class NodeTranslator:
 
             # Emit materializations and attach partition metadata when available
             for output_dataset_name in node.outputs:
-                if self._is_nothing_asset_name(output_dataset_name):
-                    outputs.pop(output_dataset_name, None)
-                    continue
-
                 output_asset_key = get_asset_key_from_dataset_name(output_dataset_name, self._env)
                 try:
                     if partition_key != "__default__":
@@ -392,7 +340,7 @@ class NodeTranslator:
             asset_name = format_dataset_name(dataset_name)
             asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
 
-            if self._is_nothing_asset_name(dataset_name):
+            if is_nothing_asset_name(self._catalog, dataset_name):
                 ins[asset_name] = dg.AssetIn(key=asset_key, dagster_type=dg.Nothing)
                 continue
 
@@ -406,7 +354,7 @@ class NodeTranslator:
             asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
             group_name = _get_node_pipeline_name(node)
 
-            if self._is_nothing_asset_name(dataset_name):
+            if is_nothing_asset_name(self._catalog, dataset_name):
                 outs[asset_name] = dg.AssetOut(key=asset_key, dagster_type=dg.Nothing, group_name=group_name)
                 continue
 
@@ -441,13 +389,13 @@ class NodeTranslator:
             }
 
             for input_dataset_name in node.inputs:
-                if self._is_nothing_asset_name(input_dataset_name):
+                if is_nothing_asset_name(self._catalog, input_dataset_name):
                     inputs[input_dataset_name] = None
 
             outputs = node.run(inputs)
 
             for output_dataset_name in node.outputs:
-                if self._is_nothing_asset_name(output_dataset_name):
+                if is_nothing_asset_name(self._catalog, output_dataset_name):
                     outputs[output_dataset_name] = None
 
             if len(outputs) == 1:
@@ -489,7 +437,7 @@ class NodeTranslator:
                 for pipeline in self._pipelines:
                     for node in pipeline.nodes:
                         if external_dataset_name in node.inputs and any(
-                            self._is_nothing_asset_name(ds) for ds in node.inputs
+                            is_nothing_asset_name(self._catalog, ds) for ds in node.inputs
                         ):
                             group_name = _get_node_pipeline_name(node)
                             break
@@ -511,14 +459,14 @@ class NodeTranslator:
                 named_assets[external_asset_name] = external_asset
 
         # Create assets from Kedro nodes that have outputs
-        named_ops = {}
+        named_op_factories = {}
         for node in default_pipeline.nodes:
             op_name = format_node_name(node.name)
-            graph_op = self.create_op(node)
-            named_ops[f"{op_name}_graph"] = graph_op
+            op_factory = partial(self.create_op, node=node)
+            named_op_factories[f"{op_name}_graph"] = op_factory
 
             if len(node.outputs):
                 asset = self.create_asset(node)
                 named_assets[op_name] = asset
 
-        return named_ops, named_assets
+        return named_op_factories, named_assets

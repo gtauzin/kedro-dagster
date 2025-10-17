@@ -11,6 +11,8 @@ from jinja2 import Environment, FileSystemLoader
 from kedro.framework.project import find_pipelines
 from pydantic import ConfigDict, create_model
 
+from kedro_dagster.datasets import DagsterNothingDataset
+
 try:
     from dagster_mlflow import mlflow_tracking  # type: ignore
 except Exception:  # pragma: no cover
@@ -89,6 +91,15 @@ def get_asset_key_from_dataset_name(dataset_name: str, env: str) -> dg.AssetKey:
     return [env] + dataset_name.split(".")
 
 
+def is_nothing_asset_name(catalog, dataset_name: str) -> bool:
+    """Return True if the catalog entry is a DagsterNothingDataset."""
+    dataset = catalog.get(dataset_name)  # type: ignore[attr-defined]
+    if isinstance(dataset, DagsterNothingDataset):  # type: ignore[arg-type]
+        return True
+
+    return False
+
+
 def get_partition_mapping(
     partition_mappings: dict[str, dg.PartitionMapping],
     upstream_asset_name: str,
@@ -119,9 +130,8 @@ def get_partition_mapping(
                     break
 
         if mapped_downstream_dataset_name is not None:
-            mapped_downstream_asset_name = format_dataset_name(mapped_downstream_dataset_name)
-            if mapped_downstream_asset_name in partition_mappings:
-                return partition_mappings[mapped_downstream_asset_name]
+            if mapped_downstream_dataset_name in partition_mappings:
+                return partition_mappings[mapped_downstream_dataset_name]
             else:
                 LOGGER.warning(
                     f"Downstream dataset `{mapped_downstream_dataset_name}` of `{upstream_asset_name}` "
@@ -136,6 +146,27 @@ def get_partition_mapping(
             )
 
         return None
+
+
+def serialize_partition_key(partition_key: Any) -> str:
+    """Serialize a partition key into a Dagster-safe suffix (^[A-Za-z0-9_]+$).
+
+    Args:
+        partition_key (Any): The partition key to serialize.
+    Returns:
+        str: The serialized partition key.
+    """
+    try:
+        if isinstance(partition_key, dg.MultiPartitionKey):
+            s = "|".join(f"{k}={v}" for k, v in sorted(partition_key.keys_by_dimension.items()))
+        else:
+            s = str(partition_key)
+    except Exception:
+        s = str(partition_key)
+    # Replace any non-alphanumeric/underscore with underscore and trim
+    s = re.sub(r"[^A-Za-z0-9_]", "_", s)
+    s = s.strip("_") or "all"
+    return s
 
 
 def format_dataset_name(name: str) -> str:
