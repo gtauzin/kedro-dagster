@@ -403,7 +403,7 @@ class NodeTranslator:
         partition mappings are propagated when available.
 
         Args:
-            node (Node): The Kedro node to wrap.
+            node (Node): Kedro node to wrap.
 
         Returns:
             dg.AssetsDefinition: Multi-asset representing the node outputs.
@@ -490,7 +490,7 @@ class NodeTranslator:
             """Translate all Kedro nodes involved into Dagster op factories and assets.
 
             Returns:
-                    tuple[dict[str, dg.OpDefinition], dict[str, dg.AssetSpec | dg.AssetsDefinition]]: A 2-tuple of
+            tuple[dict[str, dg.OpDefinition], dict[str, dg.AssetSpec | dg.AssetsDefinition]]: 2-tuple of
                     (op factories, assets), where:
                     - op factories map names to callables that produce partition-aware ops when invoked;
                     - assets map names to either external :class:`dagster.AssetSpec` (for upstream inputs)

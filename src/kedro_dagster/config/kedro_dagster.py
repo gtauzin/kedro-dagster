@@ -78,10 +78,10 @@ def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
     """Get the Dagster configuration from the `dagster.yml` file.
 
     Args:
-        context: The ``KedroContext`` that was created.
+    context: ``KedroContext`` that was created.
 
     Returns:
-        KedroDagsterConfig: The Dagster configuration.
+        KedroDagsterConfig: Dagster configuration.
     """
     try:
         if "dagster" not in context.config_loader.config_patterns.keys():

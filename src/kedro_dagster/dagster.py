@@ -54,8 +54,8 @@ class ExecutorCreator:
         """Register a mapping between an options model and a Dagster executor factory.
 
         Args:
-            executor_option (BaseModel): The Pydantic model type acting as the key.
-            executor (ExecutorDefinition): The Dagster executor factory to use for that key.
+            executor_option (BaseModel): Pydantic model type acting as the key.
+            executor (ExecutorDefinition): Dagster executor factory to use for that key.
         """
         self._OPTION_EXECUTOR_MAP[executor_option] = executor
 
@@ -101,7 +101,7 @@ class ScheduleCreator:
         """Create schedule definitions from the configuration.
 
         Returns:
-            dict[str, dg.ScheduleDefinition]: A dict of schedule definitions keyed by job name.
+            dict[str, dg.ScheduleDefinition]: Dict of schedule definitions keyed by job name.
 
         """
         named_schedule_config = {}

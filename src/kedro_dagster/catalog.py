@@ -57,11 +57,11 @@ class CatalogTranslator:
         """Create a configurable IO manager class for a single Kedro dataset.
 
         Args:
-            dataset (AbstractDataset): The Kedro dataset to wrap into an IO manager.
-            dataset_name (str): The name of the dataset in the Kedro catalog.
+            dataset (AbstractDataset): Kedro dataset to wrap into an IO manager.
+            dataset_name (str): Name of the dataset in the Kedro catalog.
 
         Returns:
-            tuple[IOManagerDefinition, Any, Any]: A 3-tuple of (IO manager instance,
+            tuple[IOManagerDefinition, Any, Any]: 3-tuple of (IO manager instance,
             partitions_def, partition_mappings).
         """
 

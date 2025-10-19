@@ -81,11 +81,11 @@ def get_asset_key_from_dataset_name(dataset_name: str, env: str) -> dg.AssetKey:
     """Get a Dagster AssetKey from a Kedro dataset name and environment.
 
     Args:
-        dataset_name (str): The Kedro dataset name.
-        env (str): The Kedro environment.
+        dataset_name (str): Kedro dataset name.
+        env (str): Kedro environment.
 
     Returns:
-        AssetKey: The corresponding Dagster AssetKey.
+        AssetKey: Corresponding Dagster AssetKey.
     """
     # return dg.AssetKey([env] + dataset_name.split("."))
     return [env] + dataset_name.split(".")
@@ -108,12 +108,12 @@ def get_partition_mapping(
 ) -> dg.PartitionMapping | None:
     """Get the appropriate partition mapping for an asset based on its downstream datasets.
     Args:
-        partition_mappings (dict[str, PartitionMapping]): A dictionary of partition mappings.
-        upstream_asset_name (str): The name of the upstream asset.
-        downstream_dataset_names (list[str]): A list of downstream dataset names.
-        config_resolver (CatalogConfigResolver): The catalog config resolver to match patterns.
+        partition_mappings (dict[str, PartitionMapping]): Dictionary of partition mappings.
+        upstream_asset_name (str): Name of the upstream asset.
+        downstream_dataset_names (list[str]): List of downstream dataset names.
+        config_resolver (CatalogConfigResolver): Catalog config resolver to match patterns.
     Returns:
-        PartitionMapping | None: The appropriate partition mapping or None if not found.
+        PartitionMapping | None: Partition mapping or None if not found.
     """
     mapped_downstream_asset_names = partition_mappings.keys()
     if downstream_dataset_names:
@@ -152,9 +152,9 @@ def format_partition_key(partition_key: Any) -> str:
     """Format a partition key into a Dagster-safe suffix (^[A-Za-z0-9_]+$).
 
     Args:
-        partition_key (Any): The partition key to serialize.
+        partition_key (Any): Partition key to serialize.
     Returns:
-        str: The serialized partition key.
+        str: Serialized partition key.
     """
     dagster_partition_key = re.sub(r"[^A-Za-z0-9_]", "_", partition_key)
     dagster_partition_key = dagster_partition_key.strip("_") or "all"
@@ -165,10 +165,10 @@ def format_dataset_name(name: str) -> str:
     """Convert a dataset name so that it is valid under Dagster's naming convention.
 
     Args:
-        name (str): The name to format.
+        name (str): Name to format.
 
     Returns:
-        str: The formatted name.
+        str: Formatted name.
     """
 
     dataset_name = name.replace(".", KEDRO_DAGSTER_SEPARATOR)
@@ -187,10 +187,10 @@ def format_node_name(name: str) -> str:
     """Convert a node name so that it is valid under Dagster's naming convention.
 
     Args:
-        name (str): The node name to format.
+        name (str): Node name to format.
 
     Returns:
-        str: The formatted name.
+        str: Formatted name.
     """
     dagster_name = name.replace(".", KEDRO_DAGSTER_SEPARATOR)
 
@@ -209,10 +209,10 @@ def unformat_asset_name(name: str) -> str:
     """Convert a Dagster-formatted asset name back to Kedro's naming convention.
 
     Args:
-        name (str): The Dagster-formatted name.
+        name (str): Dagster-formatted name.
 
     Returns:
-        str: The original Kedro name.
+        str: Original Kedro name.
     """
 
     return name.replace(KEDRO_DAGSTER_SEPARATOR, ".")
@@ -225,12 +225,12 @@ def _create_pydantic_model_from_dict(  # type: ignore[no-untyped-def]
 
     Args:
         name (str): Name of the model.
-        params (dict): Parameters for the model.
+        params (dict[str, Any]): Parameters for the model.
         __base__: Base class for the model.
         __config__ (ConfigDict | None): Optional Pydantic config.
 
     Returns:
-        BaseModel: The created Pydantic model.
+        BaseModel: Created Pydantic model.
     """
     fields = {}
     for param_name, param_value in params.items():
@@ -274,7 +274,7 @@ def _is_param_name(dataset_name: str) -> bool:
     """Determine if a dataset name should be treated as a parameter.
 
     Args:
-        dataset_name (str): The dataset name.
+    dataset_name (str): Dataset name.
 
     Returns:
         bool: True if the name is a parameter, False otherwise.
@@ -286,7 +286,7 @@ def _get_node_pipeline_name(node: "Node") -> str:
     """Return the name of the pipeline that a node belongs to.
 
     Args:
-        node (Node): The Kedro Node.
+    node (Node): Kedro node.
 
     Returns:
         str: Name of the pipeline the node belongs to.

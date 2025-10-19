@@ -42,13 +42,13 @@ class DagsterCodeLocation:
     """A typed container for all artifacts that make up a Dagster code location.
 
     Attributes:
-        named_assets: A dictionary of named Dagster assets.
-        named_resources: A dictionary of named Dagster resources.
-        named_jobs: A dictionary of named Dagster jobs.
-        named_executors: A dictionary of named Dagster executors.
-        named_schedules: A dictionary of named Dagster schedules.
-        named_sensors: A dictionary of named Dagster sensors.
-        named_loggers: A dictionary of named Dagster loggers.
+        named_assets: Dictionary of named Dagster assets.
+        named_resources: Dictionary of named Dagster resources.
+        named_jobs: Dictionary of named Dagster jobs.
+        named_executors: Dictionary of named Dagster executors.
+        named_schedules: Dictionary of named Dagster schedules.
+        named_sensors: Dictionary of named Dagster sensors.
+        named_loggers: Dictionary of named Dagster loggers.
     """
 
     named_assets: dict[str, dg.AssetSpec | dg.AssetsDefinition]

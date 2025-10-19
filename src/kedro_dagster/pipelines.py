@@ -262,15 +262,15 @@ class PipelineTranslator:
         - Identity mapping is used by default (same partition key across assets)
 
         Args:
-            pipeline (Pipeline): The Kedro pipeline.
-            pipeline_name (str): The name of the Kedro pipeline.
+            pipeline (Pipeline): Kedro pipeline.
+            pipeline_name (str): Name of the Kedro pipeline.
             filter_params (dict[str, Any]): Filter parameters for the pipeline.
-            job_name (str): The name of the job.
-            executor_def (ExecutorDefinition | None): The executor definition.
-            logger_defs (dict[str, LoggerDefinition] | None): The logger definitions.
+            job_name (str): Name of the job.
+            executor_def (ExecutorDefinition | None): Executor definition.
+            logger_defs (dict[str, LoggerDefinition] | None): Logger definitions.
 
         Returns:
-            dg.JobDefinition: A Dagster job definition with partition-aware ops.
+            dg.JobDefinition: Dagster job definition with partition-aware ops.
         """
         before_pipeline_run_hook_op = self._create_before_pipeline_run_hook(job_name, pipeline)
 
@@ -448,7 +448,7 @@ class PipelineTranslator:
         """Translate the Kedro pipelines into Dagster jobs.
 
         Returns:
-            dict[str, dg.JobDefinition]: The translated Dagster jobs.
+            dict[str, dg.JobDefinition]: Translated Dagster jobs.
         """
         named_jobs = {}
         for job_name, job_config in self._dagster_config.jobs.items():  # type: ignore[attr-defined]
