@@ -340,7 +340,6 @@ def get_mlflow_resource_from_config(mlflow_config: "BaseModel") -> dg.ResourceDe
     Returns:
         ResourceDefinition: Dagster resource definition for MLflow.
     """
-    from dagster_mlflow import mlflow_tracking
     if mlflow_tracking is None:
         raise ImportError("dagster-mlflow is not installed. Please install it to use MLflow integration.")
 

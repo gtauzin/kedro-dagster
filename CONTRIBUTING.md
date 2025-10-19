@@ -31,14 +31,15 @@ Typically, small contributions to `kedro-dagster` are more preferable due to an 
 ## Your first contribution
 
 Working on your first pull request? You can learn how from these resources:
+
 * [First timers only](https://www.firsttimersonly.com/)
 * [How to contribute to an open source project on GitHub](https://egghead.io/courses/how-to-contribute-to-an-open-source-project-on-github)
 
 ### Guidelines
 
- - Aim for cross-platform compatibility on Windows, macOS and Linux
- - We use [uv](https://docs.astral.sh/uv/) for project and virtual environment management
- - We use [SemVer](https://semver.org/) for versioning
+* Aim for cross-platform compatibility on Windows, macOS and Linux
+* We use [uv](https://docs.astral.sh/uv/) for project and virtual environment management
+* We use [SemVer](https://semver.org/) for versioning
 
 Our code is designed to be compatible with Python 3.6 onwards and our style guidelines are (in cascading order):
 
@@ -46,7 +47,7 @@ Our code is designed to be compatible with Python 3.6 onwards and our style guid
 * [Google docstrings](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings) for code comments
 * [PEP 484 type hints](https://www.python.org/dev/peps/pep-0484/) for all user-facing functions / class methods e.g.
 
-```
+```python
 def count_truthy(elements: List[Any]) -> int:
     return sum(1 for elem in elements if elem)
 ```
@@ -76,7 +77,7 @@ We use a branching model that helps us keep track of branches in a logical, cons
 
 ## Documentation
 
-- The main documentation is in the `docs/` directory and is built with [MkDocs](https://www.mkdocs.org/). To build or serve the documentation locally, use:
+* The main documentation is in the `docs/` directory and is built with [MkDocs](https://www.mkdocs.org/). To build or serve the documentation locally, use:
 
   ```bash
   uvx nox -s build_docs
@@ -88,30 +89,30 @@ We use a branching model that helps us keep track of branches in a logical, cons
   uv run mkdocs serve
   ```
 
-- API reference and technical documentation are auto-generated from the code and docstrings. Please keep docstrings up to date when contributing code.
-- When adding new features or making changes, update the relevant documentation pages in `docs/pages/` and ensure the navigation in `mkdocs.yml` is correct.
+* API reference and technical documentation are auto-generated from the code and docstrings. Please keep docstrings up to date when contributing code.
+* When adding new features or making changes, update the relevant documentation pages in `docs/pages/` and ensure the navigation in `mkdocs.yml` is correct.
 
 ## Testing
 
-- **Unit tests** are in the `tests/` directory and use `pytest`. Run them with:
+* **Unit tests** are in the `tests/` directory and use `pytest`. Run them with:
 
   ```bash
   uv run pytest tests
   ```
 
-- **Behavior (end-to-end) tests** are in the `features/` directory and use `behave`. Run them with:
+* **Behavior (end-to-end) tests** are in the `features/` directory and use `behave`. Run them with:
 
   ```bash
   uv run behave features
   ```
 
-- **Linting and formatting** is enforced with `ruff` and can be run with:
+* **Linting and formatting** is enforced with `ruff` and can be run with:
 
   ```bash
   uvx ruff check src/kedro-dagster
   ```
 
-- **All checks and tests** can be run using [nox](https://nox.thea.codes/):
+* **All checks and tests** can be run using [nox](https://nox.thea.codes/):
 
   ```bash
   uvx nox -s fix
@@ -121,3 +122,28 @@ We use a branching model that helps us keep track of branches in a logical, cons
   This will run linting, formatting, unit tests, behavior tests, and coverage checks across supported Python versions.
 
 The CI/CD pipeline will run all of these checks automatically on pull requests. Please ensure your code passes locally before submitting a PR.
+
+## Docstring conventions
+
+We use Google-style docstrings with inline types in parentheses for all public modules, classes, methods, and functions in `kedro_dagster`.
+
+* Summary line first; keep lines to ~100 characters.
+* Include an Args section whenever there are parameters. Format each as:
+  * `name (type): description.`
+* Include a Returns section when a value is returned. Format as:
+  * `type: description.` If multiple values are returned, describe the structure (e.g., `tuple[type_a, type_b]: ...`).
+* Prefer PEP 585 built-in generics: `list[str]`, `dict[str, Any]`, `tuple[int, str]`.
+* Avoid leading articles in parameter descriptions. Prefer `Kedro catalog` over `The Kedro catalog`.
+* State defaults in the description when helpful, and use `| None` for optional types.
+
+Example:
+
+"""Create a Dagster op wrapping a Kedro node.
+
+Args:
+    node (Node): Kedro node to wrap.
+    is_in_first_layer (bool): Whether node is in the first topological layer.
+
+Returns:
+    OpDefinition: Configured Dagster op.
+"""

@@ -1,4 +1,9 @@
-"""Dagster executor creation from config."""
+"""Dagster integration utilities: executors, schedules, and loggers.
+
+This module provides small translators/creators that build Dagster artifacts
+from the validated Kedro-Dagster configuration: executors, schedules and
+pipeline-specific loggers.
+"""
 
 import logging
 from typing import TYPE_CHECKING
@@ -22,10 +27,10 @@ if TYPE_CHECKING:
 
 
 class ExecutorCreator:
-    """Creates Dagster executor definitions from Kedro configuration.
+    """Create Dagster executor definitions from Kedro-Dagster configuration.
 
     Args:
-        dagster_config: The Dagster configuration.
+        dagster_config (BaseModel): Parsed Kedro-Dagster config containing executor entries.
     """
 
     _OPTION_EXECUTOR_MAP = {
@@ -46,19 +51,19 @@ class ExecutorCreator:
         self._dagster_config = dagster_config
 
     def register_executor(self, executor_option: "BaseModel", executor: dg.ExecutorDefinition) -> None:
-        """Register an executor option with a Dagster executor.
+        """Register a mapping between an options model and a Dagster executor factory.
 
         Args:
-            executor_option (BaseModel): The executor option to register.
-            executor (ExecutorDefinition): The executor to register the option with.
+            executor_option (BaseModel): The Pydantic model type acting as the key.
+            executor (ExecutorDefinition): The Dagster executor factory to use for that key.
         """
         self._OPTION_EXECUTOR_MAP[executor_option] = executor
 
     def create_executors(self) -> dict[str, dg.ExecutorDefinition]:
-        """Create executor definitions from the configuration.
+        """Instantiate executor definitions declared in the configuration.
 
         Returns:
-            Dict[str, ExecutorDefinition]: A dict of executor definitions.
+            dict[str, dg.ExecutorDefinition]: Mapping of executor name to configured executor.
         """
         # Register all available executors dynamically
         for executor_option, module_name, executor_name in self._EXECUTOR_CONFIGS:
@@ -86,7 +91,7 @@ class ExecutorCreator:
 
 
 class ScheduleCreator:
-    """Creates Dagster schedule definitions from Kedro configuration."""
+    """Create Dagster schedule definitions from Kedro configuration."""
 
     def __init__(self, dagster_config: "BaseModel", named_jobs: dict[str, dg.JobDefinition]):
         self._dagster_config = dagster_config
@@ -96,7 +101,7 @@ class ScheduleCreator:
         """Create schedule definitions from the configuration.
 
         Returns:
-            Dict[str, ScheduleDefinition]: A dict of schedule definitions.
+            dict[str, dg.ScheduleDefinition]: A dict of schedule definitions keyed by job name.
 
         """
         named_schedule_config = {}
@@ -127,7 +132,7 @@ class ScheduleCreator:
 
 
 class LoggerTranslator:
-    """Translates Kedro loggers to Dagster loggers."""
+    """Translate Kedro pipeline loggers to Dagster loggers."""
 
     def __init__(self, dagster_config: "BaseModel", package_name: str):
         self._dagster_config = dagster_config
@@ -145,7 +150,11 @@ class LoggerTranslator:
         )
 
     def to_dagster(self) -> dict[str, dg.LoggerDefinition]:
-        """Translate Kedro loggers to Dagster loggers."""
+        """Translate Kedro loggers to Dagster loggers.
+
+        Returns:
+            dict[str, LoggerDefinition]: Mapping of fully-qualified logger name to definition.
+        """
         named_loggers = {}
         for pipeline_name in pipelines:
             if pipeline_name != "__default__":

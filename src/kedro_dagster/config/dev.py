@@ -1,4 +1,7 @@
-"""Configuration definitions for `kedro dagster dev`."""
+"""Configuration definitions for `kedro dagster dev`.
+
+Provides options for the local development server and logging used by the CLI.
+"""
 
 from pathlib import Path
 from typing import Literal
@@ -36,4 +39,6 @@ class DevOptions(BaseModel):
         return definitions_py_path  # type: ignore[no-any-return]
 
     class Config:
+        """Pydantic configuration enforcing strict fields."""
+
         extra = "forbid"

@@ -1,4 +1,10 @@
-"""Translation from Kedro to Dagster."""
+"""High-level translation from a Kedro project into a Dagster code location.
+
+This module orchestrates the end-to-end conversion from a Kedro project
+into a Dagster code location composed of assets, jobs, resources, schedules,
+sensors, and loggers. It bootstraps the Kedro session, loads configuration,
+translates the catalog and nodes, and wires the resulting definitions together.
+"""
 
 import os
 from dataclasses import dataclass
@@ -33,7 +39,7 @@ LOGGER = getLogger(__name__)
 
 @dataclass
 class DagsterCodeLocation:
-    """Represents a Kedro-based Dagster code location.
+    """A typed container for all artifacts that make up a Dagster code location.
 
     Attributes:
         named_assets: A dictionary of named Dagster assets.
@@ -55,12 +61,12 @@ class DagsterCodeLocation:
 
 
 class KedroProjectTranslator:
-    """Translate Kedro project into Dagster code location.
+    """Translate a Kedro project into a Dagster code location.
 
     Args:
-        project_path (Path | None): The path to the Kedro project.
-        env (str | None): Kedro environment to use.
-        conf_source (str | None): Path to the Kedro configuration source directory.
+        project_path (Path | None): Path to the Kedro project. If omitted, auto-discovered.
+        env (str | None): Kedro environment to use. Defaults to Kedro's configured default.
+        conf_source (str | None): Optional path to the Kedro configuration source directory.
     """
 
     def __init__(
@@ -86,6 +92,9 @@ class KedroProjectTranslator:
 
     def initialize_kedro(self, conf_source: str | None = None) -> None:
         """Initialize Kedro context and pipelines for translation.
+
+        This bootstraps the Kedro project, starts a session, loads the context,
+        and discovers pipelines to prepare for translation.
 
         Args:
             conf_source (str | None): Optional configuration source directory.
@@ -114,15 +123,15 @@ class KedroProjectTranslator:
         LOGGER.info("Kedro initialization complete.")
 
     def get_defined_pipelines(self, dagster_config: "BaseModel", translate_all: bool) -> list["Pipeline"]:
-        """Get pipelines to translate.
+        """Resolve the list of pipelines to translate.
 
         Args:
-            dagster_config (dict[str, Any]): The configuration of the Dagster job.
-            translate_all (bool): Whether to translate the whole Kedro project.
-            If ``False``, translates only the pipelines defined in `dagster.yml`.
+            dagster_config (BaseModel): Validated configuration for Kedro-Dagster.
+            translate_all (bool): If True, translate all discovered pipelines; otherwise,
+                only those referenced by jobs in the configuration.
 
         Returns:
-            list[Pipeline]: List of Kedro pipelines to translate.
+            list[Pipeline]: Kedro pipelines to translate.
         """
         if translate_all:
             return list(find_pipelines().values())
@@ -139,14 +148,14 @@ class KedroProjectTranslator:
         return defined_pipelines
 
     def to_dagster(self, translate_all: bool = False) -> DagsterCodeLocation:
-        """Translate Kedro project into Dagster.
+        """Translate the Kedro project into a Dagster code location.
 
         Args:
-            translate_all (bool): Whether to translate the whole Kedro project.
-            If ``False``, translates only the pipelines defined in `dagster.yml`.
+            translate_all (bool): Whether to translate all pipelines or only those referenced
+                in the ``dagster.yml`` configuration.
 
         Returns:
-            DagsterCodeLocation: The translated Dagster code location.
+            DagsterCodeLocation: Translated Dagster code location composed of assets, jobs, resources, and more.
         """
         LOGGER.info("Translating Kedro project into Dagster...")
 
