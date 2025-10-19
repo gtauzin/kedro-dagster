@@ -1,16 +1,4 @@
 """Translation of Kedro catalog's datasets into Dagster IO managers.
-
-This IOManager implementation prioritizes the dynamic mapping key (context.mapping_key)
-when selecting partitions during both handle_output and load_input. This is required
-for per-partition dynamic mapping runs when no job-level partitions_def is set.
-
-Order of partition resolution:
-1) context.mapping_key (from DynamicOutput mapping)
-2) context.asset_partition_key (when present)
-3) context.resource_config['partition_key'] (fallback)
-
-Kedro dataset hooks (before_dataset_loaded/saved and after_dataset_loaded/saved) are invoked
-around IOManager loads/saves for ops that correspond to Kedro nodes.
 """
 from logging import getLogger
 from pathlib import PurePosixPath
@@ -57,6 +45,8 @@ class CatalogTranslator:
         Returns:
             (IOManagerDefinition, partitions_def, partition_mappings)
         """
+        asset_name = format_dataset_name(dataset_name)
+
         partitions_def, partition_mappings = None, None
         if isinstance(dataset, DagsterPartitionedDataset):
             partitions_def = dataset._get_partitions_definition()
@@ -95,13 +85,15 @@ class CatalogTranslator:
                         node=node,
                     )
 
-                partition = "__default__"
-                if "partition_key" in context.op_def.tags:
-                    partition = context.op_def.tags["partition_key"]
+                partition = None
+                if "downstream_partition_key" in context.op_def.tags:
+                    downstream_partition_key = context.op_def.tags["downstream_partition_key"]
+                    if asset_name == downstream_partition_key.split("|")[0]:
+                        partition = downstream_partition_key.split("|")[1]
                 elif context.has_asset_partitions:
                     partition = context.asset_partition_key
 
-                if partition != "__default__":
+                if partition is not None:
                     obj = {partition: obj}
 
                 dataset.save(obj)
@@ -128,13 +120,15 @@ class CatalogTranslator:
 
                 data = dataset.load()
 
-                partition = "__default__"
-                if "partition_key" in context.op_def.tags:
-                    partition = context.op_def.tags["partition_key"]
+                partition = None
+                if "upstream_partition_key" in context.op_def.tags:
+                    upstream_partition_key = context.op_def.tags["upstream_partition_key"]
+                    if asset_name == upstream_partition_key.split("|")[0]:
+                        partition = upstream_partition_key.split("|")[1]
                 elif context.has_asset_partitions:
                     partition = context.asset_partition_key
 
-                if partition != "__default__" and isinstance(data, dict):
+                if partition is not None and isinstance(data, dict):
                     val = data.get(partition)
                     if callable(val):
                         data = val()

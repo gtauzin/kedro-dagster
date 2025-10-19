@@ -193,7 +193,9 @@ class NodeTranslator:
     def create_op(
         self,
         node: "Node",
-        partition_key: str | None = None,
+        is_in_first_layer: bool = False,
+        is_in_last_layer: bool = True,
+        partition_keys:dict[str, str] | None = None,
         partition_keys_per_input_asset_names: dict[str, str] | None = None,
     ) -> dg.OpDefinition:
         """Create a Dagster op from a Kedro node for use in a Dagster graph.
@@ -204,6 +206,11 @@ class NodeTranslator:
         Returns:
             OpDefinition: A Dagster op.
         """
+        op_name = format_node_name(node.name)
+        if partition_keys is not None:
+            partition_key = partition_keys["upstream_partition_key"].split("|")[1]
+            op_name += f"__{format_node_name(partition_key)}"
+
         ins = {}
         for dataset_name in node.inputs:
             asset_name = format_dataset_name(dataset_name)
@@ -217,6 +224,10 @@ class NodeTranslator:
                 asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
                 ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_key))
 
+        if is_in_first_layer:
+            # Add a dummy input to trigger `before_pipeline_run` hook
+            ins["before_pipeline_run_hook_output"] = dg.In(dagster_type=dg.Nothing)
+
         out = {}
         for dataset_name in node.outputs:
             asset_name = format_dataset_name(dataset_name)
@@ -226,10 +237,11 @@ class NodeTranslator:
                 out_asset_params = self._get_out_asset_params(dataset_name, asset_name)
                 out[asset_name] = dg.Out(**out_asset_params)
 
+        if is_in_last_layer:
+            # Add a dummy output to trigger `after_pipeline_run` hook
+            out[f"{op_name}_after_pipeline_run_hook_input"] = dg.Out(dagster_type=dg.Nothing)
+
         NodeParametersConfig = self._get_node_parameters_config(node)
-        op_name = format_node_name(node.name)
-        if partition_key is not None:
-            op_name += f"__{format_node_name(partition_key)}"
 
         required_resource_keys = []
         for dataset_name in node.inputs + node.outputs:
@@ -240,15 +252,17 @@ class NodeTranslator:
         if is_mlflow_enabled():
             required_resource_keys.append("mlflow")
 
+        partition_key = None
         tags = {f"kedro_tag_{i + 1}": tag for i, tag in enumerate(node.tags)}
-        if partition_key is not None:
-            tags["partition_key"] = str(partition_key)
+        if partition_keys is not None:
+            tags |= partition_keys
+            partition_key = partition_keys["upstream_partition_key"].split("|")[1]
 
         @dg.op(
             name=op_name,
             description=f"Kedro node {node.name} wrapped as a Dagster op.",
-            ins=ins | {"before_pipeline_run_hook_output": dg.In(dagster_type=dg.Nothing)},
-            out=out | {f"{op_name}_after_pipeline_run_hook_input": dg.Out(dagster_type=dg.Nothing)},
+            ins=ins,
+            out=out,
             required_resource_keys=required_resource_keys,
             tags=tags,
         )
@@ -258,7 +272,6 @@ class NodeTranslator:
 
             # Merge node parameters into inputs while filtering out reserved keys (e.g., partition key)
             config_values = config.model_dump()  # type: ignore[attr-defined]
-            partition_key = config_values.pop("partition_key", "__default__")
 
             inputs |= config_values
             inputs = {
@@ -303,23 +316,18 @@ class NodeTranslator:
             # Emit materializations and attach partition metadata when available
             for output_dataset_name in node.outputs:
                 output_asset_key = get_asset_key_from_dataset_name(output_dataset_name, self._env)
-                try:
-                    if partition_key != "__default__":
-                        # Attach output metadata so IO managers can read the target partition
-                        context.add_output_metadata(
-                            metadata={"partition_key": str(partition_key)},
-                            output_name=format_dataset_name(output_dataset_name),
-                        )
-                        context.log_event(
-                            dg.AssetMaterialization(asset_key=output_asset_key, partition=str(partition_key))
-                        )
-                    else:
-                        context.log_event(dg.AssetMaterialization(asset_key=output_asset_key))
-                except Exception:  # Best-effort metadata emission; don't fail the run for metadata issues
-                    context.log.debug("Failed to emit partition metadata/materialization for %s", output_asset_key)
+                context.log_event(
+                    dg.AssetMaterialization(asset_key=output_asset_key, partition=partition_key)
+                )
 
             if len(outputs) > 0:
-                return tuple(outputs.values()) + (None,)
+                res = tuple(outputs.values())
+                if  is_in_last_layer:
+                    res += (None,)
+                elif len(outputs) == 1:
+                    return res[0]
+
+                return res
 
             return None
 

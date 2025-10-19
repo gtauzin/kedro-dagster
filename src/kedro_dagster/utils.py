@@ -148,25 +148,17 @@ def get_partition_mapping(
         return None
 
 
-def serialize_partition_key(partition_key: Any) -> str:
-    """Serialize a partition key into a Dagster-safe suffix (^[A-Za-z0-9_]+$).
+def format_partition_key(partition_key: Any) -> str:
+    """Format a partition key into a Dagster-safe suffix (^[A-Za-z0-9_]+$).
 
     Args:
         partition_key (Any): The partition key to serialize.
     Returns:
         str: The serialized partition key.
     """
-    try:
-        if isinstance(partition_key, dg.MultiPartitionKey):
-            s = "|".join(f"{k}={v}" for k, v in sorted(partition_key.keys_by_dimension.items()))
-        else:
-            s = str(partition_key)
-    except Exception:
-        s = str(partition_key)
-    # Replace any non-alphanumeric/underscore with underscore and trim
-    s = re.sub(r"[^A-Za-z0-9_]", "_", s)
-    s = s.strip("_") or "all"
-    return s
+    dagster_partition_key = re.sub(r"[^A-Za-z0-9_]", "_", partition_key)
+    dagster_partition_key = dagster_partition_key.strip("_") or "all"
+    return dagster_partition_key
 
 
 def format_dataset_name(name: str) -> str:

@@ -17,20 +17,13 @@ from kedro_dagster.utils import (
     get_partition_mapping,
     is_mlflow_enabled,
     is_nothing_asset_name,
-    serialize_partition_key,
+    format_partition_key,
     unformat_asset_name,
 )
 
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
 
-def pprint(name, val):
-    print(name)
-    if isinstance(val, dict):
-        for k, v in val.items():
-            print(f"  {k}: {v}")
-    else:
-        print(f"  {val}")
 
 class PipelineTranslator:
     """Translator for Kedro pipelines to Dagster jobs.
@@ -75,77 +68,87 @@ class PipelineTranslator:
         self._named_executors = named_executors
         self._enable_mlflow = enable_mlflow
 
-    def _enumerate_partition_keys_for_asset(self, asset_name: str) -> list[Any]:
-        """Enumerate partition keys for an asset, supports multi and regular partitions.
+    def _enumerate_partition_keys(self, partitions_def: dg.PartitionsDefinition) -> list[str]:
+        """Enumerate partition keys for an asset, does not support multi partitions.
 
         Args:
-            asset_name: Name of the asset to enumerate partitions for.
+            partitions_def: PartitionsDefinition of the asset to enumerate partitions for.
 
         Returns:
-            List of partition keys (can be MultiPartitionKey or regular keys), or empty list if unpartitioned.
+            List of partition keys.
         """
-        partitions_def = None
-        if asset_name in self._asset_partitions:
-            partitions_def = self._asset_partitions[asset_name].get("partitions_def")
-
         if not partitions_def:
             return []
-        if isinstance(partitions_def, dg.MultiPartitionsDefinition) and hasattr(partitions_def, "get_multi_partition_keys"):
-            try:
-                return list(partitions_def.get_multi_partition_keys())  # type: ignore[attr-defined]
-            except Exception:
-                pass
 
-        return list(getattr(partitions_def, "get_partition_keys")())
+        if isinstance(partitions_def, dg.MultiPartitionsDefinition):
+            raise NotImplementedError("MultiPartitionsDefinition is not supported.")
 
-    def _list_node_execution_keys(self, node) -> list[Any]:
-        """List execution partition keys for a node.
+        return list(partitions_def.get_partition_keys())
 
-        Strategy:
-        - If any output is partitioned: use that partition space (validate if multiple outputs share identical key sets).
-        - Else if any input is partitioned: use that partition space (validate if multiple inputs share identical key sets).
-        - Else: unpartitioned -> [].
+    def _get_node_partition_keys(self, node) -> list[Any]:
+        """Get partition keys for a node.
 
         Args:
             node: The Kedro node to analyze
 
-        Returns:
-            List of partition keys to execute for this node, or empty list if unpartitioned
         """
-        out_key_sets: list[list[Any]] = []
-        for ds in node.outputs:
-            asset_name = format_dataset_name(ds)
-            keys = self._enumerate_partition_keys_for_asset(asset_name)
-            if keys:
-                out_key_sets.append(keys)
+        # Check partitioning consistency among output datasets
+        # Output datasets can be either all partitioned or all non-partitioned (excluding nothing datasets)
+        output_asset_names = [format_dataset_name(dataset_name) for dataset_name in node.outputs]
+        partitioned_out_asset_names = [
+            asset_name for asset_name in output_asset_names if asset_name in self._asset_partitions
+        ]
+        non_partitioned_out_asset_names = [
+            asset_name for asset_name in output_asset_names
+            if asset_name not in self._asset_partitions and not is_nothing_asset_name(self._catalog, unformat_asset_name(asset_name))
+        ]
 
-        if out_key_sets:
-            base = set(map(serialize_partition_key, out_key_sets[0]))
-            for ks in out_key_sets[1:]:
-                if set(map(serialize_partition_key, ks)) != base:
-                    raise ValueError(
-                        f"Node '{node.name}' has multiple partitioned outputs with incompatible keyspaces"
+        if partitioned_out_asset_names and non_partitioned_out_asset_names:
+            partitioned_out_dataset_names = [unformat_asset_name(asset_name) for asset_name in partitioned_out_asset_names]
+            non_partitioned_out_dataset_names = [unformat_asset_name(asset_name) for asset_name in non_partitioned_out_asset_names]
+            raise ValueError(
+                f"Node '{node.name}' has mixed partitioned and non-partitioned non-nothing outputs: "
+                f"partitioned={partitioned_out_dataset_names}, non-partitioned, non-nothing={non_partitioned_out_dataset_names}. "
+                "All outputs must be either partitioned or nothing datasets if any output is partitioned."
+            )
+
+        downstream_per_upstream_partition_key: dict[str, str] = {}
+        for out_dataset_name in node.outputs:
+            out_asset_name = format_dataset_name(out_dataset_name)
+            if out_asset_name in self._asset_partitions:
+                out_partitions_def = self._asset_partitions[out_asset_name].get("partitions_def")
+
+            for in_dataset_name in node.inputs:
+                in_asset_name = format_dataset_name(in_dataset_name)
+                if in_asset_name in self._asset_partitions and out_asset_name in self._asset_partitions:
+                    in_partitions_def = self._asset_partitions[in_asset_name].get("partitions_def")
+                    partition_mappings = self._asset_partitions[in_asset_name].get("partition_mappings", None)
+
+                    in_partition_keys = self._enumerate_partition_keys(in_partitions_def)
+                    partition_mapping = get_partition_mapping(
+                        partition_mappings,
+                        upstream_asset_name=in_dataset_name,
+                        downstream_dataset_names=[out_dataset_name],
+                        config_resolver= self._catalog.config_resolver,
                     )
 
-            return out_key_sets[0]
+                    if partition_mapping is None:
+                        # Identity mapping
+                        partition_mapping = dg.IdentityPartitionMapping()
 
-        in_key_sets: list[list[Any]] = []
-        for ds in node.inputs:
-            asset_name = format_dataset_name(ds)
-            keys = self._enumerate_partition_keys_for_asset(asset_name)
-            if keys:
-                in_key_sets.append(keys)
+                    for in_partition_key in in_partition_keys:
+                        mapped_downstream_key = partition_mapping.get_downstream_partitions_for_partitions(
+                            upstream_partitions_subset=in_partitions_def.empty_subset().with_partition_keys(
+                                [in_partition_key]
+                            ),
+                            upstream_partitions_def=in_partitions_def,
+                            downstream_partitions_def=out_partitions_def,
+                        )[0]
+                        # TODO: Support 1 to many
+                        mapped_downstream_key = list(mapped_downstream_key)[0]
+                        downstream_per_upstream_partition_key[f"{in_asset_name}|{in_partition_key}"] = f"{out_asset_name}|{mapped_downstream_key}"
 
-        if in_key_sets:
-            base = set(map(serialize_partition_key, in_key_sets[0]))
-            for ks in in_key_sets[1:]:
-                if set(map(serialize_partition_key, ks)) != base:
-                    raise ValueError(
-                        f"Node '{node.name}' has multiple partitioned inputs with incompatible keyspaces"
-                    )
-            return in_key_sets[0]
-
-        return []
+        return downstream_per_upstream_partition_key
 
 
     def _create_before_pipeline_run_hook(self, job_name: str, pipeline: Pipeline) -> tuple[dg.OpDefinition, dg.OpDefinition]:
@@ -185,37 +188,11 @@ class PipelineTranslator:
         self,
         job_name: str,
         pipeline: Pipeline,
-        output_nothing_asset_names: list[str],
-        partitioned_output_assets: dict[str, dict[str, Any]],
+        after_pipeline_run_asset_names: list[str],
     ) -> dg.OpDefinition:
-
-        after_pipeline_run_hook_ins = {
-            f"{format_node_name(node.name)}_after_pipeline_run_hook_input": dg.In(dagster_type=dg.Nothing)
-            for node in pipeline.nodes
-        }
-        for dataset_name in pipeline.all_outputs():
-            asset_name = format_dataset_name(dataset_name)
-            asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
-            if is_nothing_asset_name(self._catalog, dataset_name):
-                if asset_name not in partitioned_output_assets:
-                    output_nothing_asset_names.append(asset_name)
-                    after_pipeline_run_hook_ins[asset_name] = dg.In(dagster_type=dg.Nothing)
-
-                else:
-                    for partition_key in partitioned_output_assets[asset_name].keys():
-                        after_pipeline_run_hook_ins[asset_name + f"__{partition_key}"] = dg.In(dagster_type=dg.Nothing)
-
-            elif asset_name in partitioned_output_assets:
-                for partition_key in partitioned_output_assets[asset_name].keys():
-                    after_pipeline_run_hook_ins[asset_name + f"__{partition_key}"] = dg.In()
-
-            else:
-                after_pipeline_run_hook_ins[asset_name] = dg.In(
-                    asset_key=dg.AssetKey(asset_key),
-                )
-
-        for output_nothing_asset_name in output_nothing_asset_names:
-            after_pipeline_run_hook_ins[output_nothing_asset_name] = dg.In(dagster_type=dg.Nothing)
+        after_pipeline_run_hook_ins: dict[str, dg.In] = {}
+        for asset_name in after_pipeline_run_asset_names:
+            after_pipeline_run_hook_ins[asset_name] = dg.In(dagster_type=dg.Nothing)
 
         required_resource_keys = {"kedro_run"}
         if self._enable_mlflow and is_mlflow_enabled():
@@ -227,29 +204,12 @@ class PipelineTranslator:
             ins=after_pipeline_run_hook_ins,
             required_resource_keys=required_resource_keys,
         )
-        def after_pipeline_run_hook_op(context: dg.OpExecutionContext, **materialized_assets) -> dg.Nothing:  # type: ignore[no-untyped-def]
+        def after_pipeline_run_hook_op(context: dg.OpExecutionContext) -> dg.Nothing:  # type: ignore[no-untyped-def]
             kedro_run_resource = context.resources.kedro_run
-
-            run_results = {}
-            for dataset_name in pipeline.outputs():
-                asset_name = format_dataset_name(dataset_name)
-
-                if is_nothing_asset_name(self._catalog, dataset_name):
-                    run_results[dataset_name] = None
-                elif asset_name in partitioned_output_assets:
-                    # Collect partitioned outputs
-                    partitioned_vals = {}
-                    for partition_key in partitioned_output_assets[asset_name].keys():
-                        handle = materialized_assets.get(asset_name + f"__{partition_key}")
-                        if handle is not None:
-                            partitioned_vals[partition_key] = handle
-                    run_results[dataset_name] = partitioned_vals
-                else:
-                    run_results[dataset_name] = materialized_assets[asset_name]
+            run_params = kedro_run_resource.run_params
 
             self._hook_manager.hook.after_pipeline_run(
-                run_params=kedro_run_resource.run_params,
-                run_result=run_results,
+                run_params=run_params,
                 pipeline=pipeline,
                 catalog=self._catalog,
             )
@@ -307,165 +267,120 @@ class PipelineTranslator:
                             f"{self._env}__{asset_name}_io_manager"
                         )
 
-            # Per-asset partitioned outputs cache: asset -> {serialized_partition_key: handle}
             partitioned_output_assets: dict[str, dict[str, Any]] = {}
+            after_pipeline_run_hook_inputs: dict[str, Any] = {}
 
-            # Last seen outputs (for after hook wiring) — for partitioned assets, last clone wins
-            materialized_output_assets: dict[str, Any] = {}
+            n_layers = len(pipeline.grouped_nodes)
+            for i_layer, layer in enumerate(pipeline.grouped_nodes):
+                is_node_in_first_layer = (i_layer == 0)
+                is_node_in_last_layer = (i_layer == n_layers - 1)
 
-            for layer in pipeline.grouped_nodes:
                 for node in layer:
+                    downstream_per_upstream_partition_key = self._get_node_partition_keys(node)
+
                     op_name = format_node_name(node.name) + "_graph"
 
-                    execution_partition_keys = self._list_node_execution_keys(node)
+                    inputs_kwargs: dict[str, Any] = {}
+                    for input_dataset_name in node.inputs:
+                        input_asset_name = format_dataset_name(input_dataset_name)
+                        if _is_param_name(input_dataset_name):
+                            continue
 
-                    # Helper to assemble input kwargs for a given partition key (or None)
-                    def _build_inputs_for_partition(partition_key: Any | None, serialized_partition_key: str | None) -> dict[str, Any]:
-                        """Build input kwargs for a specific partition execution.
+                        if input_asset_name in materialized_input_assets:
+                            inputs_kwargs[input_asset_name] = materialized_input_assets[input_asset_name]
 
-                        Args:
-                            partition_key: The partition key object (can be MultiPartitionKey or regular key)
-                            serialized_partition_key: Serialized partition key string for lookup
+                    if is_node_in_first_layer:
+                        inputs_kwargs["before_pipeline_run_hook_output"] = before_pipeline_run_hook_output
 
-                        Returns:
-                            Dictionary mapping input names to their handles/assets
-                        """
-                        inputs_kwargs: dict[str, Any] = {}
-                        for input_dataset_name in node.inputs:
-                            input_asset_name = format_dataset_name(input_dataset_name)
-                            if _is_param_name(input_dataset_name):
-                                continue
-
-                            # Preference order: partitioned_output_assets (from previous nodes) -> initial external
-                            # Check if we have a partitioned upstream output from a previous node
-                            if input_asset_name in partitioned_output_assets and serialized_partition_key is not None:
-                                upstream_partition_mapping = partitioned_output_assets[input_asset_name]
-                                # Identity mapping by default: same serial key
-                                handle = upstream_partition_mapping.get(serialized_partition_key)
-                                if handle is None:
-                                    # Try mapping from upstream to this downstream partition key
-                                    # Infer downstream asset from current node's outputs
-                                    downstream_asset_candidates = [format_dataset_name(ds) for ds in node.outputs]
-                                    mapping_fn = None
-                                    for downstream_candidate in downstream_asset_candidates:
-                                        mapping_fn = get_partition_mapping(input_asset_name, downstream_candidate)
-                                        if mapping_fn is not None:
-                                            break
-                                    if mapping_fn is not None and partition_key is not None:
-                                        # Find upstream partitions mapping to this downstream key
-                                        # This reverses the mapping: given downstream key, find upstream keys
-                                        upstream_partition_keys = self._enumerate_partition_keys_for_asset(input_asset_name)
-                                        matched_serials: list[str] = []
-                                        for upstream_partition_key in upstream_partition_keys:
-                                            mapped_down = mapping_fn(upstream_partition_key) or []
-                                            if any(
-                                                serialize_partition_key(downstream_partition_key) == serialized_partition_key
-                                                for downstream_partition_key in mapped_down
-                                            ):
-                                                matched_serials.append(serialize_partition_key(upstream_partition_key))
-                                        if len(matched_serials) > 1:
-                                            raise ValueError(
-                                                f"Implicit fan-in not supported for input '{input_asset_name}' of node '{node.name}'."
-                                            )
-                                        if matched_serials:
-                                            handle = upstream_partition_mapping.get(matched_serials[0])
-                                if handle is not None:
-                                    inputs_kwargs[input_asset_name] = handle
-                                    continue
-                            # Fallback to broadcast external/unpartitioned
-                            if input_asset_name in materialized_input_assets:
-                                inputs_kwargs[input_asset_name] = materialized_input_assets[input_asset_name]
-
-                        return inputs_kwargs
-
-                    if not execution_partition_keys:
+                    if not downstream_per_upstream_partition_key:
                         # Unpartitioned single invocation
-                        inputs_kwargs = _build_inputs_for_partition(None, None)
-                        base_op = self._named_op_factories[op_name]()
+                        base_op = self._named_op_factories[op_name](
+                            is_in_first_layer=is_node_in_first_layer,
+                            is_in_last_layer=is_node_in_last_layer,
+                        )
 
                         partition_keys_per_input_asset_names = {}
                         for asset_name, asset_partitions_val in partitioned_output_assets.items():
                             dataset_name = unformat_asset_name(asset_name)
                             if asset_name in base_op.ins and is_nothing_asset_name(self._catalog, dataset_name):
-                                partition_keys_per_input_asset_names[asset_name] = list(asset_partitions_val.keys())
+                                partition_keys_per_input_asset_names[asset_name] = [
+                                    format_partition_key(partition_key)
+                                    for partition_key in asset_partitions_val.keys()
+                                ]
                                 for partition_key, asset_partition_val in asset_partitions_val.items():
-                                    inputs_kwargs[asset_name + f"__{partition_key}"] = asset_partition_val
+                                    formatted_partition_key = format_partition_key(partition_key)
+                                    inputs_kwargs[asset_name + f"__{formatted_partition_key}"] = asset_partition_val
 
-                        op = self._named_op_factories[op_name](partition_keys_per_input_asset_names=partition_keys_per_input_asset_names)
-                        res = op(
-                            before_pipeline_run_hook_output=before_pipeline_run_hook_output,
-                            **inputs_kwargs,
+                        op = self._named_op_factories[op_name](
+                            is_in_first_layer=is_node_in_first_layer,
+                            is_in_last_layer=is_node_in_last_layer,
+                            partition_keys_per_input_asset_names=partition_keys_per_input_asset_names,
                         )
+                        res = op(**inputs_kwargs)
 
                         # Capture outputs
-                        if len(node.outputs) == 0:
+                        if hasattr(res, "output_name"):
+                            # Single output
                             materialized_output_assets_op = {res.output_name: res}
                         else:
                             materialized_output_assets_op = {
-                                out_handle.output_name: out_handle for out_handle in res  # type: ignore[assignment]
+                                out_handle.output_name: out_handle for out_handle in res
                             }
-                        # Update caches
-                        for out_ds in node.outputs:
-                            out_asset_name = format_dataset_name(out_ds)
-                            handle = materialized_output_assets_op.get(out_asset_name)
-                            if handle is not None:
-                                materialized_input_assets[out_asset_name] = handle
-                                materialized_output_assets[out_asset_name] = handle
-                        # Also keep the hook Nothing output (overwrites last)
-                        for name, handle in materialized_output_assets_op.items():
-                            if name.endswith("_after_pipeline_run_hook_input"):
-                                materialized_output_assets[name] = handle
+
+                        for output_dataset in node.outputs:
+                            out_asset_name = format_dataset_name(output_dataset)
+                            out_asset = materialized_output_assets_op.get(out_asset_name)
+
+                            if out_asset is not None:
+                                materialized_input_assets[out_asset_name] = out_asset
+
+                        for output_asset_name, output_asset in materialized_output_assets_op.items():
+                            if output_asset_name.endswith("_after_pipeline_run_hook_input"):
+                                after_pipeline_run_hook_inputs[output_asset_name] = output_asset
                         continue
 
                     # Partitioned: clone per partition key
-                    for partition_key in execution_partition_keys:
-                        partition_keys = serialize_partition_key(partition_key)
-                        op = self._named_op_factories[op_name](partition_key=partition_key)
-
-                        inputs_kwargs = _build_inputs_for_partition(partition_key, partition_keys)
-                        res = op(
-                            before_pipeline_run_hook_output=before_pipeline_run_hook_output,
-                            **inputs_kwargs,
+                    # TODO: support 1 to many partition mappings
+                    for in_asset_partition_key, out_asset_partition_key in downstream_per_upstream_partition_key.items():
+                        op_partition_keys = {
+                            "upstream_partition_key": in_asset_partition_key,
+                            "downstream_partition_key": out_asset_partition_key,
+                        }
+                        op = self._named_op_factories[op_name](
+                            is_in_first_layer=is_node_in_first_layer,
+                            is_in_last_layer=is_node_in_last_layer,
+                            partition_keys=op_partition_keys,
                         )
-                        if len(node.outputs) == 0:
+
+                        res = op(**inputs_kwargs)
+
+                        # Capture outputs
+                        if hasattr(res, "output_name"):
+                            # Single output
                             materialized_output_assets_op = {res.output_name: res}
                         else:
                             materialized_output_assets_op = {
                                 out_handle.output_name: out_handle for out_handle in res  # type: ignore[assignment]
                             }
 
-                        # Update partitioned cache for each produced asset
-                        for out_ds in node.outputs:
-                            out_asset_name = format_dataset_name(out_ds)
-                            handle = materialized_output_assets_op.get(out_asset_name)
+                        for output_asset_name, output_asset in materialized_output_assets_op.items():
+                            if not output_asset_name.endswith("_after_pipeline_run_hook_input"):
+                                out_partition_key = out_asset_partition_key.split("|")[1]
+                                formatted_out_partition_key = format_partition_key(out_partition_key)
 
-                            if handle is not None:
-                                partitioned_output_assets.setdefault(out_asset_name, {})[partition_keys] = handle
-                                # For after hook, last clone wins
-                                materialized_output_assets[out_asset_name] = handle
-                        # Also keep the hook Nothing output for this clone (last clone wins)
-                        for name, handle in materialized_output_assets_op.items():
-                            if name.endswith("_after_pipeline_run_hook_input"):
-                                materialized_output_assets[name] = handle
+                                partitioned_output_assets.setdefault(output_asset_name, {})[out_partition_key] = output_asset
 
-            output_nothing_asset_names = []
-            for output_asset_name in materialized_output_assets.keys():
-                if output_asset_name.endswith("_after_pipeline_run_hook_input"):
-                    output_nothing_asset_names.append(output_asset_name)
+                            elif is_node_in_last_layer:
+                                after_pipeline_run_hook_input_name = (
+                                    output_asset_name.split("_after_pipeline_run_hook_input")[0] + f"__{formatted_out_partition_key}" +"_after_pipeline_run_hook_input"
+                                )
+                                after_pipeline_run_hook_inputs[after_pipeline_run_hook_input_name] = output_asset
 
-            for output_asset_name, output_partitioned_asset in partitioned_output_assets.items():
-                for partition_key, partitioned_asset_val in output_partitioned_asset.items():
-                    materialized_output_assets[output_asset_name + f"__{partition_key}"] = partitioned_asset_val
-
-                materialized_output_assets.pop(output_asset_name)
 
             after_pipeline_run_hook_op = self._create_after_pipeline_run_hook_op(
-                job_name, pipeline, output_nothing_asset_names, partitioned_output_assets
+                job_name, pipeline, after_pipeline_run_hook_inputs.keys()
             )
-            after_pipeline_run_hook_op(**materialized_output_assets)
-
-            pprint("OP INPUTSS", materialized_output_assets)
-            pprint("OP INS", after_pipeline_run_hook_op.ins)
+            after_pipeline_run_hook_op(**after_pipeline_run_hook_inputs)
 
         # Overrides the kedro_run resource with the one created for the job
         kedro_run_translator = KedroRunTranslator(
