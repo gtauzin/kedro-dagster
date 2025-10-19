@@ -1,5 +1,4 @@
-"""Translation of Kedro catalog's datasets into Dagster IO managers.
-"""
+"""Translation of Kedro catalog's datasets into Dagster IO managers."""
 from logging import getLogger
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any, Tuple
@@ -25,7 +24,14 @@ LOGGER = getLogger(__name__)
 
 
 class CatalogTranslator:
-    """Translate Kedro datasets into Dagster IO managers."""
+    """Translate Kedro datasets into Dagster IO managers.
+
+    Args:
+        catalog (CatalogProtocol): The Kedro catalog.
+        pipelines (list[Pipeline]): List of Kedro pipelines to translate.
+        hook_manager (PluginManager): The hook manager to call Kedro hooks.
+        env (str): The Kedro environment.
+    """
 
     def __init__(
         self,
@@ -42,9 +48,14 @@ class CatalogTranslator:
     def _translate_dataset(self, dataset: "AbstractDataset", dataset_name: str) -> Tuple[dg.IOManagerDefinition, Any, Any]:
         """Create a Dagster IO manager from a Kedro dataset.
 
+        Args:
+            dataset (AbstractDataset): The Kedro dataset to wrap into an IO manager.
+            dataset_name (str): The name of the dataset.
+
         Returns:
-            (IOManagerDefinition, partitions_def, partition_mappings)
+            IOManagerDefinition: A Dagster IO manager.
         """
+
         asset_name = format_dataset_name(dataset_name)
 
         partitions_def, partition_mappings = None, None
@@ -152,7 +163,7 @@ class CatalogTranslator:
         return ConfigurableDatasetIOManager(**dataset_params), partitions_def, partition_mappings
 
     def to_dagster(self) -> tuple[dict[str, dg.IOManagerDefinition], dict[str, dict[str, Any]]]:
-        """Generate IO managers and partition metadata for all Kedro datasets involved in the pipelines."""
+        """Generate IO managers and partitions for all Kedro datasets involved in the pipelines."""
         named_io_managers: dict[str, dg.IOManagerDefinition] = {}
         asset_partitions: dict[str, dict[str, Any]] = {}
 

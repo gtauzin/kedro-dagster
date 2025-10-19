@@ -94,12 +94,12 @@ class PipelineTranslator:
         """
         # Check partitioning consistency among output datasets
         # Output datasets can be either all partitioned or all non-partitioned (excluding nothing datasets)
-        output_asset_names = [format_dataset_name(dataset_name) for dataset_name in node.outputs]
+        out_asset_names = [format_dataset_name(dataset_name) for dataset_name in node.outputs]
         partitioned_out_asset_names = [
-            asset_name for asset_name in output_asset_names if asset_name in self._asset_partitions
+            asset_name for asset_name in out_asset_names if asset_name in self._asset_partitions
         ]
         non_partitioned_out_asset_names = [
-            asset_name for asset_name in output_asset_names
+            asset_name for asset_name in out_asset_names
             if asset_name not in self._asset_partitions and not is_nothing_asset_name(self._catalog, unformat_asset_name(asset_name))
         ]
 
@@ -254,20 +254,20 @@ class PipelineTranslator:
             before_pipeline_run_hook_output = before_pipeline_run_hook_op()
 
             # Collect initial external assets (broadcastable to partitions)
-            materialized_input_assets: dict[str, Any] = {}
+            materialized_in_assets: dict[str, Any] = {}
             for dataset_name in pipeline.inputs():
                 asset_name = format_dataset_name(dataset_name)
                 if not _is_param_name(dataset_name):
                     # External assets first
                     if asset_name in self._named_assets:
-                        materialized_input_assets[asset_name] = self._named_assets[asset_name]
+                        materialized_in_assets[asset_name] = self._named_assets[asset_name]
                     else:
                         asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
-                        materialized_input_assets[asset_name] = dg.AssetSpec(key=asset_key).with_io_manager_key(
+                        materialized_in_assets[asset_name] = dg.AssetSpec(key=asset_key).with_io_manager_key(
                             f"{self._env}__{asset_name}_io_manager"
                         )
 
-            partitioned_output_assets: dict[str, dict[str, Any]] = {}
+            partitioned_out_assets: dict[str, dict[str, Any]] = {}
             after_pipeline_run_hook_inputs: dict[str, Any] = {}
 
             n_layers = len(pipeline.grouped_nodes)
@@ -281,13 +281,13 @@ class PipelineTranslator:
                     op_name = format_node_name(node.name) + "_graph"
 
                     inputs_kwargs: dict[str, Any] = {}
-                    for input_dataset_name in node.inputs:
-                        input_asset_name = format_dataset_name(input_dataset_name)
-                        if _is_param_name(input_dataset_name):
+                    for in_dataset_name in node.inputs:
+                        in_asset_name = format_dataset_name(in_dataset_name)
+                        if _is_param_name(in_dataset_name):
                             continue
 
-                        if input_asset_name in materialized_input_assets:
-                            inputs_kwargs[input_asset_name] = materialized_input_assets[input_asset_name]
+                        if in_asset_name in materialized_in_assets:
+                            inputs_kwargs[in_asset_name] = materialized_in_assets[in_asset_name]
 
                     if is_node_in_first_layer:
                         inputs_kwargs["before_pipeline_run_hook_output"] = before_pipeline_run_hook_output
@@ -299,11 +299,11 @@ class PipelineTranslator:
                             is_in_last_layer=is_node_in_last_layer,
                         )
 
-                        partition_keys_per_input_asset_names = {}
-                        for asset_name, asset_partitions_val in partitioned_output_assets.items():
+                        partition_keys_per_in_asset_names = {}
+                        for asset_name, asset_partitions_val in partitioned_out_assets.items():
                             dataset_name = unformat_asset_name(asset_name)
                             if asset_name in base_op.ins and is_nothing_asset_name(self._catalog, dataset_name):
-                                partition_keys_per_input_asset_names[asset_name] = [
+                                partition_keys_per_in_asset_names[asset_name] = [
                                     format_partition_key(partition_key)
                                     for partition_key in asset_partitions_val.keys()
                                 ]
@@ -314,29 +314,29 @@ class PipelineTranslator:
                         op = self._named_op_factories[op_name](
                             is_in_first_layer=is_node_in_first_layer,
                             is_in_last_layer=is_node_in_last_layer,
-                            partition_keys_per_input_asset_names=partition_keys_per_input_asset_names,
+                            partition_keys_per_in_asset_names=partition_keys_per_in_asset_names,
                         )
                         res = op(**inputs_kwargs)
 
                         # Capture outputs
                         if hasattr(res, "output_name"):
                             # Single output
-                            materialized_output_assets_op = {res.output_name: res}
+                            materialized_out_assets_op = {res.output_name: res}
                         else:
-                            materialized_output_assets_op = {
+                            materialized_out_assets_op = {
                                 out_handle.output_name: out_handle for out_handle in res
                             }
 
-                        for output_dataset in node.outputs:
-                            out_asset_name = format_dataset_name(output_dataset)
-                            out_asset = materialized_output_assets_op.get(out_asset_name)
+                        for out_dataset in node.outputs:
+                            out_asset_name = format_dataset_name(out_dataset)
+                            out_asset = materialized_out_assets_op.get(out_asset_name)
 
                             if out_asset is not None:
-                                materialized_input_assets[out_asset_name] = out_asset
+                                materialized_in_assets[out_asset_name] = out_asset
 
-                        for output_asset_name, output_asset in materialized_output_assets_op.items():
-                            if output_asset_name.endswith("_after_pipeline_run_hook_input"):
-                                after_pipeline_run_hook_inputs[output_asset_name] = output_asset
+                        for out_asset_name, out_asset in materialized_out_assets_op.items():
+                            if out_asset_name.endswith("_after_pipeline_run_hook_input"):
+                                after_pipeline_run_hook_inputs[out_asset_name] = out_asset
                         continue
 
                     # Partitioned: clone per partition key
@@ -357,24 +357,24 @@ class PipelineTranslator:
                         # Capture outputs
                         if hasattr(res, "output_name"):
                             # Single output
-                            materialized_output_assets_op = {res.output_name: res}
+                            materialized_out_assets_op = {res.output_name: res}
                         else:
-                            materialized_output_assets_op = {
+                            materialized_out_assets_op = {
                                 out_handle.output_name: out_handle for out_handle in res  # type: ignore[assignment]
                             }
 
-                        for output_asset_name, output_asset in materialized_output_assets_op.items():
-                            if not output_asset_name.endswith("_after_pipeline_run_hook_input"):
+                        for out_asset_name, out_asset in materialized_out_assets_op.items():
+                            if not out_asset_name.endswith("_after_pipeline_run_hook_input"):
                                 out_partition_key = out_asset_partition_key.split("|")[1]
                                 formatted_out_partition_key = format_partition_key(out_partition_key)
 
-                                partitioned_output_assets.setdefault(output_asset_name, {})[out_partition_key] = output_asset
+                                partitioned_out_assets.setdefault(out_asset_name, {})[out_partition_key] = out_asset
 
                             elif is_node_in_last_layer:
-                                after_pipeline_run_hook_input_name = (
-                                    output_asset_name.split("_after_pipeline_run_hook_input")[0] + f"__{formatted_out_partition_key}" +"_after_pipeline_run_hook_input"
+                                after_pipeline_run_hook_in_name = (
+                                    out_asset_name.split("_after_pipeline_run_hook_input")[0] + f"__{formatted_out_partition_key}" +"_after_pipeline_run_hook_input"
                                 )
-                                after_pipeline_run_hook_inputs[after_pipeline_run_hook_input_name] = output_asset
+                                after_pipeline_run_hook_inputs[after_pipeline_run_hook_in_name] = out_asset
 
 
             after_pipeline_run_hook_op = self._create_after_pipeline_run_hook_op(

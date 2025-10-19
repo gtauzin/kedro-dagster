@@ -51,7 +51,7 @@ def pipeline_translator(kedro_project):
     )
 
 
-def test_materialize_input_assets_empty(pipeline_translator):
+def test_materialize_in_assets_empty(pipeline_translator):
     # Use the real pipeline from the Kedro context if available
     pipeline = DummyPipeline()
     result = pipeline_translator.translate_pipeline(

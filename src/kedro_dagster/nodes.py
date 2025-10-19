@@ -110,7 +110,7 @@ class NodeTranslator:
             __config__=ConfigDict(extra="allow", frozen=False),
         )
 
-    def _get_in_asset_params(self, dataset_name: str, asset_name: str, output_dataset_names: list[str]) -> dict[str, Any]:
+    def _get_in_asset_params(self, dataset_name: str, asset_name: str, out_dataset_names: list[str]) -> dict[str, Any]:
         """Get the input asset parameters for a dataset.
 
         Args:
@@ -128,7 +128,7 @@ class NodeTranslator:
                 partition_mapping = get_partition_mapping(
                     partition_mappings,
                     asset_name,
-                    downstream_dataset_names=output_dataset_names,
+                    downstream_dataset_names=out_dataset_names,
                     config_resolver=self._catalog._config_resolver,
                 )
 
@@ -196,7 +196,7 @@ class NodeTranslator:
         is_in_first_layer: bool = False,
         is_in_last_layer: bool = True,
         partition_keys:dict[str, str] | None = None,
-        partition_keys_per_input_asset_names: dict[str, str] | None = None,
+        partition_keys_per_in_asset_names: dict[str, str] | None = None,
     ) -> dg.OpDefinition:
         """Create a Dagster op from a Kedro node for use in a Dagster graph.
 
@@ -215,11 +215,11 @@ class NodeTranslator:
         for dataset_name in node.inputs:
             asset_name = format_dataset_name(dataset_name)
             if is_nothing_asset_name(self._catalog, dataset_name):
-                if partition_keys_per_input_asset_names is None or asset_name not in partition_keys_per_input_asset_names:
+                if partition_keys_per_in_asset_names is None or asset_name not in partition_keys_per_in_asset_names:
                         ins[asset_name] = dg.In(dagster_type=dg.Nothing)
                 else:
-                    for input_partition_key in partition_keys_per_input_asset_names[asset_name]:
-                        ins[asset_name + f"__{input_partition_key}"] = dg.In(dagster_type=dg.Nothing)
+                    for in_partition_key in partition_keys_per_in_asset_names[asset_name]:
+                        ins[asset_name + f"__{in_partition_key}"] = dg.In(dagster_type=dg.Nothing)
             elif not _is_param_name(dataset_name):
                 asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
                 ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_key))
@@ -275,12 +275,12 @@ class NodeTranslator:
 
             inputs |= config_values
             inputs = {
-                unformat_asset_name(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()
+                unformat_asset_name(in_asset_name): in_asset for in_asset_name, in_asset in inputs.items()
             }
 
-            for input_dataset_name in node.inputs:
-                if is_nothing_asset_name(self._catalog, input_dataset_name):
-                    inputs[input_dataset_name] = None
+            for in_dataset_name in node.inputs:
+                if is_nothing_asset_name(self._catalog, in_dataset_name):
+                    inputs[in_dataset_name] = None
 
             self._hook_manager.hook.before_node_run(
                 node=node,
@@ -314,10 +314,10 @@ class NodeTranslator:
             )
 
             # Emit materializations and attach partition metadata when available
-            for output_dataset_name in node.outputs:
-                output_asset_key = get_asset_key_from_dataset_name(output_dataset_name, self._env)
+            for out_dataset_name in node.outputs:
+                out_asset_key = get_asset_key_from_dataset_name(out_dataset_name, self._env)
                 context.log_event(
-                    dg.AssetMaterialization(asset_key=output_asset_key, partition=partition_key)
+                    dg.AssetMaterialization(asset_key=out_asset_key, partition=partition_key)
                 )
 
             if len(outputs) > 0:
@@ -353,7 +353,7 @@ class NodeTranslator:
                 continue
 
             if not _is_param_name(dataset_name):
-                in_asset_params = self._get_in_asset_params(dataset_name, asset_name, output_dataset_names=node.outputs)
+                in_asset_params = self._get_in_asset_params(dataset_name, asset_name, out_dataset_names=node.outputs)
                 ins[asset_name] = dg.AssetIn(key=asset_key, **in_asset_params)
 
         outs = {}
@@ -393,18 +393,18 @@ class NodeTranslator:
 
             inputs |= config.model_dump()  # type: ignore[attr-defined]
             inputs = {
-                unformat_asset_name(input_asset_name): input_asset for input_asset_name, input_asset in inputs.items()
+                unformat_asset_name(in_asset_name): in_asset for in_asset_name, in_asset in inputs.items()
             }
 
-            for input_dataset_name in node.inputs:
-                if is_nothing_asset_name(self._catalog, input_dataset_name):
-                    inputs[input_dataset_name] = None
+            for in_dataset_name in node.inputs:
+                if is_nothing_asset_name(self._catalog, in_dataset_name):
+                    inputs[in_dataset_name] = None
 
             outputs = node.run(inputs)
 
-            for output_dataset_name in node.outputs:
-                if is_nothing_asset_name(self._catalog, output_dataset_name):
-                    outputs[output_dataset_name] = None
+            for out_dataset_name in node.outputs:
+                if is_nothing_asset_name(self._catalog, out_dataset_name):
+                    outputs[out_dataset_name] = None
 
             if len(outputs) == 1:
                 return list(outputs.values())[0]
