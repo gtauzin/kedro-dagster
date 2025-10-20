@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from __future__ import annotations
 
 import dagster as dg
@@ -19,7 +21,9 @@ from ..scenarios.project_factory import KedroProjectOptions
 
 @pytest.mark.parametrize("env", envs())
 def test_logger_translator_builds_package_loggers(project_variant_factory, env):
-    options = KedroProjectOptions(env=env, dagster={"executors": {"inproc": {"in_process": {}}}, "jobs": make_jobs_config()})
+    options = KedroProjectOptions(
+        env=env, dagster={"executors": {"inproc": {"in_process": {}}}, "jobs": make_jobs_config()}
+    )
     project_path = project_variant_factory(options)
 
     metadata = bootstrap_project(project_path)

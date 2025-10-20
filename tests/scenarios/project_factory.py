@@ -85,13 +85,13 @@ def build_kedro_project_variant(
     if settings_py.exists():
         # Basic enforcement: ensure dagster patterns present
         content = settings_py.read_text(encoding="utf-8")
-        if "\"dagster\"" not in content:
+        if '"dagster"' not in content:
             content += (
                 "\nCONFIG_LOADER_ARGS = {\n"
-                "    \"base_env\": \"base\",\n"
-                "    \"default_run_env\": \"local\",\n"
-                "    \"config_patterns\": {\n"
-                "        \"dagster\": [\"dagster*\", \"dagster/**\"],\n"
+                '    "base_env": "base",\n'
+                '    "default_run_env": "local",\n'
+                '    "config_patterns": {\n'
+                '        "dagster": ["dagster*", "dagster/**"],\n'
                 "    }\n"
                 "}\n"
             )

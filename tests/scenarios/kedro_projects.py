@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,7 +28,9 @@ def options_exec_filebacked(env: str) -> KedroProjectOptions:
         "jobs": {"default": {"pipeline": {"pipeline_name": "__default__"}, "executor": "seq"}},
     }
 
-    return KedroProjectOptions(env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_default())
+    return KedroProjectOptions(
+        env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_default()
+    )
 
 
 def options_partitioned_intermediate_output2(env: str) -> KedroProjectOptions:
@@ -51,9 +55,14 @@ def options_partitioned_intermediate_output2(env: str) -> KedroProjectOptions:
         "output4": {"type": "MemoryDataset"},
     }
 
-    dagster = {"executors": {"seq": {"in_process": {}}}, "jobs": {"default": {"pipeline": {"pipeline_name": "__default__"}, "executor": "seq"}}}
+    dagster = {
+        "executors": {"seq": {"in_process": {}}},
+        "jobs": {"default": {"pipeline": {"pipeline_name": "__default__"}, "executor": "seq"}},
+    }
 
-    return KedroProjectOptions(env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_default())
+    return KedroProjectOptions(
+        env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_default()
+    )
 
 
 def options_integration_full(env: str) -> KedroProjectOptions:
@@ -77,7 +86,9 @@ def options_integration_full(env: str) -> KedroProjectOptions:
         "jobs": make_jobs_config(pipeline_name="__default__", executor="inproc", schedule="daily"),
     }
 
-    return KedroProjectOptions(env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_default())
+    return KedroProjectOptions(
+        env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_default()
+    )
 
 
 def pipeline_registry_default() -> str:
@@ -140,7 +151,9 @@ def options_partitioned_identity_mapping(env: str) -> KedroProjectOptions:
     return KedroProjectOptions(env=env, catalog=catalog, pipeline_registry_py=pipeline_registry_default())
 
 
-def options_hooks_filebacked(env: str, input_csv: str | Path, primary_dir: str | Path, output_dir: str | Path) -> KedroProjectOptions:
+def options_hooks_filebacked(
+    env: str, input_csv: str | Path, primary_dir: str | Path, output_dir: str | Path
+) -> KedroProjectOptions:
     """Scenario: File-backed datasets for hooks e2e test using tmp paths.
 
     Datasets: input, intermediate, output, output2, output3, output4 as CSVs pointing to the provided directories.
@@ -164,4 +177,6 @@ def options_hooks_filebacked(env: str, input_csv: str | Path, primary_dir: str |
         "jobs": {"default": {"pipeline": {"pipeline_name": "__default__"}, "executor": "seq"}},
     }
 
-    return KedroProjectOptions(env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_default())
+    return KedroProjectOptions(
+        env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_default()
+    )

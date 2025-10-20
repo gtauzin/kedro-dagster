@@ -17,21 +17,19 @@ from ..scenarios.kedro_projects import options_exec_filebacked
 def test_catalog_translator_io_managers_and_partitions(project_variant_factory, env):
     # Use base scenario then enrich with extra partitioned dataset for this test
     options = options_exec_filebacked(env)
-    options.catalog.update(
-        {
-            "output": {
-                "type": "pandas.CSVDataset",
-                "filepath": "data/08_reporting/output.csv",
-                "save_args": {"index": False},
-            },
-            "output2": {
-                "type": "kedro_dagster.datasets.DagsterPartitionedDataset",
-                "path": "data/03_primary/output2",
-                "dataset": {"type": "pandas.CSVDataset", "save_args": {"index": False}},
-                "partition": {"type": "StaticPartitionsDefinition", "partition_keys": ["a", "b"]},
-            },
-        }
-    )
+    options.catalog.update({
+        "output": {
+            "type": "pandas.CSVDataset",
+            "filepath": "data/08_reporting/output.csv",
+            "save_args": {"index": False},
+        },
+        "output2": {
+            "type": "kedro_dagster.datasets.DagsterPartitionedDataset",
+            "path": "data/03_primary/output2",
+            "dataset": {"type": "pandas.CSVDataset", "save_args": {"index": False}},
+            "partition": {"type": "StaticPartitionsDefinition", "partition_keys": ["a", "b"]},
+        },
+    })
     project_path = project_variant_factory(options)
 
     # Bootstrap the project (register package name) and spin a Kedro session on the variant

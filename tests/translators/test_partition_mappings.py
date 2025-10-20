@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from __future__ import annotations
 
 import dagster as dg
@@ -49,10 +51,13 @@ def test_static_partitions_and_identity_mapping(project_variant_factory, env):
     # The internal helper will be used by PipelineTranslator, but we assert identity mapping indirectly
     # by creating an op with a specific upstream partition key and checking the emitted materialization tag.
     node = next(n for n in pipeline.nodes if "output2" in n.outputs)
-    op = node_translator.create_op(node, partition_keys={
-        "upstream_partition_key": "intermediate|p1",
-        "downstream_partition_key": "output2|p1",
-    })
+    op = node_translator.create_op(
+        node,
+        partition_keys={
+            "upstream_partition_key": "intermediate|p1",
+            "downstream_partition_key": "output2|p1",
+        },
+    )
 
     assert "upstream_partition_key" in op.tags and op.tags["upstream_partition_key"].endswith("|p1")
     assert "downstream_partition_key" in op.tags and op.tags["downstream_partition_key"].endswith("|p1")

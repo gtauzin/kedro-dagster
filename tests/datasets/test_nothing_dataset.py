@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from __future__ import annotations
 
 from kedro_dagster.datasets.nothing_dataset import DagsterNothingDataset

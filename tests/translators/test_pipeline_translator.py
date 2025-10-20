@@ -63,9 +63,7 @@ def test_pipeline_translator_to_dagster_with_executor(project_variant_factory, e
             # Minimal external spec; io manager resolved at job level
             key = [env] + external_dataset_name.split(".")
             asset_name = format_dataset_name(external_dataset_name)
-            named_assets[asset_name] = dg.AssetSpec(key=key).with_io_manager_key(
-                "io_manager"
-            )
+            named_assets[asset_name] = dg.AssetSpec(key=key).with_io_manager_key("io_manager")
 
     for pipeline_node in default_pipeline.nodes:
         op_name = format_node_name(pipeline_node.name)

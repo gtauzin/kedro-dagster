@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from __future__ import annotations
 
 from kedro.io import DataCatalog
@@ -10,6 +12,7 @@ from kedro_dagster.pipelines import PipelineTranslator
 class DummyContext:
     def __init__(self, catalog: DataCatalog):
         self.catalog = catalog
+
         # create a minimal hook manager-like object
         class _HookMgr:
             def __init__(self):

@@ -265,6 +265,7 @@ class NodeTranslator:
         Returns:
             dg.OpDefinition: Fully constructed Dagster op.
         """
+        partition_key = None
         op_name = format_node_name(node.name)
         if partition_keys is not None:
             partition_key = partition_keys["upstream_partition_key"].split("|")[1]
