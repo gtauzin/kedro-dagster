@@ -101,7 +101,7 @@ Start the Dagster UI to monitor and manage your pipelines using the following co
 kedro dagster dev --env <ENV_NAME>
 ```
 
-The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000).
+The Dagster UI will be available at http://127.0.0.1:3000.
 
 For a concrete use-case, see the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
 

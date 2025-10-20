@@ -28,7 +28,6 @@ from kedro_dagster.utils import (
     format_node_name,
     get_asset_key_from_dataset_name,
     get_partition_mapping,
-    is_mlflow_enabled,
     is_nothing_asset_name,
     unformat_asset_name,
 )
@@ -211,7 +210,8 @@ class NodeTranslator:
 
         if return_kinds:
             kinds = {"kedro"}
-            if is_mlflow_enabled():
+            # Annotate MLflow kind only if MLflow resource is available
+            if "mlflow" in self._named_resources:
                 kinds.add("mlflow")
             out_asset_params["kinds"] = kinds
 
@@ -281,7 +281,7 @@ class NodeTranslator:
                         ins[asset_name + f"__{in_partition_key}"] = dg.In(dagster_type=dg.Nothing)
             elif not _is_param_name(dataset_name):
                 asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
-                ins[asset_name] = dg.In(asset_key=dg.AssetKey(asset_key))
+                ins[asset_name] = dg.In(asset_key=asset_key)
 
         if is_in_first_layer:
             # Add a dummy input to trigger `before_pipeline_run` hook
@@ -308,14 +308,13 @@ class NodeTranslator:
             if f"{self._env}__{asset_name}_io_manager" in self._named_resources:
                 required_resource_keys.append(f"{self._env}__{asset_name}_io_manager")
 
-        if is_mlflow_enabled():
+        # Require MLflow resource only if it's provided
+        if "mlflow" in self._named_resources:
             required_resource_keys.append("mlflow")
 
-        partition_key: str | None = None
         tags = {f"kedro_tag_{i + 1}": tag for i, tag in enumerate(node.tags)}
         if partition_keys is not None:
             tags |= partition_keys
-            partition_key = partition_keys["upstream_partition_key"].split("|")[1]
 
         @dg.op(
             name=op_name,
@@ -340,6 +339,7 @@ class NodeTranslator:
 
             config_values = config.model_dump()  # type: ignore[attr-defined]
 
+            # Merge params into inputs provided by Dagster
             inputs |= config_values
             inputs = {unformat_asset_name(in_asset_name): in_asset for in_asset_name, in_asset in inputs.items()}
 
@@ -438,7 +438,8 @@ class NodeTranslator:
         NodeParametersConfig = self._get_node_parameters_config(node)
 
         required_resource_keys = None
-        if is_mlflow_enabled():
+        # Require MLflow resource only if it's provided
+        if "mlflow" in self._named_resources:
             required_resource_keys = {"mlflow"}
 
         partitions_def = self._get_node_partitions_definition(node)
@@ -466,6 +467,7 @@ class NodeTranslator:
             """
             context.log.info(f"Running node `{node.name}` in asset.")
 
+            # Merge params into inputs provided by Dagster
             inputs |= config.model_dump()  # type: ignore[attr-defined]
             inputs = {unformat_asset_name(in_asset_name): in_asset for in_asset_name, in_asset in inputs.items()}
 
@@ -486,16 +488,16 @@ class NodeTranslator:
 
         return dagster_asset
 
-        def to_dagster(self) -> tuple[dict[str, dg.OpDefinition], dict[str, dg.AssetSpec | dg.AssetsDefinition]]:
-            """Translate all Kedro nodes involved into Dagster op factories and assets.
+    def to_dagster(self) -> tuple[dict[str, dg.OpDefinition], dict[str, dg.AssetSpec | dg.AssetsDefinition]]:
+        """Translate all Kedro nodes involved into Dagster op factories and assets.
 
-            Returns:
+        Returns:
             tuple[dict[str, dg.OpDefinition], dict[str, dg.AssetSpec | dg.AssetsDefinition]]: 2-tuple of
-                    (op factories, assets), where:
-                    - op factories map names to callables that produce partition-aware ops when invoked;
-                    - assets map names to either external :class:`dagster.AssetSpec` (for upstream inputs)
-                        or concrete :class:`dagster.AssetsDefinition` produced by nodes.
-            """
+            (op factories, assets), where:
+            - op factories map names to callables that produce partition-aware ops when invoked;
+            - assets map names to either external :class:`dagster.AssetSpec` (for upstream inputs)
+              or concrete :class:`dagster.AssetsDefinition` produced by nodes.
+        """
 
         default_pipeline: Pipeline = sum(self._pipelines, start=Pipeline([]))
 

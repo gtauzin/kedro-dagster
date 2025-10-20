@@ -14,12 +14,12 @@ from pydantic import ConfigDict, create_model
 from kedro_dagster.datasets import DagsterNothingDataset
 
 try:
-    from dagster_mlflow import mlflow_tracking  # type: ignore
+    from dagster_mlflow import mlflow_tracking
 except Exception:  # pragma: no cover
-    mlflow_tracking = None  # type: ignore
+    mlflow_tracking = None
 
 if TYPE_CHECKING:
-    # from kedro.io import CatalogProtocol  # unused
+    from kedro.io import CatalogProtocol
     from kedro.io.catalog_config_resolver import CatalogConfigResolver
     from kedro.pipeline import Pipeline
     from kedro.pipeline.node import Node
@@ -30,7 +30,7 @@ DAGSTER_ALLOWED_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
 KEDRO_DAGSTER_SEPARATOR = "__"
 
 
-def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> str:  # type: ignore[no-untyped-def]
+def render_jinja_template(src: str | Path, is_cookiecutter: bool = False, **kwargs: Any) -> str:
     """Render a Jinja template from a file or string.
 
     Args:
@@ -53,17 +53,17 @@ def render_jinja_template(src: str | Path, is_cookiecutter=False, **kwargs) -> s
         # but cookiecutter only deals with folder, not file
         # thus we need to create an object with all necessary attributes
         class FalseCookieCutter:
-            def __init__(self, **kwargs):  # type: ignore[no-untyped-def]
+            def __init__(self, **kwargs: Any):
                 self.__dict__.update(kwargs)
 
-        parsed_template = template.render(cookiecutter=FalseCookieCutter(**kwargs))  # type: ignore[no-untyped-call]
+        parsed_template = template.render(cookiecutter=FalseCookieCutter(**kwargs))
     else:
         parsed_template = template.render(**kwargs)
 
     return parsed_template  # type: ignore[no-any-return]
 
 
-def write_jinja_template(src: str | Path, dst: str | Path, **kwargs) -> None:  # type: ignore[no-untyped-def]
+def write_jinja_template(src: str | Path, dst: str | Path, **kwargs: Any) -> None:
     """Render and write a Jinja template to a destination file.
 
     Args:
@@ -87,17 +87,27 @@ def get_asset_key_from_dataset_name(dataset_name: str, env: str) -> dg.AssetKey:
     Returns:
         AssetKey: Corresponding Dagster AssetKey.
     """
-    # return dg.AssetKey([env] + dataset_name.split("."))
-    return [env] + dataset_name.split(".")
+    return dg.AssetKey([env] + dataset_name.split("."))
 
 
-def is_nothing_asset_name(catalog, dataset_name: str) -> bool:
-    """Return True if the catalog entry is a DagsterNothingDataset."""
-    dataset = catalog.get(dataset_name)  # type: ignore[attr-defined]
-    if isinstance(dataset, DagsterNothingDataset):  # type: ignore[arg-type]
-        return True
+def is_nothing_asset_name(catalog: "CatalogProtocol", dataset_name: str) -> bool:
+    """Return True if the catalog entry is a DagsterNothingDataset.
 
-    return False
+    Supports both plain mappings and Kedro ``DataCatalog`` instances.
+    """
+    dataset = None
+    # Prefer Kedro DataCatalog private accessor if available
+    get_dataset = getattr(catalog, "_get_dataset", None)
+    if callable(get_dataset):
+        try:
+            dataset = get_dataset(dataset_name)
+        except Exception:
+            dataset = None
+    elif hasattr(catalog, "get"):
+        # Mapping-like
+        dataset = catalog.get(dataset_name)
+
+    return isinstance(dataset, DagsterNothingDataset)
 
 
 def get_partition_mapping(
@@ -145,7 +155,7 @@ def get_partition_mapping(
                 "The default partition mapping (i.e., `AllPartitionMapping`) will be used."
             )
 
-        return None
+    return None
 
 
 def format_partition_key(partition_key: Any) -> str:
@@ -170,6 +180,13 @@ def format_dataset_name(name: str) -> str:
     Returns:
         str: Formatted name.
     """
+    # Special-case Dagster reserved identifiers to avoid conflicts with op/asset arg names
+    # See dagster._core.definitions.utils.DISALLOWED_NAMES which includes "input" and "output".
+    if name in {"input", "output"}:
+        raise ValueError(
+            f"Dataset name `{name}` is reserved in Dagster. "
+            "Please rename your Kedro dataset to avoid conflicts with Dagster's naming convention."
+        )
 
     dataset_name = name.replace(".", KEDRO_DAGSTER_SEPARATOR)
 
@@ -180,6 +197,7 @@ def format_dataset_name(name: str) -> str:
             "Prefer naming your Kedro datasets with valid Dagster names. "
             f"Dataset named `{name}` has been converted to `{dataset_name}`."
         )
+
     return dataset_name
 
 
@@ -218,8 +236,8 @@ def unformat_asset_name(name: str) -> str:
     return name.replace(KEDRO_DAGSTER_SEPARATOR, ".")
 
 
-def _create_pydantic_model_from_dict(  # type: ignore[no-untyped-def]
-    name: str, params: dict[str, Any], __base__, __config__: ConfigDict | None = None
+def _create_pydantic_model_from_dict(
+    name: str, params: dict[str, Any], __base__: Any, __config__: ConfigDict | None = None
 ) -> "BaseModel":
     """Dynamically create a Pydantic model from a dictionary of parameters.
 
@@ -250,7 +268,8 @@ def _create_pydantic_model_from_dict(  # type: ignore[no-untyped-def]
         model = create_model(name, __config__=__config__, **fields)
     else:
         model = create_model(name, __base__=__base__, **fields)
-        model.config = __config__
+        if __config__ is not None:
+            model.config = __config__
 
     return model
 

@@ -21,13 +21,13 @@ from kedro_dagster.utils import (
     get_asset_key_from_dataset_name,
     get_filter_params_dict,
     get_partition_mapping,
-    is_mlflow_enabled,
     is_nothing_asset_name,
     unformat_asset_name,
 )
 
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
+    from kedro.pipeline.node import Node
 
 
 class PipelineTranslator:
@@ -94,7 +94,7 @@ class PipelineTranslator:
 
         return list(partitions_def.get_partition_keys())
 
-    def _get_node_partition_keys(self, node) -> dict[str, str]:
+    def _get_node_partition_keys(self, node: "Node") -> dict[str, str]:
         """Compute downstream partition key per upstream partition for a node.
 
         Returns a mapping of "upstream_asset|partition_key" to "downstream_asset|partition_key".
@@ -182,7 +182,8 @@ class PipelineTranslator:
 
         """
         required_resource_keys = {"kedro_run"}
-        if self._enable_mlflow and is_mlflow_enabled():
+        # Only require mlflow if provided in named resources
+        if "mlflow" in self._named_resources:
             required_resource_keys.add("mlflow")
 
         @dg.op(
@@ -191,7 +192,7 @@ class PipelineTranslator:
             out={"before_pipeline_run_hook_output": dg.Out(dagster_type=dg.Nothing)},
             required_resource_keys=required_resource_keys,
         )
-        def before_pipeline_run_hook_op(context: dg.OpExecutionContext):
+        def before_pipeline_run_hook_op(context: dg.OpExecutionContext) -> dg.Nothing:
             kedro_run_resource = context.resources.kedro_run
             kedro_run_resource.after_context_created_hook()
 
@@ -224,7 +225,8 @@ class PipelineTranslator:
             after_pipeline_run_hook_ins[asset_name] = dg.In(dagster_type=dg.Nothing)
 
         required_resource_keys = {"kedro_run"}
-        if self._enable_mlflow and is_mlflow_enabled():
+        # Only require mlflow if provided in named resources
+        if "mlflow" in self._named_resources:
             required_resource_keys.add("mlflow")
 
         @dg.op(
@@ -233,7 +235,7 @@ class PipelineTranslator:
             ins=after_pipeline_run_hook_ins,
             required_resource_keys=required_resource_keys,
         )
-        def after_pipeline_run_hook_op(context: dg.OpExecutionContext) -> dg.Nothing:  # type: ignore[no-untyped-def]
+        def after_pipeline_run_hook_op(context: dg.OpExecutionContext) -> dg.Nothing:
             kedro_run_resource = context.resources.kedro_run
             run_params = kedro_run_resource.run_params
 
@@ -388,10 +390,7 @@ class PipelineTranslator:
                             # Single output
                             materialized_out_assets_op = {res.output_name: res}
                         else:
-                            materialized_out_assets_op = {
-                                out_handle.output_name: out_handle
-                                for out_handle in res  # type: ignore[assignment]
-                            }
+                            materialized_out_assets_op = {out_handle.output_name: out_handle for out_handle in res}
 
                         for out_asset_name, out_asset in materialized_out_assets_op.items():
                             out_partition_key = out_asset_partition_key.split("|")[1]
@@ -408,7 +407,7 @@ class PipelineTranslator:
                                 after_pipeline_run_hook_inputs[after_pipeline_run_hook_in_name] = out_asset
 
             after_pipeline_run_hook_op = self._create_after_pipeline_run_hook_op(
-                job_name, pipeline, after_pipeline_run_hook_inputs.keys()
+                job_name, pipeline, list(after_pipeline_run_hook_inputs.keys())
             )
             after_pipeline_run_hook_op(**after_pipeline_run_hook_inputs)
 
@@ -432,7 +431,8 @@ class PipelineTranslator:
                     f"{self._env}__{asset_name}_io_manager"
                 ]
 
-        if self._enable_mlflow and is_mlflow_enabled():
+        # Expose mlflow resource only if provided
+        if "mlflow" in self._named_resources:
             resource_defs |= {"mlflow": self._named_resources["mlflow"]}
 
         job = pipeline_graph.to_job(

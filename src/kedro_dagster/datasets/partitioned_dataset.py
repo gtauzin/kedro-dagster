@@ -2,7 +2,7 @@ import copy
 import operator
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Any
+from typing import Any, cast
 
 import dagster as dg
 from cachetools import cachedmethod
@@ -15,7 +15,7 @@ _DEFAULT_PACKAGES = ["dagster.", ""]
 
 def parse_dagster_definition(
     config: dict[str, Any],
-) -> tuple[type[dg.PartitionsDefinition], dict[str, Any]]:
+) -> tuple[type[Any], dict[str, Any]]:
     """Parse and instantiate a partition definition class using a config.
 
     Args:
@@ -28,7 +28,7 @@ def parse_dagster_definition(
     config = copy.deepcopy(config)
     definition_type = config.pop(TYPE_KEY)
 
-    class_obj = None
+    class_obj: type[Any] | None = None
     error_msg = None
     if isinstance(definition_type, str):
         if len(definition_type.strip(".")) != len(definition_type):
@@ -46,20 +46,15 @@ def parse_dagster_definition(
             default_error_msg = f"Class '{definition_type}' not found, is this a typo?"
             raise TypeError(f"{error_msg if error_msg else default_error_msg}")
 
-    if not class_obj:
+    if class_obj is None:
         class_obj = definition_type
-
-    # TODO
-    # if not issubclass(class_obj, dg.PartitionsDefinition):
-    #     raise ValueError(
-    #         f"Partition definition type '{class_obj.__module__}.{class_obj.__qualname__}' "
-    #         f"is invalid: all partition definition types must extend 'PartitionsDefinition'."
-    #     )
 
     return class_obj, config
 
 
 class DagsterPartitionedDataset(PartitionedDataset):
+    """A Kedro dataset that integrates with Dagster's partitioning system."""
+
     def __init__(
         self,
         *,
@@ -109,7 +104,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
         self._validate_partitions_definition(partition)
         self._partition_type, self._partition_config = parse_dagster_definition(partition)
 
-        self._partition_mapping = None
+        self._partition_mapping: dict[str, Any] | None = None
         if partition_mapping is not None:
             self._partition_mapping = {}
             for downstream_dataset_name, downstream_partition_mapping in partition_mapping.items():
@@ -171,19 +166,25 @@ class DagsterPartitionedDataset(PartitionedDataset):
         if self._partition_mapping is None:
             return None
 
-        partition_mappings = {}
-        for downstream_dataset_name in self._partition_mapping.keys():
+        partition_mappings: dict[str, dg.PartitionMapping] = {}
+        for (
+            downstream_dataset_name,
+            downstream_partition_mapping_info,
+        ) in self._partition_mapping.items():
+            # downstream_partition_mapping_info["type"] is a class object; cast it for typing
+            partition_mapping_type = cast(
+                type[dg.PartitionMapping],
+                downstream_partition_mapping_info["type"],
+            )
+            partition_mapping_config: dict[str, Any] = downstream_partition_mapping_info["config"]
+
             try:
-                partition_mapping_type, partition_mapping_config = (
-                    self._partition_mapping[downstream_dataset_name]["type"],
-                    self._partition_mapping[downstream_dataset_name]["config"],
-                )
                 partition_mapping = partition_mapping_type(**partition_mapping_config)
             except Exception as exc:
                 raise ValueError(
                     f"Failed to instantiate partition mapping "
-                    f"'{self._partition_mapping[downstream_dataset_name]['type'].__name__}' "
-                    f"with config: {self._partition_mapping[downstream_dataset_name]['config']}"
+                    f"'{downstream_partition_mapping_info['type'].__name__}' "
+                    f"with config: {downstream_partition_mapping_info['config']}"
                 ) from exc
 
             partition_mappings[downstream_dataset_name] = partition_mapping
@@ -197,11 +198,11 @@ class DagsterPartitionedDataset(PartitionedDataset):
         Returns:
             list[str]: Available partition keys.
         """
-        available_partitions = self._list_partitions()
+        available_partitions: list[str] = self._list_partitions()
 
-        partition_keys = []
+        partition_keys: list[str] = []
         for partition in available_partitions:
-            base_path = self._normalized_path.rstrip("/") + "/"
+            base_path: str = self._normalized_path.rstrip("/") + "/"
             if partition.startswith(base_path):
                 key = partition[len(base_path) :]
                 if self._filename_suffix and key.endswith(self._filename_suffix):
@@ -218,7 +219,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
             list[str]: Full paths of discovered partitions.
         """
         if self._partition_type is dg.DynamicPartitionsDefinition:
-            return super()._list_partitions()
+            return cast(list[str], super()._list_partitions())
 
         partitions_def = self._get_partitions_definition()
         partition_keys = partitions_def.get_partition_keys()
@@ -260,7 +261,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
         if partition not in partition_def.get_partition_keys():
             raise ValueError(f"Partition '{partition}' not found in partition definition.")
 
-        file_path = self._normalized_path.rstrip("/") + "/" + partition
+        file_path: str = self._normalized_path.rstrip("/") + "/" + partition
         return file_path
 
     def load(self) -> dict[str, Callable[[], Any]]:
@@ -273,7 +274,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
             instance = dg.DagsterInstance.get()
             instance.add_dynamic_partitions(self._partition_config["name"], self._list_available_partition_keys())
 
-        return super().load()
+        return cast(dict[str, Callable[[], Any]], super().load())
 
     def save(self, data: dict[str, Any]) -> None:
         """Save partitioned data.
@@ -285,7 +286,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
             instance = dg.DagsterInstance.get()
             instance.add_dynamic_partitions(self._partition_config["name"], self._list_available_partition_keys())
 
-        return super().save(data)
+        super().save(data)
 
     def _describe(self) -> dict[str, Any]:
         """Return a JSON-serializable description of the dataset configuration.
@@ -307,11 +308,8 @@ class DagsterPartitionedDataset(PartitionedDataset):
         }
 
         if self._partition_mapping is not None:
-            for downstream_dataset_name, (
-                self._partition_mapping_type,
-                self._partition_mapping_config,
-            ) in self._partition_mapping.items():
-                downstream_partition_config = self._partition_mapping[downstream_dataset_name]["config"]
+            for downstream_dataset_name, downstream_partition_mapping_info in self._partition_mapping.items():
+                downstream_partition_config: dict[str, Any] = downstream_partition_mapping_info["config"]
                 clean_downstream_partition_mapping_config = (
                     {k: v for k, v in downstream_partition_config.items()}
                     if isinstance(downstream_partition_config, dict)
@@ -320,7 +318,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
 
                 partitioned_dataset_description = partitioned_dataset_description | {
                     downstream_dataset_name: {
-                        "partition_mapping": self._partition_mapping[downstream_dataset_name]["type"].__name__,
+                        "partition_mapping": downstream_partition_mapping_info["type"].__name__,
                         "partition_mapping_config": clean_downstream_partition_mapping_config,
                     }
                 }
@@ -342,10 +340,17 @@ class DagsterPartitionedDataset(PartitionedDataset):
             "partition": dataset._pretty_repr(object_description["partition_config"]),
         }
 
-        if self._partition_mapping_type is not None:
-            object_description_repr["partition_mapping"] = dataset._pretty_repr(
-                object_description["partition_mapping_config"]
-            )
+        # Render partition mappings (if any) from the description
+        if self._partition_mapping:
+            mapping_repr: dict[str, Any] = {}
+            for downstream_dataset_name in self._partition_mapping.keys():
+                downstream_desc = object_description.get(downstream_dataset_name)
+                if isinstance(downstream_desc, dict) and "partition_mapping_config" in downstream_desc:
+                    mapping_repr[downstream_dataset_name] = dataset._pretty_repr(
+                        downstream_desc["partition_mapping_config"]
+                    )
+            if mapping_repr:
+                object_description_repr["partition_mapping"] = mapping_repr
 
         return self._pretty_repr(object_description_repr)  # type: ignore[no-any-return]
 

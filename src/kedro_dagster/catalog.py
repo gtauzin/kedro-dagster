@@ -126,7 +126,7 @@ class CatalogTranslator:
                         node=node,
                     )
 
-            def load_input(self, context: dg.InputContext) -> Any:  # type: ignore[no-untyped-def]
+            def load_input(self, context: dg.InputContext) -> Any:
                 node_name = context.op_def.name
                 is_node_op = node_name in named_nodes
 

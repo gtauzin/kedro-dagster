@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 from click.testing import CliRunner
 from kedro.framework.cli.starters import create_cli as kedro_cli
 from kedro.framework.startup import bootstrap_project
 from pytest import fixture
+
+from .scenarios.project_factory import KedroProjectOptions, build_kedro_project_variant
 
 
 @fixture(name="cli_runner", scope="session")
@@ -65,11 +68,11 @@ def identity(arg):
 def register_pipelines():
     pipeline = Pipeline(
         [
-            node(identity, ["input"], ["intermediate"], name="node0", tags=["tag0", "tag1"]),
-            node(identity, ["intermediate"], ["output"], name="node1"),
-            node(identity, ["intermediate"], ["output2"], name="node2", tags=["tag0"]),
-            node(identity, ["intermediate"], ["output3"], name="node3", tags=["tag1", "tag2"]),
-            node(identity, ["intermediate"], ["output4"], name="node4", tags=["tag2"]),
+            node(identity, ["input"], "intermediate", name="node0", tags=["tag0", "tag1"]),
+            node(identity, ["intermediate"], "output", name="node1"),
+            node(identity, ["intermediate"], "output2", name="node2", tags=["tag0"]),
+            node(identity, ["intermediate"], "output3", name="node3", tags=["tag1", "tag2"]),
+            node(identity, ["intermediate"], "output4", name="node4", tags=["tag2"]),
         ],
         tags="pipeline0",
     )
@@ -94,3 +97,18 @@ def metadata(kedro_project):
     project_path = kedro_project.resolve()
     metadata = bootstrap_project(project_path)
     return metadata  # type: ignore[no-any-return]
+
+
+@fixture(scope="session")
+def project_variant_factory(kedro_project, tmp_path_factory) -> Callable[[KedroProjectOptions], Path]:
+    """Return a callable that builds Kedro project variants in tmp dirs.
+
+    Usage:
+        project_path = project_variant_factory(KedroProjectOptions(env="base", catalog={...}))
+    """
+
+    def _factory(options: KedroProjectOptions) -> Path:
+        tmp_root = tmp_path_factory.mktemp("project_variants")
+        return build_kedro_project_variant(kedro_project, tmp_root, options)
+
+    return _factory
