@@ -66,7 +66,7 @@ tests = [
   "pytest>=8.3",
   "pytest-mock>=3.14",
   "covdefaults>=2.3",
-  "behave>=1.2.7.dev6",
+  "pytest-bdd>=7.3",
   "psutil>=6.1",
   "pyaml>=25.1",
 ]
@@ -91,7 +91,7 @@ docstring-code-format = true
 docstring-code-line-length = 100
 
 [tool.ruff.lint]
-exclude = ["docs/**", "features/**"]
+exclude = ["docs/**"]
 # all rules can be found here: https://beta.ruff.rs/docs/rules/
 select = [
     "F",   # Pyflakes
@@ -127,6 +127,7 @@ python_version = "3.12"
 strict = true
 ignore_missing_imports = true
 disable_error_code = ["misc", "import-untyped"]
+exclude = "tests/.*"
 
 [tool.coverage]
 paths.source = ["src/kedro_dagster"]
