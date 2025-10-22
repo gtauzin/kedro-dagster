@@ -1146,7 +1146,7 @@ tests = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dagster", specifier = ">=1.9,<2.0" },
+    { name = "dagster", specifier = ">=1.10,<2.0" },
     { name = "dagster-mlflow", marker = "extra == 'mlflow'" },
     { name = "dagster-webserver", specifier = ">=1.9,<2.0" },
     { name = "kedro", specifier = ">=0.19.0,<1.0" },
