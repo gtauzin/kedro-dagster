@@ -18,5 +18,5 @@ repos:
     rev: v1.15.0
     hooks:
     -   id: mypy
-        args: ["--strict", "--exclude=tests"]
-        pass_filename: false
+        args: ["--strict", "src"]
+        pass_filenames: false
