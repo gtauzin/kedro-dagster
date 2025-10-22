@@ -36,7 +36,11 @@ def parse_dagster_definition(
         class_paths = (prefix + definition_type for prefix in _DEFAULT_PACKAGES)
 
         for class_path in class_paths:
-            tmp, error_msg = _load_obj(class_path)  # Load partition class, capture the warning
+            try:
+                tmp = _load_obj(class_path)  # Try to load partition class
+            except Exception as exc:  # Capture the last error to improve the message
+                error_msg = str(exc)
+                continue
 
             if tmp is not None:
                 class_obj = tmp
