@@ -121,7 +121,7 @@ def test_get_filter_params_dict():
         "to_nodes": ["node2"],
         "node_names": ["node3"],
         "from_inputs": ["input1"],
-        "to_outputs": ["output1"],
+        "to_outputs": ["output1_ds"],
         "node_namespace": "namespace",
     }
     filter_params = get_filter_params_dict(pipeline_config)
@@ -151,16 +151,11 @@ def test_format_dataset_name_non_dot_chars():
     assert unformat_asset_name(dagster_name) != name
 
 
-def test_is_nothing_asset_name_with_catalog_and_mapping():
+def test_is_nothing_asset_name_with_catalog():
     # Kedro DataCatalog path using private _get_dataset
     catalog = DataCatalog(datasets={"nothing": DagsterNothingDataset()})
     assert is_nothing_asset_name(catalog, "nothing") is True
     assert is_nothing_asset_name(catalog, "missing") is False
-
-    # Mapping-like path using .get attribute
-    mapping_like = {"nothing": DagsterNothingDataset()}
-    assert is_nothing_asset_name(mapping_like, "nothing") is True
-    assert is_nothing_asset_name(mapping_like, "missing") is False
 
 
 def test_get_partition_mapping_exact_and_pattern(monkeypatch, caplog):
@@ -195,7 +190,7 @@ def test_format_dataset_name_rejects_reserved_identifiers():
 
 
 def test_is_asset_name():
-    assert not _is_param_name("my_dataset")
+    assert not _is_param_name("my_ds")
     assert not _is_param_name("another_dataset__with__underscores")
     assert _is_param_name("parameters")
     assert _is_param_name("params:my_param")

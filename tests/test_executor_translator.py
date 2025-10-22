@@ -9,8 +9,8 @@ from kedro.framework.startup import bootstrap_project
 from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import ExecutorCreator
 
-from ..helpers import dagster_executors_config, envs, make_jobs_config
-from ..scenarios.project_factory import KedroProjectOptions
+from .scenarios.helpers import dagster_executors_config, envs, make_jobs_config
+from .scenarios.project_factory import KedroProjectOptions
 
 
 @pytest.mark.parametrize("env", envs())
@@ -31,7 +31,7 @@ def test_executor_translator_creates_multiple_executors(project_variant_factory,
     executors = ExecutorCreator(dagster_config=dagster_config).create_executors()
 
     # Assert: both executors are registered
-    assert "inproc" in executors
+    assert "seq" in executors
     assert "multiproc" in executors
 
     MIN_EXPECTED_EXECUTORS = 2

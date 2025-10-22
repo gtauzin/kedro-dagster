@@ -68,17 +68,17 @@ def identity(arg):
 def register_pipelines():
     pipeline = Pipeline(
         [
-            node(identity, ["input"], "intermediate", name="node0", tags=["tag0", "tag1"]),
-            node(identity, ["intermediate"], "output", name="node1"),
-            node(identity, ["intermediate"], "output2", name="node2", tags=["tag0"]),
-            node(identity, ["intermediate"], "output3", name="node3", tags=["tag1", "tag2"]),
-            node(identity, ["intermediate"], "output4", name="node4", tags=["tag2"]),
+            node(identity, ["input_ds"], "intermediate_ds", name="node0", tags=["tag0", "tag1"]),
+            node(identity, ["intermediate_ds"], "output_ds", name="node1"),
+            node(identity, ["intermediate_ds"], "output2_ds", name="node2", tags=["tag0"]),
+            node(identity, ["intermediate_ds"], "output3_ds", name="node3", tags=["tag1", "tag2"]),
+            node(identity, ["intermediate_ds"], "output4_ds", name="node4", tags=["tag2"]),
         ],
         tags="pipeline0",
     )
     return {
         "__default__": pipeline,
-        "ds": pipeline,
+        "pipe": pipeline,
     }
     """
 

@@ -14,15 +14,15 @@ from kedro_dagster.dagster import LoggerTranslator, ScheduleCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 
-from ..helpers import envs, make_jobs_config
-from ..scenarios.kedro_projects import options_integration_full
-from ..scenarios.project_factory import KedroProjectOptions
+from .scenarios.helpers import envs, make_jobs_config
+from .scenarios.kedro_projects import options_exec_filebacked
+from .scenarios.project_factory import KedroProjectOptions
 
 
 @pytest.mark.parametrize("env", envs())
 def test_logger_translator_builds_package_loggers(project_variant_factory, env):
     options = KedroProjectOptions(
-        env=env, dagster={"executors": {"inproc": {"in_process": {}}}, "jobs": make_jobs_config()}
+        env=env, dagster={"executors": {"seq": {"in_process": {}}}, "jobs": make_jobs_config()}
     )
     project_path = project_variant_factory(options)
 
@@ -34,8 +34,8 @@ def test_logger_translator_builds_package_loggers(project_variant_factory, env):
     logger_translator = LoggerTranslator(dagster_config=dagster_config, package_name=metadata.package_name)
     named_loggers = logger_translator.to_dagster()
 
-    # Expect a logger for the "ds" pipeline (default registry in conftest)
-    assert any(key.endswith(".pipelines.ds.nodes") for key in named_loggers.keys())
+    # Expect a logger for the "pipe" pipeline (default registry in conftest)
+    assert any(key.endswith(".pipelines.pipe.nodes") for key in named_loggers.keys())
     # Definitions should be Dagster LoggerDefinition
     assert all(isinstance(v, dg.LoggerDefinition) for v in named_loggers.values())
 
@@ -43,7 +43,7 @@ def test_logger_translator_builds_package_loggers(project_variant_factory, env):
 @pytest.mark.parametrize("env", envs())
 def test_schedule_creator_uses_named_schedule(project_variant_factory, env):
     # Use the integration scenario which includes executors, schedules and a default job
-    project_path = project_variant_factory(options_integration_full(env))
+    project_path = project_variant_factory(options_exec_filebacked(env))
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
@@ -79,7 +79,7 @@ def test_schedule_creator_uses_named_schedule(project_variant_factory, env):
         asset_partitions=asset_partitions,
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
-        named_executors={"inproc": dg.in_process_executor},
+        named_executors={"seq": dg.in_process_executor},
         enable_mlflow=False,
     )
     named_jobs = pipeline_translator.to_dagster()

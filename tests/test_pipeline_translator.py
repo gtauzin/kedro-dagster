@@ -17,9 +17,15 @@ from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 from kedro_dagster.utils import format_dataset_name, format_node_name
 
-from ..scenarios.kedro_projects import (
+from .scenarios.kedro_projects import (
     options_exec_filebacked,
+    options_multiple_inputs,
+    options_multiple_outputs_dict,
+    options_multiple_outputs_tuple,
+    options_no_outputs_node,
+    options_nothing_assets,
     options_partitioned_intermediate_output2,
+    options_partitioned_static_mapping,
 )
 
 
@@ -176,3 +182,99 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(project_variant_fa
     # The naming includes both upstream and downstream partition keys for clarity
     assert "node2__p1__p1_after_pipeline_run_hook_input" in ins_keys
     assert "node2__p2__p2_after_pipeline_run_hook_input" in ins_keys
+
+
+@pytest.mark.parametrize(
+    "env,options_builder",
+    [
+        ("base", options_exec_filebacked),
+        ("local", options_exec_filebacked),
+        ("base", options_partitioned_intermediate_output2),
+        ("local", options_partitioned_intermediate_output2),
+        ("base", options_partitioned_static_mapping),
+        ("local", options_partitioned_static_mapping),
+        ("base", options_multiple_inputs),
+        ("local", options_multiple_inputs),
+        ("base", options_multiple_outputs_tuple),
+        ("local", options_multiple_outputs_tuple),
+        ("base", options_multiple_outputs_dict),
+        ("local", options_multiple_outputs_dict),
+        ("base", options_no_outputs_node),
+        ("local", options_no_outputs_node),
+        ("base", options_nothing_assets),
+        ("local", options_nothing_assets),
+    ],
+)
+def test_pipeline_translator_builds_jobs_for_scenarios(project_variant_factory, env, options_builder):
+    """Ensure PipelineTranslator can build a job across diverse scenarios without errors."""
+    project_path = project_variant_factory(options_builder(env))
+
+    bootstrap_project(project_path)
+    session = KedroSession.create(project_path=project_path, env=env)
+    context = session.load_context()
+
+    dagster_config = get_dagster_config(context)
+    default_pipeline = pipelines.get("__default__")
+
+    # Catalog -> IO managers and partition metadata
+    catalog_translator = CatalogTranslator(
+        catalog=context.catalog,
+        pipelines=[default_pipeline],
+        hook_manager=context._hook_manager,  # noqa: SLF001
+        env=env,
+    )
+    named_io_managers, asset_partitions = catalog_translator.to_dagster()
+
+    # Nodes -> op factories and assets (manual construction to avoid brittle externals)
+    node_translator = NodeTranslator(
+        pipelines=[default_pipeline],
+        catalog=context.catalog,
+        hook_manager=context._hook_manager,  # noqa: SLF001
+        session_id=session.session_id,
+        asset_partitions=asset_partitions,
+        named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
+        env=env,
+    )
+
+    named_assets: dict[str, dg.AssetSpec | dg.AssetsDefinition] = {}
+    named_op_factories: dict[str, dg.OpDefinition] = {}
+
+    # External inputs become minimal AssetSpecs
+    for external_dataset_name in default_pipeline.inputs():
+        if external_dataset_name != "parameters":
+            key = [env] + external_dataset_name.split(".")
+            asset_name = format_dataset_name(external_dataset_name)
+            named_assets[asset_name] = dg.AssetSpec(key=key).with_io_manager_key("io_manager")
+
+    for pipeline_node in default_pipeline.nodes:
+        op_name = format_node_name(pipeline_node.name)
+        named_op_factories[f"{op_name}_graph"] = partial(node_translator.create_op, node=pipeline_node)
+        if len(pipeline_node.outputs):
+            # Avoid reserved names that Dagster uses internally
+            if any(in_name == "input" for in_name in pipeline_node.inputs):
+                continue
+            if any(out_name == "output" for out_name in pipeline_node.outputs):
+                continue
+            named_assets[op_name] = node_translator.create_asset(pipeline_node)
+
+    # Executors from config
+    executor_creator = ExecutorCreator(dagster_config=dagster_config)
+    named_executors = executor_creator.create_executors()
+
+    # Build jobs
+    pipeline_translator = PipelineTranslator(
+        dagster_config=dagster_config,
+        context=context,
+        project_path=str(project_path),
+        env=env,
+        session_id=session.session_id,
+        named_assets=named_assets,
+        asset_partitions=asset_partitions,
+        named_op_factories=named_op_factories,
+        named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
+        named_executors=named_executors,
+        enable_mlflow=False,
+    )
+    jobs = pipeline_translator.to_dagster()
+    assert "default" in jobs
+    assert isinstance(jobs["default"], dg.JobDefinition)

@@ -93,7 +93,12 @@ def get_asset_key_from_dataset_name(dataset_name: str, env: str) -> dg.AssetKey:
 def is_nothing_asset_name(catalog: "CatalogProtocol", dataset_name: str) -> bool:
     """Return True if the catalog entry is a DagsterNothingDataset.
 
-    Supports both plain mappings and Kedro ``DataCatalog`` instances.
+    Args:
+        catalog (CatalogProtocol): Kedro DataCatalog or mapping-like object.
+        dataset_name (str): Kedro dataset name.
+
+    Returns:
+        bool: True if the dataset is a DagsterNothingDataset, False otherwise.
     """
     dataset = None
     # Prefer Kedro DataCatalog private accessor if available
@@ -122,6 +127,7 @@ def get_partition_mapping(
         upstream_asset_name (str): Name of the upstream asset.
         downstream_dataset_names (list[str]): List of downstream dataset names.
         config_resolver (CatalogConfigResolver): Catalog config resolver to match patterns.
+
     Returns:
         PartitionMapping | None: Partition mapping or None if not found.
     """
@@ -163,6 +169,7 @@ def format_partition_key(partition_key: Any) -> str:
 
     Args:
         partition_key (Any): Partition key to serialize.
+
     Returns:
         str: Serialized partition key.
     """

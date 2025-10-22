@@ -13,18 +13,18 @@ from kedro_dagster.config.execution import (
     MultiprocessExecutorOptions,
 )
 from kedro_dagster.config.job import JobOptions
-from tests.helpers import (
+from tests.scenarios.helpers import (
     dagster_executors_config,
     dagster_schedules_config,
     make_jobs_config,
 )
-from tests.scenarios.kedro_projects import options_integration_full
+from tests.scenarios.kedro_projects import options_exec_filebacked
 
 
 @pytest.mark.parametrize("env", ["base", "local"])
 def test_get_dagster_config_loads_and_parses(project_variant_factory, env):
     # Prepare a project variant with executors, schedules, jobs defined in conf/<env>/dagster.yml
-    project_path = project_variant_factory(options_integration_full(env))
+    project_path = project_variant_factory(options_exec_filebacked(env))
 
     # Bootstrap and load Kedro context for the selected env
     bootstrap_project(project_path)
@@ -41,7 +41,7 @@ def test_get_dagster_config_loads_and_parses(project_variant_factory, env):
     # And: executor map is parsed to proper option classes
     expected_exec = dagster_executors_config()
     assert set(dagster_config.executors.keys()) == set(expected_exec.keys())
-    assert isinstance(dagster_config.executors["inproc"], InProcessExecutorOptions)
+    assert isinstance(dagster_config.executors["seq"], InProcessExecutorOptions)
     assert isinstance(dagster_config.executors["multiproc"], MultiprocessExecutorOptions)
     EXPECTED_MAX_CONCURRENT = 2
     assert dagster_config.executors["multiproc"].max_concurrent == EXPECTED_MAX_CONCURRENT  # type: ignore[union-attr]
@@ -52,9 +52,9 @@ def test_get_dagster_config_loads_and_parses(project_variant_factory, env):
     assert dagster_config.schedules["daily"].cron_schedule == expected_sched["daily"]["cron_schedule"]
 
     # And: jobs are parsed with pipeline and string references for executor/schedule
-    job_cfg = make_jobs_config(pipeline_name="__default__", executor="inproc", schedule="daily")
+    job_cfg = make_jobs_config(pipeline_name="__default__", executor="seq", schedule="daily")
     assert set(dagster_config.jobs.keys()) == set(job_cfg.keys())
     job: JobOptions = dagster_config.jobs["default"]
     assert job.pipeline.pipeline_name == "__default__"
-    assert job.executor == "inproc"
+    assert job.executor == "seq"
     assert job.schedule == "daily"

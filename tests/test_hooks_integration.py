@@ -148,7 +148,7 @@ def test_hooks_are_invoked_end_to_end(project_variant_factory, tmp_path, env):
 
     # Assert: Dataset IO hooks observed on save/load
     # At least one load for input_dataset and multiple loads for intermediate; saves for intermediate and outputs
-    assert "input_dataset" in hooks.before_dataset_loaded_calls
-    assert "intermediate" in hooks.before_dataset_saved_calls
-    assert "output_dataset" in hooks.after_dataset_saved_calls
-    assert set(["output2", "output3", "output4"]).issubset(set(hooks.after_dataset_saved_calls))
+    assert "input_ds" in hooks.before_dataset_loaded_calls
+    assert "intermediate_ds" in hooks.before_dataset_saved_calls
+    assert "output_ds" in hooks.after_dataset_saved_calls
+    assert set(["output2_ds", "output3_ds", "output4_ds"]).issubset(set(hooks.after_dataset_saved_calls))

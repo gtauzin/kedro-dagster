@@ -5,7 +5,7 @@ from typing import Any
 
 def dagster_executors_config() -> dict[str, Any]:
     return {
-        "inproc": {"in_process": {}},
+        "seq": {"in_process": {}},
         "multiproc": {"multiprocess": {"max_concurrent": 2}},
     }
 
@@ -26,7 +26,7 @@ def dagster_schedules_config() -> dict[str, Any]:
 
 
 def make_jobs_config(
-    pipeline_name: str = "__default__", executor: str = "inproc", schedule: str | None = None
+    pipeline_name: str = "__default__", executor: str = "seq", schedule: str | None = None
 ) -> dict[str, Any]:
     job: dict[str, Any] = {
         "pipeline": {"pipeline_name": pipeline_name},
