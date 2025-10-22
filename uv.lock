@@ -116,6 +116,24 @@ wheels = [
 ]
 
 [[package]]
+name = "behave"
+version = "1.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama" },
+    { name = "cucumber-expressions" },
+    { name = "cucumber-tag-expressions" },
+    { name = "parse" },
+    { name = "parse-type" },
+    { name = "six" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/51/f37442fe648b3e35ecf69bee803fa6db3f74c5b46d6c882d0bc5654185a2/behave-1.3.3.tar.gz", hash = "sha256:2b8f4b64ed2ea756a5a2a73e23defc1c4631e9e724c499e46661778453ebaf51", size = 892639 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/63/71/06f74ffed6d74525c5cd6677c97bd2df0b7649e47a249cf6a0c2038083b2/behave-1.3.3-py2.py3-none-any.whl", hash = "sha256:89bdb62af8fb9f147ce245736a5de69f025e5edfb66f1fbe16c5007493f842c0", size = 223594 },
+]
+
+[[package]]
 name = "binaryornot"
 version = "0.4.4"
 source = { registry = "https://pypi.org/simple" }
@@ -397,6 +415,24 @@ wheels = [
 ]
 
 [[package]]
+name = "cucumber-expressions"
+version = "18.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/7d/f4e231167b23b3d7348aa1c90117ce8854fae186d6984ad66d705df24061/cucumber_expressions-18.0.1.tar.gz", hash = "sha256:86ce41bf28ee520408416f38022e5a083d815edf04a0bd1dae46d474ca597c60", size = 22232 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/e0/31ce90dad5234c3d52432bfce7562aa11cda4848aea90936a4be6c67d7ab/cucumber_expressions-18.0.1-py3-none-any.whl", hash = "sha256:86230d503cdda7ef35a1f2072a882d7d57c740aa4c163c82b07f039b6bc60c42", size = 20211 },
+]
+
+[[package]]
+name = "cucumber-tag-expressions"
+version = "8.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/77/b8868653e9c7d432433d4d4d5e99d5923b309b89c8b08bc7f0cb5657ba0b/cucumber_tag_expressions-8.0.0.tar.gz", hash = "sha256:4af80282ff0349918c332428176089094019af6e2a381a2fd8f1c62a7a6bb7e8", size = 8427 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/51/51ae3ab3b8553ec61f6558e9a0a9e8c500a9db844f9cf00a732b19c9a6ea/cucumber_tag_expressions-8.0.0-py3-none-any.whl", hash = "sha256:bfe552226f62a4462ee91c9643582f524af84ac84952643fb09057580cbb110a", size = 9726 },
+]
+
+[[package]]
 name = "cycler"
 version = "0.12.1"
 source = { registry = "https://pypi.org/simple" }
@@ -675,15 +711,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/45/d8/8425e6ba5fcec61a1d16e41b1b71d2bf9344f1fe48012c2b48b9620feae5/fsspec-2025.3.2.tar.gz", hash = "sha256:e52c77ef398680bbd6a98c0e628fbc469491282981209907bbc8aea76a04fdc6", size = 299281 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/44/4b/e0cfc1a6f17e990f3e64b7d941ddc4acdc7b19d6edd51abf495f32b1a9e4/fsspec-2025.3.2-py3-none-any.whl", hash = "sha256:2daf8dc3d1dfa65b6aa37748d112773a7a08416f6c70d96b264c96476ecaf711", size = 194435 },
-]
-
-[[package]]
-name = "gherkin-official"
-version = "29.0.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f3/d8/7a28537efd7638448f7512a0cce011d4e3bf1c7f4794ad4e9c87b3f1e98e/gherkin_official-29.0.0.tar.gz", hash = "sha256:dbea32561158f02280d7579d179b019160d072ce083197625e2f80a6776bb9eb", size = 32303 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/fc/b86c22ad3b18d8324a9d6fe5a3b55403291d2bf7572ba6a16efa5aa88059/gherkin_official-29.0.0-py3-none-any.whl", hash = "sha256:26967b0d537a302119066742669e0e8b663e632769330be675457ae993e1d1bc", size = 37085 },
 ]
 
 [[package]]
@@ -1081,6 +1108,7 @@ mlflow = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "behave" },
     { name = "covdefaults" },
     { name = "mike" },
     { name = "mkdocs-git-revision-date-localized-plugin" },
@@ -1093,7 +1121,6 @@ dev = [
     { name = "pyaml" },
     { name = "pymdown-extensions" },
     { name = "pytest" },
-    { name = "pytest-bdd" },
     { name = "pytest-mock" },
 ]
 docs = [
@@ -1109,11 +1136,11 @@ fix = [
     { name = "pre-commit-uv" },
 ]
 tests = [
+    { name = "behave" },
     { name = "covdefaults" },
     { name = "psutil" },
     { name = "pyaml" },
     { name = "pytest" },
-    { name = "pytest-bdd" },
     { name = "pytest-mock" },
 ]
 
@@ -1130,6 +1157,7 @@ provides-extras = ["mlflow"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "behave", specifier = ">=1.2.7.dev6" },
     { name = "covdefaults", specifier = ">=2.3" },
     { name = "mike", specifier = ">=2.1" },
     { name = "mkdocs-git-revision-date-localized-plugin", specifier = ">=1.3" },
@@ -1142,7 +1170,6 @@ dev = [
     { name = "pyaml", specifier = ">=25.1" },
     { name = "pymdown-extensions", specifier = ">=10.14" },
     { name = "pytest", specifier = ">=8.3" },
-    { name = "pytest-bdd", specifier = ">=7.3" },
     { name = "pytest-mock", specifier = ">=3.14" },
 ]
 docs = [
@@ -1156,11 +1183,11 @@ docs = [
 ]
 fix = [{ name = "pre-commit-uv", specifier = ">=4.1" }]
 tests = [
+    { name = "behave", specifier = ">=1.2.7.dev6" },
     { name = "covdefaults", specifier = ">=2.3" },
     { name = "psutil", specifier = ">=6.1" },
     { name = "pyaml", specifier = ">=25.1" },
     { name = "pytest", specifier = ">=8.3" },
-    { name = "pytest-bdd", specifier = ">=7.3" },
     { name = "pytest-mock", specifier = ">=3.14" },
 ]
 
@@ -2291,24 +2318,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ae/3c/c9d525a414d506893f0cd8a8d0de7706446213181570cdbd766691164e40/pytest-8.3.5.tar.gz", hash = "sha256:f4efe70cc14e511565ac476b57c279e12a855b11f48f212af1080ef2263d3845", size = 1450891 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl", hash = "sha256:c69214aa47deac29fad6c2a4f590b9c4a9fdb16a403176fe154b79c0b4d4d820", size = 343634 },
-]
-
-[[package]]
-name = "pytest-bdd"
-version = "8.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "gherkin-official" },
-    { name = "mako" },
-    { name = "packaging" },
-    { name = "parse" },
-    { name = "parse-type" },
-    { name = "pytest" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/2d/2f/14c2e55372a5718a93b56aea48cd6ccc15d2d245364e516cd7b19bbd07ad/pytest_bdd-8.1.0.tar.gz", hash = "sha256:ef0896c5cd58816dc49810e8ff1d632f4a12019fb3e49959b2d349ffc1c9bfb5", size = 56147 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9f/7d/1461076b0cc9a9e6fa8b51b9dea2677182ba8bc248d99d95ca321f2c666f/pytest_bdd-8.1.0-py3-none-any.whl", hash = "sha256:2124051e71a05ad7db15296e39013593f72ebf96796e1b023a40e5453c47e5fb", size = 49149 },
 ]
 
 [[package]]
