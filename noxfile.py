@@ -34,6 +34,13 @@ def tests(session: nox.Session) -> None:
     # Clears all .coverage* files
     session.run("coverage", "erase")
 
+    # Run behavior tests (run behave directly, not under coverage)
+    session.run(
+        "behave",
+        "-vv",
+        "features",
+    )
+
     # Run unit tests under coverage
     session.run(
         "coverage",
