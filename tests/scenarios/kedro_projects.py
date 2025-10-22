@@ -9,7 +9,7 @@ from .project_factory import KedroProjectOptions
 
 
 def options_exec_filebacked(env: str) -> KedroProjectOptions:
-    """Scenario: Minimal catalog with a file-backed output2 and a simple in-process executor job."""
+    """Minimal catalog with a file-backed output2 and a simple in-process executor job."""
     catalog = {
         "input_dataset": {"type": "MemoryDataset"},
         "intermediate": {"type": "MemoryDataset"},
@@ -34,7 +34,7 @@ def options_exec_filebacked(env: str) -> KedroProjectOptions:
 
 
 def options_partitioned_intermediate_output2(env: str) -> KedroProjectOptions:
-    """Scenario: Partitioned intermediate and output2 with identity partition mapping."""
+    """Partitioned intermediate and output2 with identity partition mapping."""
     catalog = {
         "input_dataset": {"type": "MemoryDataset"},
         "intermediate": {
@@ -66,7 +66,7 @@ def options_partitioned_intermediate_output2(env: str) -> KedroProjectOptions:
 
 
 def options_integration_full(env: str) -> KedroProjectOptions:
-    """Scenario: Integration-style project with executors, schedules, jobs and file-backed output2."""
+    """Integration-style project with executors, schedules, jobs and file-backed output2."""
     catalog = {
         "input_dataset": {"type": "MemoryDataset"},
         "intermediate": {"type": "MemoryDataset"},
@@ -130,7 +130,7 @@ def options_with_custom_pipeline(env: str, pipeline_registry_py: str | None = No
 
 
 def options_partitioned_identity_mapping(env: str) -> KedroProjectOptions:
-    """Scenario: Partition-mapping focused config for tests in test_partition_mappings.py."""
+    """Partition-mapping focused config for tests in test_partition_mappings.py."""
     catalog = {
         "input_dataset": {"type": "MemoryDataset"},
         "intermediate": {
@@ -154,7 +154,7 @@ def options_partitioned_identity_mapping(env: str) -> KedroProjectOptions:
 def options_hooks_filebacked(
     env: str, input_csv: str | Path, primary_dir: str | Path, output_dir: str | Path
 ) -> KedroProjectOptions:
-    """Scenario: File-backed datasets for hooks e2e test using tmp paths.
+    """File-backed datasets for hooks e2e test using tmp paths.
 
     Datasets: input, intermediate, output, output2, output3, output4 as CSVs pointing to the provided directories.
     Job: default with in-process executor.
