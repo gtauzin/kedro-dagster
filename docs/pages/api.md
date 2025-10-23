@@ -247,6 +247,24 @@ Generates Dagster schedules from configuration, enabling automated pipeline exec
 
 ---
 
+## Datasets
+
+The following classes define custom Kedro-Dagster datasets for enabling Dagster partitioning and asset management within Kedro projects.
+
+### `DagsterPartitionedDataset`
+
+Works as a wrapper around Kedro's `PartitionedDataset` to enable Dagster partitioning capabilities.
+
+::: kedro_dagster.datasets.DagsterPartitionedDataset
+
+---
+
+### `DagsterNothingDataset`
+
+A dummy dataset representing a Dagster asset of type `Nothing` without associated data used to enforce links between nodes.
+
+::: kedro_dagster.datasets.DagsterNothingDataset
+
 ### Utilities
 
 Helper functions for formatting, filtering, and supporting translation between Kedro and Dagster concepts.

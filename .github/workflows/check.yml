@@ -9,6 +9,10 @@ on:
 permissions:
   pull-requests: write
 
+secrets:
+  CODECOV_TOKEN:
+    required: true
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -66,10 +70,10 @@ jobs:
         uses: clearlyip/code-coverage-report-action@v5.1.0
         with:
           filename: '${{ github.workspace }}/coverage.${{ matrix.python-version }}.xml'
-          overall_coverage_fail_threshold: 50
+          overall_coverage_fail_threshold: 90
           fail_on_negative_difference: false
-          file_coverage_error_min: 0
-          file_coverage_warning_max: 75
+          file_coverage_error_min: 60
+          file_coverage_warning_max: 85
 
       - name: Post coverage comment
         uses: marocchino/sticky-pull-request-comment@v2
@@ -77,3 +81,12 @@ jobs:
         with:
           recreate: true
           path: code-coverage-results.md
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: '${{ github.workspace }}/coverage.${{ matrix.python-version }}.xml'
+          env_vars: OS,PYTHON
+          fail_ci_if_error: true

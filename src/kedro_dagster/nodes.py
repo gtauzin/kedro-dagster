@@ -497,7 +497,7 @@ class NodeTranslator:
             (op factories, assets), where:
             - op factories map names to callables that produce partition-aware ops when invoked;
             - assets map names to either external :class:`dagster.AssetSpec` (for upstream inputs)
-              or concrete :class:`dagster.AssetsDefinition` produced by nodes.
+            or concrete :class:`dagster.AssetsDefinition` produced by nodes.
         """
 
         default_pipeline: Pipeline = sum(self._pipelines, start=Pipeline([]))

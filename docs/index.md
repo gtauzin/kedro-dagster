@@ -47,6 +47,7 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 
 - [Project Configuration](pages/technical.md#project-configuration)
 - [Kedro-Dagster Concept Mapping](pages/technical.md#kedro-dagster-concept-mapping)
+- [Compatibility issues between Kedro and Dagster](pages/technical.md#compatibility-issues-between-kedro-and-dagster)
 
 ### [API Reference](pages/api.md)
 
@@ -55,6 +56,7 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 - [Command Line Interface](pages/api.md#command-line-interface)
 - [Configuration](pages/api.md#configuration)
 - [Translation Modules](pages/api.md#translation-modules)
+- [Datasets](pages/api.md#datasets)
 - [Utilities](pages/api.md#utilities)
 
 ## License

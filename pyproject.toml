@@ -65,7 +65,7 @@ fix = [
 tests = [
   "pytest>=8.3",
   "pytest-mock>=3.14",
-  "covdefaults>=2.3",
+  "pytest-cov>=7.0",
   "behave>=1.2.7.dev6",
   "psutil>=6.1",
   "pyaml>=25.1",
@@ -135,6 +135,7 @@ report.include_namespace_packages = true
 report.skip_covered = false
 html.show_contexts = true
 run.omit = [
+    "src/templates/definitions.py",
     "tests/*",
     "*/tests/*",
 ]
