@@ -73,11 +73,11 @@ def kedro_project_partitioned_intermediate_output2(project_scenario_factory) -> 
 
 
 @fixture(scope="function")
-def kedro_project_partitioned_identity_mapping(project_scenario_factory) -> Path:
+def kedro_project_partitioned_identity_mapping_base(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_partitioned_identity_mapping(env="base"),
         project_name="kedro-project-partitioned-identity-mapping",
-    )
+    ), "base"
 
 
 @fixture(scope="function")
@@ -85,7 +85,7 @@ def kedro_project_partitioned_identity_mapping_local(project_scenario_factory) -
     return project_scenario_factory(
         options_partitioned_identity_mapping(env="local"),
         project_name="kedro-project-partitioned-identity-mapping-local",
-    )
+    ), "local"
 
 
 # Per-env wrappers for identity mapping returning (Path, env)
@@ -129,7 +129,7 @@ def kedro_project_nothing_assets(project_scenario_factory) -> Path:
 
 
 @fixture(scope="function")
-def kedro_project_hooks_filebacked(project_scenario_factory, tmp_path: Path) -> Path:
+def kedro_project_hooks_filebacked_base(project_scenario_factory, tmp_path: Path) -> Path:
     # Prepare input file and directories for file-backed scenario
     input_csv = tmp_path / "input.csv"
     input_csv.write_text("value\n1\n", encoding="utf-8")
@@ -141,10 +141,17 @@ def kedro_project_hooks_filebacked(project_scenario_factory, tmp_path: Path) -> 
     opts = options_hooks_filebacked(
         env="base", input_csv=str(input_csv), primary_dir=str(primary_dir), output_dir=str(output_dir)
     )
-    return project_scenario_factory(opts, project_name="kedro-project-hooks-filebacked")
+    return project_scenario_factory(opts, project_name="kedro-project-hooks-filebacked"), "base"
 
 
 # Per-env variants and wrappers returning (Path, env)
+
+
+@fixture(scope="function")
+def kedro_project_exec_filebacked_base(project_scenario_factory) -> Path:
+    return project_scenario_factory(
+        options_exec_filebacked(env="base"), project_name="kedro-project-exec-filebacked-base"
+    ), "base"
 
 
 @fixture(scope="function")
@@ -152,6 +159,14 @@ def kedro_project_exec_filebacked_local(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_exec_filebacked(env="local"), project_name="kedro-project-exec-filebacked-local"
     ), "local"
+
+
+@fixture(scope="function")
+def kedro_project_partitioned_intermediate_output2_base(project_scenario_factory) -> Path:
+    return project_scenario_factory(
+        options_partitioned_intermediate_output2(env="base"),
+        project_name="kedro-project-partitioned-intermediate-output2-base",
+    ), "base"
 
 
 @fixture(scope="function")
@@ -163,11 +178,26 @@ def kedro_project_partitioned_intermediate_output2_local(project_scenario_factor
 
 
 @fixture(scope="function")
+def kedro_project_partitioned_static_mapping_base(project_scenario_factory) -> Path:
+    return project_scenario_factory(
+        options_partitioned_static_mapping(env="base"),
+        project_name="kedro-project-partitioned-static-mapping-base",
+    ), "base"
+
+
+@fixture(scope="function")
 def kedro_project_partitioned_static_mapping_local(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_partitioned_static_mapping(env="local"),
         project_name="kedro-project-partitioned-static-mapping-local",
     ), "local"
+
+
+@fixture(scope="function")
+def kedro_project_multiple_inputs_base(project_scenario_factory) -> Path:
+    return project_scenario_factory(
+        options_multiple_inputs(env="base"), project_name="kedro-project-multiple-inputs-base"
+    ), "base"
 
 
 @fixture(scope="function")
@@ -178,10 +208,24 @@ def kedro_project_multiple_inputs_local(project_scenario_factory) -> Path:
 
 
 @fixture(scope="function")
+def kedro_project_multiple_outputs_tuple_base(project_scenario_factory) -> Path:
+    return project_scenario_factory(
+        options_multiple_outputs_tuple(env="base"), project_name="kedro-project-multiple-outputs-tuple-base"
+    ), "base"
+
+
+@fixture(scope="function")
 def kedro_project_multiple_outputs_tuple_local(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_multiple_outputs_tuple(env="local"), project_name="kedro-project-multiple-outputs-tuple-local"
     ), "local"
+
+
+@fixture(scope="function")
+def kedro_project_multiple_outputs_dict_base(project_scenario_factory) -> Path:
+    return project_scenario_factory(
+        options_multiple_outputs_dict(env="base"), project_name="kedro-project-multiple-outputs-dict-base"
+    ), "base"
 
 
 @fixture(scope="function")
@@ -192,10 +236,24 @@ def kedro_project_multiple_outputs_dict_local(project_scenario_factory) -> Path:
 
 
 @fixture(scope="function")
+def kedro_project_no_outputs_node_base(project_scenario_factory) -> Path:
+    return project_scenario_factory(
+        options_no_outputs_node(env="base"), project_name="kedro-project-no-outputs-node-base"
+    ), "base"
+
+
+@fixture(scope="function")
 def kedro_project_no_outputs_node_local(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_no_outputs_node(env="local"), project_name="kedro-project-no-outputs-node-local"
     ), "local"
+
+
+@fixture(scope="function")
+def kedro_project_nothing_assets_base(project_scenario_factory) -> Path:
+    return project_scenario_factory(
+        options_nothing_assets(env="base"), project_name="kedro-project-nothing-assets-base"
+    ), "base"
 
 
 @fixture(scope="function")
