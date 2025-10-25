@@ -34,13 +34,9 @@ def parse_dagster_definition(
         if len(definition_type.strip(".")) != len(definition_type):
             raise TypeError("'type' class path does not support relative paths or paths ending with a dot.")
         class_paths = (prefix + definition_type for prefix in _DEFAULT_PACKAGES)
-
+    
         for class_path in class_paths:
-            try:
-                tmp = _load_obj(class_path)  # Try to load partition class
-            except Exception as exc:  # Capture the last error to improve the message
-                error_msg = str(exc)
-                continue
+            tmp, error_msg = _load_obj(class_path)  # Try to load partition class
 
             if tmp is not None:
                 class_obj = tmp
@@ -106,6 +102,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
 
         partition = partition if isinstance(partition, dict) else {"type": partition}
         self._validate_partitions_definition(partition)
+        print("PARTITION:", partition)
         self._partition_type, self._partition_config = parse_dagster_definition(partition)
 
         self._partition_mapping: dict[str, Any] | None = None
@@ -140,6 +137,8 @@ class DagsterPartitionedDataset(PartitionedDataset):
         Returns:
             PartitionsDefinition: Instantiated partitions definition.
         """
+        print("PARTITION TYPE:", self._partition_type)
+        print("PARTITION CONFIG:", self._partition_config)
         try:
             partition_def = self._partition_type(**self._partition_config)
         except Exception as exc:
