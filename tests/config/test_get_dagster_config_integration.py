@@ -20,10 +20,16 @@ from tests.scenarios.helpers import (
 )
 
 
-@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
-def test_get_dagster_config_loads_and_parses(kedro_project_exec_filebacked_env):
+@pytest.mark.parametrize(
+    "env_fixture",
+    [
+        "kedro_project_exec_filebacked_base",
+        "kedro_project_exec_filebacked_local",
+    ],
+)
+def test_get_dagster_config_loads_and_parses(request, env_fixture):
     # Prepare a project variant with executors, schedules, jobs defined in conf/<env>/dagster.yml
-    project_path, env = kedro_project_exec_filebacked_env
+    project_path, env = request.getfixturevalue(env_fixture)
 
     # Bootstrap and load Kedro context for the selected env
     bootstrap_project(project_path)

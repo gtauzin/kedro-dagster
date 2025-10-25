@@ -17,27 +17,26 @@ from kedro_dagster.utils import format_dataset_name
 
 
 @pytest.mark.parametrize(
-    "kedro_project_scenario_env",
+    "env_fixture",
     [
-        ("exec_filebacked", "base"),
-        ("partitioned_intermediate_output2", "local"),
-        ("partitioned_static_mapping", "base"),
-        ("multiple_inputs", "local"),
-        ("multiple_outputs_tuple", "base"),
-        ("multiple_outputs_dict", "local"),
-        ("no_outputs_node", "base"),
-        ("nothing_assets", "local"),
+        "kedro_project_exec_filebacked_base",
+        "kedro_project_partitioned_intermediate_output2_local",
+        "kedro_project_partitioned_static_mapping_base",
+        "kedro_project_multiple_inputs_local",
+        "kedro_project_multiple_outputs_tuple_base",
+        "kedro_project_multiple_outputs_dict_local",
+        "kedro_project_no_outputs_node_base",
+        "kedro_project_nothing_assets_local",
     ],
-    indirect=True,
 )
-def test_catalog_translator_covers_scenarios(kedro_project_scenario_env):
+def test_catalog_translator_covers_scenarios(request, env_fixture):
     """Test CatalogTranslator across diverse scenarios and assert core invariants.
 
     - File-backed datasets (CSVDataset) get IO managers.
     - Partitioned datasets expose partitions_def in asset_partitions.
     - Memory datasets do not result in dedicated IO managers.
     """
-    project_path, env = kedro_project_scenario_env
+    project_path, env = request.getfixturevalue(env_fixture)
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -79,8 +78,14 @@ def test_catalog_translator_covers_scenarios(kedro_project_scenario_env):
         #     assert f"{env}__{ds_name}_io_manager" not in named_io_managers
 
 
-@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
-def test_catalog_translator_builds_configurable_io_managers(kedro_project_exec_filebacked_env):
+@pytest.mark.parametrize(
+    "env_fixture",
+    [
+        "kedro_project_exec_filebacked_base",
+        "kedro_project_exec_filebacked_local",
+    ],
+)
+def test_catalog_translator_builds_configurable_io_managers(request, env_fixture):
     """Ensure IO managers are created with expected names, types and config.
 
     We validate for file-backed datasets (CSVDataset):
@@ -88,7 +93,7 @@ def test_catalog_translator_builds_configurable_io_managers(kedro_project_exec_f
     - Value is a ConfigurableIOManager instance exposing handle_output/load_input
     - The pydantic config fields reflect the catalog entry (dataset, filepath)
     """
-    project_path, env = kedro_project_exec_filebacked_env
+    project_path, env = request.getfixturevalue(env_fixture)
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -147,15 +152,21 @@ def test_catalog_translator_builds_configurable_io_managers(kedro_project_exec_f
         assert ds_name in (getattr(io_mgr.__class__, "__doc__", "") or "")
 
 
-@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
-def test_io_manager_roundtrip_matches_dataset(kedro_project_exec_filebacked_env):
+@pytest.mark.parametrize(
+    "env_fixture",
+    [
+        "kedro_project_exec_filebacked_base",
+        "kedro_project_exec_filebacked_local",
+    ],
+)
+def test_io_manager_roundtrip_matches_dataset(request, env_fixture):
     """Saving/loading via the IO manager should match the underlying Kedro dataset.
 
     For each CSVDataset in the scenario, we write a small DataFrame through the
     generated IO manager and verify that loading through both the dataset and the
     IO manager produces identical DataFrames.
     """
-    project_path, env = kedro_project_exec_filebacked_env
+    project_path, env = request.getfixturevalue(env_fixture)
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -220,8 +231,14 @@ def test_io_manager_roundtrip_matches_dataset(kedro_project_exec_filebacked_env)
         assert df_via_io_mgr.equals(df_to_write)
 
 
-@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
-def test_create_dataset_config_contains_parameters(kedro_project_exec_filebacked_env):
+@pytest.mark.parametrize(
+    "env_fixture",
+    [
+        "kedro_project_exec_filebacked_base",
+        "kedro_project_exec_filebacked_local",
+    ],
+)
+def test_create_dataset_config_contains_parameters(request, env_fixture):
     """The dataset config built by CatalogTranslator should reflect dataset._describe().
 
     We focus on CSVDatasets in the exec_filebacked scenario and verify that the
@@ -229,7 +246,7 @@ def test_create_dataset_config_contains_parameters(kedro_project_exec_filebacked
       - dataset: short class name (e.g., CSVDataset)
       - entries from _describe() (except version), with PurePosixPath converted to str
     """
-    project_path, env = kedro_project_exec_filebacked_env
+    project_path, env = request.getfixturevalue(env_fixture)
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -278,9 +295,16 @@ def test_create_dataset_config_contains_parameters(kedro_project_exec_filebacked
             assert actual == expected
 
 
-@pytest.mark.parametrize("kedro_project_partitioned_identity_mapping_env", ["base", "local"], indirect=True)
+@pytest.mark.parametrize(
+    "env_fixture",
+    [
+        "kedro_project_partitioned_identity_mapping_base",
+        "kedro_project_partitioned_identity_mapping_local",
+    ],
+)
 def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(
-    kedro_project_partitioned_identity_mapping_env,
+    request,
+    env_fixture,
 ):
     """Ensure IO manager for DagsterPartitionedDataset handles partition keys from tags and context.
 
@@ -288,7 +312,7 @@ def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(
     - Load via load_input with upstream_partition_key tag -> returns that partition.
     - Load via load_input with partition_key + asset_partitions_def in context -> returns that partition.
     """
-    project_path, env = kedro_project_partitioned_identity_mapping_env
+    project_path, env = request.getfixturevalue(env_fixture)
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)

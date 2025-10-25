@@ -10,9 +10,15 @@ from kedro.framework.startup import bootstrap_project
 from kedro_dagster.translator import KedroProjectTranslator
 
 
-@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
-def test_kedro_project_translator_end_to_end(kedro_project_exec_filebacked_env):
-    project_path, env = kedro_project_exec_filebacked_env
+@pytest.mark.parametrize(
+    "env_fixture",
+    [
+        "kedro_project_exec_filebacked_base",
+        "kedro_project_exec_filebacked_local",
+    ],
+)
+def test_kedro_project_translator_end_to_end(request, env_fixture):
+    project_path, env = request.getfixturevalue(env_fixture)
 
     # Initialize Kedro and run the full translator like definitions.py would
     bootstrap_project(project_path)

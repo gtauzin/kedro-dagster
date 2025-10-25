@@ -17,9 +17,15 @@ from kedro_dagster.pipelines import PipelineTranslator
 # Scenarios are provided via fixtures; imports kept minimal
 
 
-@pytest.mark.parametrize("kedro_project_partitioned_identity_mapping_env", ["base", "local"], indirect=True)
-def test_static_partitions_and_identity_mapping(kedro_project_partitioned_identity_mapping_env):
-    project_path, env = kedro_project_partitioned_identity_mapping_env
+@pytest.mark.parametrize(
+    "env_fixture",
+    [
+        "kedro_project_partitioned_identity_mapping_base",
+        "kedro_project_partitioned_identity_mapping_local",
+    ],
+)
+def test_static_partitions_and_identity_mapping(request, env_fixture):
+    project_path, env = request.getfixturevalue(env_fixture)
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -66,13 +72,19 @@ def test_static_partitions_and_identity_mapping(kedro_project_partitioned_identi
     assert "downstream_partition_key" in op.tags and op.tags["downstream_partition_key"].endswith("|p1")
 
 
-@pytest.mark.parametrize("kedro_project_partitioned_static_mapping_env", ["base", "local"], indirect=True)
-def test_static_partitions_and_static_mapping(kedro_project_partitioned_static_mapping_env):
+@pytest.mark.parametrize(
+    "env_fixture",
+    [
+        "kedro_project_partitioned_static_mapping_base",
+        "kedro_project_partitioned_static_mapping_local",
+    ],
+)
+def test_static_partitions_and_static_mapping(request, env_fixture):
     """Ensure StaticPartitionMapping routes upstream partitions to configured downstream keys.
 
     Mapping configured: p1 -> a, p2 -> b, p3 -> b
     """
-    project_path, env = kedro_project_partitioned_static_mapping_env
+    project_path, env = request.getfixturevalue(env_fixture)
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)

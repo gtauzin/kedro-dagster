@@ -88,6 +88,9 @@ def kedro_project_partitioned_identity_mapping_local(project_scenario_factory) -
     )
 
 
+# Per-env wrappers for identity mapping returning (Path, env)
+
+
 @fixture(scope="function")
 def kedro_project_partitioned_static_mapping(project_scenario_factory) -> Path:
     return project_scenario_factory(
@@ -148,7 +151,7 @@ def kedro_project_hooks_filebacked(project_scenario_factory, tmp_path: Path) -> 
 def kedro_project_exec_filebacked_local(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_exec_filebacked(env="local"), project_name="kedro-project-exec-filebacked-local"
-    )
+    ), "local"
 
 
 @fixture(scope="function")
@@ -156,7 +159,7 @@ def kedro_project_partitioned_intermediate_output2_local(project_scenario_factor
     return project_scenario_factory(
         options_partitioned_intermediate_output2(env="local"),
         project_name="kedro-project-partitioned-intermediate-output2-local",
-    )
+    ), "local"
 
 
 @fixture(scope="function")
@@ -164,42 +167,42 @@ def kedro_project_partitioned_static_mapping_local(project_scenario_factory) -> 
     return project_scenario_factory(
         options_partitioned_static_mapping(env="local"),
         project_name="kedro-project-partitioned-static-mapping-local",
-    )
+    ), "local"
 
 
 @fixture(scope="function")
 def kedro_project_multiple_inputs_local(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_multiple_inputs(env="local"), project_name="kedro-project-multiple-inputs-local"
-    )
+    ), "local"
 
 
 @fixture(scope="function")
 def kedro_project_multiple_outputs_tuple_local(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_multiple_outputs_tuple(env="local"), project_name="kedro-project-multiple-outputs-tuple-local"
-    )
+    ), "local"
 
 
 @fixture(scope="function")
 def kedro_project_multiple_outputs_dict_local(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_multiple_outputs_dict(env="local"), project_name="kedro-project-multiple-outputs-dict-local"
-    )
+    ), "local"
 
 
 @fixture(scope="function")
 def kedro_project_no_outputs_node_local(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_no_outputs_node(env="local"), project_name="kedro-project-no-outputs-node-local"
-    )
+    ), "local"
 
 
 @fixture(scope="function")
 def kedro_project_nothing_assets_local(project_scenario_factory) -> Path:
     return project_scenario_factory(
         options_nothing_assets(env="local"), project_name="kedro-project-nothing-assets-local"
-    )
+    ), "local"
 
 
 @fixture(scope="function")
@@ -214,116 +217,7 @@ def kedro_project_hooks_filebacked_local(project_scenario_factory, tmp_path: Pat
     opts = options_hooks_filebacked(
         env="local", input_csv=str(input_csv), primary_dir=str(primary_dir), output_dir=str(output_dir)
     )
-    return project_scenario_factory(opts, project_name="kedro-project-hooks-filebacked-local")
-
-
-# Wrappers that return (project_path, env)
-
-
-@fixture(scope="function")
-def kedro_project_exec_filebacked_base_env(kedro_project_exec_filebacked) -> tuple[Path, str]:
-    return kedro_project_exec_filebacked, "base"
-
-
-@fixture(scope="function")
-def kedro_project_exec_filebacked_local_env(kedro_project_exec_filebacked_local) -> tuple[Path, str]:
-    return kedro_project_exec_filebacked_local, "local"
-
-
-@fixture(scope="function")
-def kedro_project_partitioned_intermediate_output2_base_env(
-    kedro_project_partitioned_intermediate_output2,
-) -> tuple[Path, str]:
-    return kedro_project_partitioned_intermediate_output2, "base"
-
-
-@fixture(scope="function")
-def kedro_project_partitioned_intermediate_output2_local_env(
-    kedro_project_partitioned_intermediate_output2_local,
-) -> tuple[Path, str]:
-    return kedro_project_partitioned_intermediate_output2_local, "local"
-
-
-@fixture(scope="function")
-def kedro_project_partitioned_static_mapping_base_env(
-    kedro_project_partitioned_static_mapping,
-) -> tuple[Path, str]:
-    return kedro_project_partitioned_static_mapping, "base"
-
-
-@fixture(scope="function")
-def kedro_project_partitioned_static_mapping_local_env(
-    kedro_project_partitioned_static_mapping_local,
-) -> tuple[Path, str]:
-    return kedro_project_partitioned_static_mapping_local, "local"
-
-
-@fixture(scope="function")
-def kedro_project_multiple_inputs_base_env(kedro_project_multiple_inputs) -> tuple[Path, str]:
-    return kedro_project_multiple_inputs, "base"
-
-
-@fixture(scope="function")
-def kedro_project_multiple_inputs_local_env(kedro_project_multiple_inputs_local) -> tuple[Path, str]:
-    return kedro_project_multiple_inputs_local, "local"
-
-
-@fixture(scope="function")
-def kedro_project_multiple_outputs_tuple_base_env(
-    kedro_project_multiple_outputs_tuple,
-) -> tuple[Path, str]:
-    return kedro_project_multiple_outputs_tuple, "base"
-
-
-@fixture(scope="function")
-def kedro_project_multiple_outputs_tuple_local_env(
-    kedro_project_multiple_outputs_tuple_local,
-) -> tuple[Path, str]:
-    return kedro_project_multiple_outputs_tuple_local, "local"
-
-
-@fixture(scope="function")
-def kedro_project_multiple_outputs_dict_base_env(
-    kedro_project_multiple_outputs_dict,
-) -> tuple[Path, str]:
-    return kedro_project_multiple_outputs_dict, "base"
-
-
-@fixture(scope="function")
-def kedro_project_multiple_outputs_dict_local_env(
-    kedro_project_multiple_outputs_dict_local,
-) -> tuple[Path, str]:
-    return kedro_project_multiple_outputs_dict_local, "local"
-
-
-@fixture(scope="function")
-def kedro_project_no_outputs_node_base_env(kedro_project_no_outputs_node) -> tuple[Path, str]:
-    return kedro_project_no_outputs_node, "base"
-
-
-@fixture(scope="function")
-def kedro_project_no_outputs_node_local_env(kedro_project_no_outputs_node_local) -> tuple[Path, str]:
-    return kedro_project_no_outputs_node_local, "local"
-
-
-@fixture(scope="function")
-def kedro_project_nothing_assets_base_env(kedro_project_nothing_assets) -> tuple[Path, str]:
-    return kedro_project_nothing_assets, "base"
-
-
-@fixture(scope="function")
-def kedro_project_nothing_assets_local_env(kedro_project_nothing_assets_local) -> tuple[Path, str]:
-    return kedro_project_nothing_assets_local, "local"
-
-
-@fixture(scope="function")
-def kedro_project_hooks_filebacked_base_env(kedro_project_hooks_filebacked) -> tuple[Path, str]:
-    return kedro_project_hooks_filebacked, "base"
-
-
-@fixture(scope="function")
-def kedro_project_hooks_filebacked_local_env(kedro_project_hooks_filebacked_local) -> tuple[Path, str]:
-    return kedro_project_hooks_filebacked_local, "local"
+    return project_scenario_factory(opts, project_name="kedro-project-hooks-filebacked-local"), "local"
 
 
 # Scenario variant: exec filebacked but output2 is MemoryDataset
@@ -333,28 +227,14 @@ def kedro_project_hooks_filebacked_local_env(kedro_project_hooks_filebacked_loca
 def kedro_project_exec_filebacked_output2_memory_base(project_scenario_factory) -> Path:
     opts = options_exec_filebacked(env="base")
     opts.catalog["output2_ds"] = {"type": "MemoryDataset"}
-    return project_scenario_factory(opts, project_name="kedro-project-exec-filebacked-output2-memory-base")
+    return project_scenario_factory(opts, project_name="kedro-project-exec-filebacked-output2-memory-base"), "base"
 
 
 @fixture(scope="function")
 def kedro_project_exec_filebacked_output2_memory_local(project_scenario_factory) -> Path:
     opts = options_exec_filebacked(env="local")
     opts.catalog["output2_ds"] = {"type": "MemoryDataset"}
-    return project_scenario_factory(opts, project_name="kedro-project-exec-filebacked-output2-memory-local")
-
-
-@fixture(scope="function")
-def kedro_project_exec_filebacked_output2_memory_base_env(
-    kedro_project_exec_filebacked_output2_memory_base,
-) -> tuple[Path, str]:
-    return kedro_project_exec_filebacked_output2_memory_base, "base"
-
-
-@fixture(scope="function")
-def kedro_project_exec_filebacked_output2_memory_local_env(
-    kedro_project_exec_filebacked_output2_memory_local,
-) -> tuple[Path, str]:
-    return kedro_project_exec_filebacked_output2_memory_local, "local"
+    return project_scenario_factory(opts, project_name="kedro-project-exec-filebacked-output2-memory-local"), "local"
 
 
 # Scenario: Multiple executors dagster config
@@ -368,7 +248,7 @@ def kedro_project_multi_executors_base(project_scenario_factory) -> Path:
     }
     return project_scenario_factory(
         KedroProjectOptions(env="base", dagster=dagster_cfg), project_name="kedro-project-multi-executors-base"
-    )
+    ), "base"
 
 
 @fixture(scope="function")
@@ -379,200 +259,4 @@ def kedro_project_multi_executors_local(project_scenario_factory) -> Path:
     }
     return project_scenario_factory(
         KedroProjectOptions(env="local", dagster=dagster_cfg), project_name="kedro-project-multi-executors-local"
-    )
-
-
-@fixture(scope="function")
-def kedro_project_multi_executors_base_env(kedro_project_multi_executors_base) -> tuple[Path, str]:
-    return kedro_project_multi_executors_base, "base"
-
-
-@fixture(scope="function")
-def kedro_project_multi_executors_local_env(kedro_project_multi_executors_local) -> tuple[Path, str]:
-    return kedro_project_multi_executors_local, "local"
-
-
-# Indirect-param fixtures to choose env dynamically
-
-
-@fixture(scope="function")
-def kedro_project_exec_filebacked_env(
-    request,
-    kedro_project_exec_filebacked_base_env,
-    kedro_project_exec_filebacked_local_env,
-) -> tuple[Path, str]:
-    return (
-        kedro_project_exec_filebacked_base_env if request.param == "base" else kedro_project_exec_filebacked_local_env
-    )
-
-
-@fixture(scope="function")
-def kedro_project_exec_filebacked_output2_memory_env(
-    request,
-    kedro_project_exec_filebacked_output2_memory_base_env,
-    kedro_project_exec_filebacked_output2_memory_local_env,
-) -> tuple[Path, str]:
-    return (
-        kedro_project_exec_filebacked_output2_memory_base_env
-        if request.param == "base"
-        else kedro_project_exec_filebacked_output2_memory_local_env
-    )
-
-
-@fixture(scope="function")
-def kedro_project_multiple_inputs_env(
-    request,
-    kedro_project_multiple_inputs_base_env,
-    kedro_project_multiple_inputs_local_env,
-) -> tuple[Path, str]:
-    return (
-        kedro_project_multiple_inputs_base_env if request.param == "base" else kedro_project_multiple_inputs_local_env
-    )
-
-
-@fixture(scope="function")
-def kedro_project_multiple_outputs_tuple_env(
-    request,
-    kedro_project_multiple_outputs_tuple_base_env,
-    kedro_project_multiple_outputs_tuple_local_env,
-) -> tuple[Path, str]:
-    return (
-        kedro_project_multiple_outputs_tuple_base_env
-        if request.param == "base"
-        else kedro_project_multiple_outputs_tuple_local_env
-    )
-
-
-@fixture(scope="function")
-def kedro_project_multiple_outputs_dict_env(
-    request,
-    kedro_project_multiple_outputs_dict_base_env,
-    kedro_project_multiple_outputs_dict_local_env,
-) -> tuple[Path, str]:
-    return (
-        kedro_project_multiple_outputs_dict_base_env
-        if request.param == "base"
-        else kedro_project_multiple_outputs_dict_local_env
-    )
-
-
-@fixture(scope="function")
-def kedro_project_partitioned_intermediate_output2_env(
-    request,
-    kedro_project_partitioned_intermediate_output2_base_env,
-    kedro_project_partitioned_intermediate_output2_local_env,
-) -> tuple[Path, str]:
-    return (
-        kedro_project_partitioned_intermediate_output2_base_env
-        if request.param == "base"
-        else kedro_project_partitioned_intermediate_output2_local_env
-    )
-
-
-@fixture(scope="function")
-def kedro_project_partitioned_static_mapping_env(
-    request,
-    kedro_project_partitioned_static_mapping_base_env,
-    kedro_project_partitioned_static_mapping_local_env,
-) -> tuple[Path, str]:
-    return (
-        kedro_project_partitioned_static_mapping_base_env
-        if request.param == "base"
-        else kedro_project_partitioned_static_mapping_local_env
-    )
-
-
-@fixture(scope="function")
-def kedro_project_partitioned_identity_mapping_env(
-    request,
-    kedro_project_partitioned_identity_mapping,
-    kedro_project_partitioned_identity_mapping_local,
-) -> tuple[Path, str]:
-    return (
-        (kedro_project_partitioned_identity_mapping, "base")
-        if request.param == "base"
-        else (kedro_project_partitioned_identity_mapping_local, "local")
-    )
-
-
-@fixture(scope="function")
-def kedro_project_no_outputs_node_env(
-    request,
-    kedro_project_no_outputs_node_base_env,
-    kedro_project_no_outputs_node_local_env,
-) -> tuple[Path, str]:
-    return (
-        kedro_project_no_outputs_node_base_env if request.param == "base" else kedro_project_no_outputs_node_local_env
-    )
-
-
-@fixture(scope="function")
-def kedro_project_nothing_assets_env(
-    request,
-    kedro_project_nothing_assets_base_env,
-    kedro_project_nothing_assets_local_env,
-) -> tuple[Path, str]:
-    return kedro_project_nothing_assets_base_env if request.param == "base" else kedro_project_nothing_assets_local_env
-
-
-@fixture(scope="function")
-def kedro_project_hooks_filebacked_env(
-    request,
-    kedro_project_hooks_filebacked_base_env,
-    kedro_project_hooks_filebacked_local_env,
-) -> tuple[Path, str]:
-    return (
-        kedro_project_hooks_filebacked_base_env if request.param == "base" else kedro_project_hooks_filebacked_local_env
-    )
-
-
-@fixture(scope="function")
-def kedro_project_multi_executors_env(
-    request,
-    kedro_project_multi_executors_base_env,
-    kedro_project_multi_executors_local_env,
-) -> tuple[Path, str]:
-    return (
-        kedro_project_multi_executors_base_env if request.param == "base" else kedro_project_multi_executors_local_env
-    )
-
-
-# General scenario builder fixture driven by (scenario_key, env)
-
-
-@fixture(scope="function")
-def kedro_project_scenario_env(request, project_scenario_factory) -> tuple[Path, str]:
-    scenario_key, env = request.param
-    # Map keys to option builders
-    builder_map = {
-        "exec_filebacked": options_exec_filebacked,
-        "partitioned_intermediate_output2": options_partitioned_intermediate_output2,
-        "partitioned_static_mapping": options_partitioned_static_mapping,
-        "multiple_inputs": options_multiple_inputs,
-        "multiple_outputs_tuple": options_multiple_outputs_tuple,
-        "multiple_outputs_dict": options_multiple_outputs_dict,
-        "no_outputs_node": options_no_outputs_node,
-        "nothing_assets": options_nothing_assets,
-    }
-    if scenario_key not in builder_map:
-        raise ValueError(f"Unknown scenario_key: {scenario_key}")
-    opts = builder_map[scenario_key](env)
-    project_name = f"kedro-project-{scenario_key.replace('_', '-')}-{env}"
-    path = project_scenario_factory(opts, project_name=project_name)
-    return path, env
-
-
-@fixture(scope="function")
-def kedro_project_multi_in_out_env(request, project_scenario_factory) -> tuple[Path, str]:
-    scenario_key, env = request.param
-    builder_map = {
-        "multiple_inputs": options_multiple_inputs,
-        "multiple_outputs_tuple": options_multiple_outputs_tuple,
-        "multiple_outputs_dict": options_multiple_outputs_dict,
-    }
-    if scenario_key not in builder_map:
-        raise ValueError("Invalid multi-in/out scenario key")
-    opts = builder_map[scenario_key](env)
-    project_name = f"kedro-project-{scenario_key.replace('_', '-')}-{env}"
-    path = project_scenario_factory(opts, project_name=project_name)
-    return path, env
+    ), "local"
