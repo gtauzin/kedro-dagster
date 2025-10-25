@@ -35,6 +35,20 @@ def register_pipelines():
 """
 
 
+def options_no_dagster_config(env: str) -> KedroProjectOptions:
+    """Minimal catalog with no dagster.yml config."""
+    catalog = {
+        "input_ds": {"type": "MemoryDataset"},
+        "intermediate_ds": {"type": "MemoryDataset"},
+        "output2_ds": {"type": "MemoryDataset"},
+        # Additional outputs referenced by the default test pipeline
+        "output3_ds": {"type": "MemoryDataset"},
+        "output4_ds": {"type": "MemoryDataset"},
+    }
+
+    return KedroProjectOptions(env=env, catalog=catalog, pipeline_registry_py=pipeline_registry_default())
+
+
 def options_exec_filebacked(env: str) -> KedroProjectOptions:
     """Minimal catalog with a file-backed output2 and a simple in-process executor job."""
     catalog = {

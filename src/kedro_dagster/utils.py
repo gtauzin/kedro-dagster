@@ -15,7 +15,7 @@ from kedro_dagster.datasets import DagsterNothingDataset
 
 try:
     from dagster_mlflow import mlflow_tracking
-except Exception:  # pragma: no cover
+except Exception:
     mlflow_tracking = None
 
 if TYPE_CHECKING:
@@ -262,7 +262,14 @@ def _create_pydantic_model_from_dict(
         if isinstance(param_value, dict):
             # Recursively create a nested model for nested dictionaries
             nested_model = _create_pydantic_model_from_dict(name, param_value, __base__=__base__, __config__=__config__)
-            fields[param_name] = (nested_model, ...)
+            # Provide a default instance so the field is not required at construction time
+            try:
+                default_nested = nested_model()
+            except Exception:
+                # Fallback to raw dict if instantiation fails for any reason
+                default_nested = param_value
+                nested_model = dict
+            fields[param_name] = (nested_model, default_nested)
         else:
             # Use the type of the value as the field type
             param_type = type(param_value)

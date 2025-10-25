@@ -36,7 +36,3 @@ def make_jobs_config(
         job["schedule"] = schedule
 
     return {"default": job}
-
-
-def envs() -> list[str]:
-    return ["base", "local"]

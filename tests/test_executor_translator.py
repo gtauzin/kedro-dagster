@@ -9,19 +9,11 @@ from kedro.framework.startup import bootstrap_project
 from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import ExecutorCreator
 
-from .scenarios.helpers import dagster_executors_config, envs, make_jobs_config
-from .scenarios.project_factory import KedroProjectOptions
 
-
-@pytest.mark.parametrize("env", envs())
-def test_executor_translator_creates_multiple_executors(project_variant_factory, env):
-    # Arrange: build a project variant with multiple executors and a default job
-    dagster_cfg = {
-        "executors": dagster_executors_config(),
-        "jobs": make_jobs_config(pipeline_name="__default__", executor="multiproc"),
-    }
-
-    project_path = project_variant_factory(KedroProjectOptions(env=env, dagster=dagster_cfg))
+@pytest.mark.parametrize("kedro_project_multi_executors_env", ["base", "local"], indirect=True)
+def test_executor_translator_creates_multiple_executors(kedro_project_multi_executors_env):
+    # Arrange: project with multiple executors and a default job
+    project_path, env = kedro_project_multi_executors_env
 
     # Act: parse dagster config and build executors
     bootstrap_project(project_path)
@@ -34,5 +26,4 @@ def test_executor_translator_creates_multiple_executors(project_variant_factory,
     assert "seq" in executors
     assert "multiproc" in executors
 
-    MIN_EXPECTED_EXECUTORS = 2
-    assert len(executors) >= MIN_EXPECTED_EXECUTORS
+    assert len(executors) == 2  # noqa: PLR2004

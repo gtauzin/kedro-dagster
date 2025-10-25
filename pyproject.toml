@@ -33,6 +33,7 @@ urls.Documentation = "https://github.com/gtauzin/kedro-dagster/"
 urls."Source Code" = "https://github.com/gtauzin/kedro-dagster"
 dependencies = [
     "kedro>=0.19.0,<1.0",
+    "kedro-datasets",
     "dagster>=1.10,<2.0",
     "dagster-webserver>=1.9,<2.0",
 ]
@@ -66,9 +67,11 @@ tests = [
   "pytest>=8.3",
   "pytest-mock>=3.14",
   "pytest-cov>=7.0",
+  "covdefaults>=2.3",
   "behave>=1.2.7.dev6",
   "psutil>=6.1",
   "pyaml>=25.1",
+  "pandas>=2.3",
 ]
 
 [project.entry-points."kedro.project_commands"]

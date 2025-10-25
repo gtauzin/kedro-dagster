@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib
+
 import dagster as dg
 import pytest
 from kedro.framework.project import pipelines
@@ -14,15 +16,6 @@ from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.utils import format_node_name, is_nothing_asset_name
 
-from .scenarios.kedro_projects import (
-    options_exec_filebacked,
-    options_multiple_inputs,
-    options_multiple_outputs_dict,
-    options_multiple_outputs_tuple,
-    options_no_outputs_node,
-    options_nothing_assets,
-)
-
 
 def _get_node_producing_output(pipeline: Pipeline, dataset_name: str) -> Node:
     for n in pipeline.nodes:
@@ -31,21 +24,31 @@ def _get_node_producing_output(pipeline: Pipeline, dataset_name: str) -> Node:
     raise AssertionError(f"No node produces dataset '{dataset_name}' in pipeline")
 
 
-@pytest.mark.parametrize("env", ["base", "local"])
-def test_create_op_wires_resources(project_variant_factory, env):
-    project_path = project_variant_factory(options_exec_filebacked(env))
+@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
+def test_create_op_wires_resources(kedro_project_exec_filebacked_env):
+    project_path, env = kedro_project_exec_filebacked_env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    pipeline = pipelines.get("__default__")
+    # Ensure Kedro is configured to the just-created project's package to avoid
+    # stale global configuration affecting hooks (e.g., telemetry importing pipelines).
+    src_dir = project_path / "src"
+    pkg_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
+    if pkg_dirs:
+        package_name = pkg_dirs[0].name
+        project_module = importlib.import_module("kedro.framework.project")
+        project_module.configure_project(package_name)
+    project_module = importlib.import_module("kedro.framework.project")
+
+    pipeline = project_module.pipelines.get("__default__")
 
     # Build named_resources via CatalogTranslator to simulate ProjectTranslator flow
     catalog_translator = CatalogTranslator(
         catalog=context.catalog,
         pipelines=[pipeline],
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         env=env,
     )
     named_io_managers, asset_partitions = catalog_translator.to_dagster()
@@ -53,7 +56,7 @@ def test_create_op_wires_resources(project_variant_factory, env):
     node_translator = NodeTranslator(
         pipelines=[pipeline],
         catalog=context.catalog,
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
@@ -68,22 +71,30 @@ def test_create_op_wires_resources(project_variant_factory, env):
     assert f"{env}__output2_ds_io_manager" in op.required_resource_keys
 
 
-@pytest.mark.parametrize("env", ["base", "local"])
-def test_create_op_partition_tags_and_name_suffix(project_variant_factory, env):
-    # Reuse scenario but make output2 a MemoryDataset for this test
-    options = options_exec_filebacked(env)
-    options.catalog["output2_ds"] = {"type": "MemoryDataset"}
-    project_path = project_variant_factory(options)
+@pytest.mark.parametrize("kedro_project_exec_filebacked_output2_memory_env", ["base", "local"], indirect=True)
+def test_create_op_partition_tags_and_name_suffix(kedro_project_exec_filebacked_output2_memory_env):
+    project_path, env = kedro_project_exec_filebacked_output2_memory_env
 
+    # Configure project before accessing pipelines; then reload project module to avoid stale state
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
-    pipeline = pipelines.get("__default__")
+
+    # Force Kedro to use the current project's package for the pipeline registry
+    # by re-configuring the project with its detected package name.
+    src_dir = project_path / "src"
+    pkg_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
+    if pkg_dirs:
+        package_name = pkg_dirs[0].name
+        project_module = importlib.import_module("kedro.framework.project")
+        project_module.configure_project(package_name)
+    project_module = importlib.import_module("kedro.framework.project")
+    pipeline = project_module.pipelines.get("__default__")
 
     node_translator = NodeTranslator(
         pipelines=[pipeline],
         catalog=context.catalog,
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         session_id=session.session_id,
         asset_partitions={},
         named_resources={},
@@ -105,21 +116,30 @@ def test_create_op_partition_tags_and_name_suffix(project_variant_factory, env):
 
 
 @pytest.mark.parametrize(
-    "options_builder", [options_multiple_inputs, options_multiple_outputs_tuple, options_multiple_outputs_dict]
+    "kedro_project_multi_in_out_env",
+    [
+        ("multiple_inputs", "base"),
+        ("multiple_inputs", "local"),
+        ("multiple_outputs_tuple", "base"),
+        ("multiple_outputs_tuple", "local"),
+        ("multiple_outputs_dict", "base"),
+        ("multiple_outputs_dict", "local"),
+    ],
+    indirect=True,
 )
-@pytest.mark.parametrize("env", ["base", "local"])
-def test_node_translator_handles_multiple_inputs_and_outputs(project_variant_factory, env, options_builder):
-    project_path = project_variant_factory(options_builder(env))
+def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi_in_out_env):
+    project_path, env = kedro_project_multi_in_out_env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
+
     pipeline = pipelines.get("__default__")
 
     catalog_translator = CatalogTranslator(
         catalog=context.catalog,
         pipelines=[pipeline],
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         env=env,
     )
     named_io_managers, asset_partitions = catalog_translator.to_dagster()
@@ -127,7 +147,7 @@ def test_node_translator_handles_multiple_inputs_and_outputs(project_variant_fac
     node_translator = NodeTranslator(
         pipelines=[pipeline],
         catalog=context.catalog,
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
@@ -140,19 +160,20 @@ def test_node_translator_handles_multiple_inputs_and_outputs(project_variant_fac
     assert isinstance(op, dg.OpDefinition)
 
 
-@pytest.mark.parametrize("env", ["base", "local"])
-def test_node_translator_handles_nothing_datasets(project_variant_factory, env):
-    project_path = project_variant_factory(options_nothing_assets(env))
+@pytest.mark.parametrize("kedro_project_nothing_assets_env", ["base", "local"], indirect=True)
+def test_node_translator_handles_nothing_datasets(kedro_project_nothing_assets_env):
+    project_path, env = kedro_project_nothing_assets_env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
+
     pipeline = pipelines.get("__default__")
 
     catalog_translator = CatalogTranslator(
         catalog=context.catalog,
         pipelines=[pipeline],
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         env=env,
     )
     named_io_managers, asset_partitions = catalog_translator.to_dagster()
@@ -160,12 +181,14 @@ def test_node_translator_handles_nothing_datasets(project_variant_factory, env):
     node_translator = NodeTranslator(
         pipelines=[pipeline],
         catalog=context.catalog,
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
     )
+
+    # Debug print removed to avoid noisy test output
 
     # Find nodes that use a Nothing dataset by inspecting catalog types
     def _has_nothing_output(n):
@@ -177,8 +200,8 @@ def test_node_translator_handles_nothing_datasets(project_variant_factory, env):
     produce_node = next((n for n in pipeline.nodes if _has_nothing_output(n)), None)
     gated_node = next((n for n in pipeline.nodes if _has_nothing_input(n)), None)
 
-    if not produce_node or not gated_node:
-        pytest.skip("Scenario did not materialize Nothing-producing or Nothing-consuming nodes in this run")
+    # if not produce_node or not gated_node:
+    #     pytest.skip("Scenario did not materialize Nothing-producing or Nothing-consuming nodes in this run")
 
     op_produce = node_translator.create_op(produce_node)
     op_gated = node_translator.create_op(gated_node)
@@ -199,19 +222,27 @@ def test_node_translator_handles_nothing_datasets(project_variant_factory, env):
     )
 
 
-@pytest.mark.parametrize("env", ["base", "local"])
-def test_node_translator_handles_no_output_node(project_variant_factory, env):
-    project_path = project_variant_factory(options_no_outputs_node(env))
+@pytest.mark.parametrize("kedro_project_no_outputs_node_env", ["base", "local"], indirect=True)
+def test_node_translator_handles_no_output_node(kedro_project_no_outputs_node_env):
+    project_path, env = kedro_project_no_outputs_node_env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
-    pipeline = pipelines.get("__default__")
+
+    src_dir = project_path / "src"
+    pkg_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
+    if pkg_dirs:
+        package_name = pkg_dirs[0].name
+        project_module = importlib.import_module("kedro.framework.project")
+        project_module.configure_project(package_name)
+    project_module = importlib.import_module("kedro.framework.project")
+    pipeline = project_module.pipelines.get("__default__")
 
     catalog_translator = CatalogTranslator(
         catalog=context.catalog,
         pipelines=[pipeline],
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         env=env,
     )
     named_io_managers, asset_partitions = catalog_translator.to_dagster()
@@ -219,7 +250,7 @@ def test_node_translator_handles_no_output_node(project_variant_factory, env):
     node_translator = NodeTranslator(
         pipelines=[pipeline],
         catalog=context.catalog,
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
@@ -228,8 +259,8 @@ def test_node_translator_handles_no_output_node(project_variant_factory, env):
 
     # Select the known no-output node from the scenario
     no_out_node = next((n for n in pipeline.nodes if n.name == "sink"), None)
-    if no_out_node is None:
-        pytest.skip("No-output node 'sink' not present in this scenario variant")
+    # if no_out_node is None:
+    #     pytest.skip("No-output node 'sink' not present in this scenario variant")
 
     # to_dagster should create an op factory but not an asset for this node
     named_op_factories, named_assets = node_translator.to_dagster()

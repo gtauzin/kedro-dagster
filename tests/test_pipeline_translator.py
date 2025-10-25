@@ -17,21 +17,10 @@ from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 from kedro_dagster.utils import format_dataset_name, format_node_name
 
-from .scenarios.kedro_projects import (
-    options_exec_filebacked,
-    options_multiple_inputs,
-    options_multiple_outputs_dict,
-    options_multiple_outputs_tuple,
-    options_no_outputs_node,
-    options_nothing_assets,
-    options_partitioned_intermediate_output2,
-    options_partitioned_static_mapping,
-)
 
-
-@pytest.mark.parametrize("env", ["base", "local"])
-def test_pipeline_translator_to_dagster_with_executor(project_variant_factory, env):
-    project_path = project_variant_factory(options_exec_filebacked(env))
+@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
+def test_pipeline_translator_to_dagster_with_executor(kedro_project_exec_filebacked_env):
+    project_path, env = kedro_project_exec_filebacked_env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -44,7 +33,7 @@ def test_pipeline_translator_to_dagster_with_executor(project_variant_factory, e
     catalog_translator = CatalogTranslator(
         catalog=context.catalog,
         pipelines=[default_pipeline],
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         env=env,
     )
     named_io_managers, asset_partitions = catalog_translator.to_dagster()
@@ -53,7 +42,7 @@ def test_pipeline_translator_to_dagster_with_executor(project_variant_factory, e
     node_translator = NodeTranslator(
         pipelines=[default_pipeline],
         catalog=context.catalog,
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
@@ -106,15 +95,15 @@ def test_pipeline_translator_to_dagster_with_executor(project_variant_factory, e
     assert isinstance(jobs["default"], dg.JobDefinition)
 
 
-@pytest.mark.parametrize("env", ["base", "local"])
-def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(project_variant_factory, env):
+@pytest.mark.parametrize("kedro_project_partitioned_intermediate_output2_env", ["base", "local"], indirect=True)
+def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(kedro_project_partitioned_intermediate_output2_env):
     """Ensure the after-pipeline-run hook op declares a Nothing input per partition.
 
     We configure a partitioned path intermediate -> output2 with identity mapping,
     then build the job and introspect the hook op input names to confirm they include
     the per-partition fan-in inputs (e.g., node2__p1_after_pipeline_run_hook_input).
     """
-    project_path = project_variant_factory(options_partitioned_intermediate_output2(env))
+    project_path, env = kedro_project_partitioned_intermediate_output2_env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -126,7 +115,7 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(project_variant_fa
     catalog_translator = CatalogTranslator(
         catalog=context.catalog,
         pipelines=[default_pipeline],
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         env=env,
     )
     named_io_managers, asset_partitions = catalog_translator.to_dagster()
@@ -134,7 +123,7 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(project_variant_fa
     node_translator = NodeTranslator(
         pipelines=[default_pipeline],
         catalog=context.catalog,
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
@@ -185,29 +174,30 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(project_variant_fa
 
 
 @pytest.mark.parametrize(
-    "env,options_builder",
+    "kedro_project_scenario_env",
     [
-        ("base", options_exec_filebacked),
-        ("local", options_exec_filebacked),
-        ("base", options_partitioned_intermediate_output2),
-        ("local", options_partitioned_intermediate_output2),
-        ("base", options_partitioned_static_mapping),
-        ("local", options_partitioned_static_mapping),
-        ("base", options_multiple_inputs),
-        ("local", options_multiple_inputs),
-        ("base", options_multiple_outputs_tuple),
-        ("local", options_multiple_outputs_tuple),
-        ("base", options_multiple_outputs_dict),
-        ("local", options_multiple_outputs_dict),
-        ("base", options_no_outputs_node),
-        ("local", options_no_outputs_node),
-        ("base", options_nothing_assets),
-        ("local", options_nothing_assets),
+        ("exec_filebacked", "base"),
+        ("exec_filebacked", "local"),
+        ("partitioned_intermediate_output2", "base"),
+        ("partitioned_intermediate_output2", "local"),
+        ("partitioned_static_mapping", "base"),
+        ("partitioned_static_mapping", "local"),
+        ("multiple_inputs", "base"),
+        ("multiple_inputs", "local"),
+        ("multiple_outputs_tuple", "base"),
+        ("multiple_outputs_tuple", "local"),
+        ("multiple_outputs_dict", "base"),
+        ("multiple_outputs_dict", "local"),
+        ("no_outputs_node", "base"),
+        ("no_outputs_node", "local"),
+        ("nothing_assets", "base"),
+        ("nothing_assets", "local"),
     ],
+    indirect=True,
 )
-def test_pipeline_translator_builds_jobs_for_scenarios(project_variant_factory, env, options_builder):
+def test_pipeline_translator_builds_jobs_for_scenarios(kedro_project_scenario_env):
     """Ensure PipelineTranslator can build a job across diverse scenarios without errors."""
-    project_path = project_variant_factory(options_builder(env))
+    project_path, env = kedro_project_scenario_env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -220,7 +210,7 @@ def test_pipeline_translator_builds_jobs_for_scenarios(project_variant_factory, 
     catalog_translator = CatalogTranslator(
         catalog=context.catalog,
         pipelines=[default_pipeline],
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         env=env,
     )
     named_io_managers, asset_partitions = catalog_translator.to_dagster()
@@ -229,7 +219,7 @@ def test_pipeline_translator_builds_jobs_for_scenarios(project_variant_factory, 
     node_translator = NodeTranslator(
         pipelines=[default_pipeline],
         catalog=context.catalog,
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},

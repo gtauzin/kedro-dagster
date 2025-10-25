@@ -176,8 +176,12 @@ class KedroProjectTranslator:
         named_resources: dict[str, dg.ResourceDefinition] = {"kedro_run": kedro_run_resource}
 
         if is_mlflow_enabled():
-            # Add MLflow resource if enabled in the Kedro context
-            named_resources["mlflow"] = get_mlflow_resource_from_config(self._context.mlflow)
+            # Add MLflow resource only if MLflow is installed and configured on the context
+            ctx_mlflow = getattr(self._context, "mlflow", None)
+            if ctx_mlflow is not None:
+                named_resources["mlflow"] = get_mlflow_resource_from_config(ctx_mlflow)
+            else:
+                LOGGER.info("MLflow is installed but not configured on the Kedro context; skipping MLflow resource.")
 
         LOGGER.info("Mapping Dagster loggers...")
         self.logger_creator = LoggerTranslator(
@@ -223,7 +227,7 @@ class KedroProjectTranslator:
             named_op_factories=named_op_factories,
             named_resources=named_resources,
             named_executors=named_executors,
-            enable_mlflow=is_mlflow_enabled(),
+            enable_mlflow=is_mlflow_enabled() and hasattr(self._context, "mlflow"),
         )
         named_jobs = self.pipeline_translator.to_dagster()
 

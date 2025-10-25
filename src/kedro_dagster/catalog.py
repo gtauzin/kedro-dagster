@@ -51,6 +51,28 @@ class CatalogTranslator:
         self._hook_manager = hook_manager
         self._env = env
 
+    def _create_dataset_config(self, dataset: "AbstractDataset") -> Any:
+        """Create and return a Pydantic model class capturing dataset configuration.
+
+        The returned class extends Dagster's `Config` and contains fields for:
+        - dataset: the dataset class short name (e.g., CSVDataset)
+        - fields from `dataset._describe()` (excluding "version"), converting
+          `PurePosixPath` values to strings for serialization.
+        """
+        params: dict[str, Any] = {"dataset": dataset.__class__.__name__}
+        for param, value in dataset._describe().items():
+            if param == "version":
+                continue
+            params[param] = str(value) if isinstance(value, PurePosixPath) else value
+
+        DatasetModel = _create_pydantic_model_from_dict(
+            name="DatasetModel",
+            params=params,
+            __base__=dg.Config,
+            __config__=ConfigDict(arbitrary_types_allowed=True),
+        )
+        return DatasetModel
+
     def _translate_dataset(
         self, dataset: "AbstractDataset", dataset_name: str
     ) -> tuple[dg.IOManagerDefinition, Any, Any]:
@@ -72,21 +94,7 @@ class CatalogTranslator:
             partitions_def = dataset._get_partitions_definition()
             partition_mappings = dataset._get_partition_mappings()
 
-        dataset_params = {"dataset": dataset.__class__.__name__}
-        for param, value in dataset._describe().items():
-            valid_value = value
-            if isinstance(value, PurePosixPath):
-                valid_value = str(value)
-            if param == "version":
-                continue
-            dataset_params[param] = valid_value
-
-        DatasetModel = _create_pydantic_model_from_dict(
-            name="DatasetModel",
-            params=dataset_params,
-            __base__=dg.Config,
-            __config__=ConfigDict(arbitrary_types_allowed=True),
-        )
+        DatasetModel = self._create_dataset_config(dataset)
 
         hook_manager = self._hook_manager
         named_nodes = {format_node_name(node.name): node for node in sum(self._pipelines, start=Pipeline([])).nodes}
@@ -110,8 +118,11 @@ class CatalogTranslator:
                     downstream_partition_key = context.op_def.tags["downstream_partition_key"]
                     if asset_name == downstream_partition_key.split("|")[0]:
                         partition = downstream_partition_key.split("|")[1]
-                elif context.has_asset_partitions:
+                # Prefer Dagster's asset partition when available, otherwise fall back to plain partition_key
+                elif getattr(context, "has_asset_partitions", False):
                     partition = context.asset_partition_key
+                elif getattr(context, "has_partition_key", False):
+                    partition = context.partition_key
 
                 if partition is not None:
                     obj = {partition: obj}
@@ -145,8 +156,11 @@ class CatalogTranslator:
                     upstream_partition_key = context.op_def.tags["upstream_partition_key"]
                     if asset_name == upstream_partition_key.split("|")[0]:
                         partition = upstream_partition_key.split("|")[1]
-                elif context.has_asset_partitions:
+                # Prefer Dagster's asset partition when available, otherwise fall back to plain partition_key
+                elif getattr(context, "has_asset_partitions", False):
                     partition = context.asset_partition_key
+                elif getattr(context, "has_partition_key", False):
+                    partition = context.partition_key
 
                 if partition is not None and isinstance(data, dict):
                     val = data.get(partition)
@@ -167,12 +181,12 @@ class CatalogTranslator:
                 return data
 
         # Build a named IO manager class for this particular dataset type
-        ConfigurableDatasetIOManagerClass = create_model(
-            dataset_params["dataset"], __base__=ConfigurableDatasetIOManager
-        )
+        dataset_type_short = dataset.__class__.__name__
+        ConfigurableDatasetIOManagerClass = create_model(dataset_type_short, __base__=ConfigurableDatasetIOManager)
         ConfigurableDatasetIOManagerClass.__doc__ = f"IO Manager for Kedro dataset `{dataset_name}`."
 
-        return ConfigurableDatasetIOManagerClass(**dataset_params), partitions_def, partition_mappings
+        # Instantiate without args; defaults are embedded in the DatasetModel
+        return ConfigurableDatasetIOManagerClass(), partitions_def, partition_mappings
 
     def to_dagster(self) -> tuple[dict[str, dg.IOManagerDefinition], dict[str, dict[str, Any]]]:
         """Generate IO managers and partitions for all Kedro datasets referenced by pipelines."""

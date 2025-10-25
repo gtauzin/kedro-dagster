@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import dagster as dg
-import pandas as pd
 import pytest
 from kedro.framework.hooks import hook_impl
 from kedro.framework.project import pipelines
@@ -17,8 +16,6 @@ from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import ExecutorCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
-
-from .scenarios.kedro_projects import options_hooks_filebacked
 
 
 @dataclass
@@ -33,55 +30,42 @@ class RecordingHooks:
     after_pipeline_run_calls: int = 0
 
     @hook_impl
-    def before_dataset_loaded(self, dataset_name, node):  # type: ignore[no-untyped-def]
+    def before_dataset_loaded(self, dataset_name, node):
         self.before_dataset_loaded_calls.append(dataset_name)
 
     @hook_impl
-    def after_dataset_loaded(self, dataset_name, data, node):  # type: ignore[no-untyped-def]
+    def after_dataset_loaded(self, dataset_name, data, node):
         self.after_dataset_loaded_calls.append(dataset_name)
 
     @hook_impl
-    def before_dataset_saved(self, dataset_name, data, node):  # type: ignore[no-untyped-def]
+    def before_dataset_saved(self, dataset_name, data, node):
         self.before_dataset_saved_calls.append(dataset_name)
 
     @hook_impl
-    def after_dataset_saved(self, dataset_name, data, node):  # type: ignore[no-untyped-def]
+    def after_dataset_saved(self, dataset_name, data, node):
         self.after_dataset_saved_calls.append(dataset_name)
 
     @hook_impl
-    def before_node_run(self, node, catalog, inputs, is_async, session_id):  # type: ignore[no-untyped-def]
+    def before_node_run(self, node, catalog, inputs, is_async, session_id):
         self.before_node_run_calls.append(node.name)
 
     @hook_impl
-    def after_node_run(self, node, catalog, inputs, outputs, is_async, session_id):  # type: ignore[no-untyped-def]
+    def after_node_run(self, node, catalog, inputs, outputs, is_async, session_id):
         self.after_node_run_calls.append(node.name)
 
     @hook_impl
-    def before_pipeline_run(self, run_params, pipeline, catalog):  # type: ignore[no-untyped-def]
+    def before_pipeline_run(self, run_params, pipeline, catalog):
         self.before_pipeline_run_calls += 1
 
     @hook_impl
-    def after_pipeline_run(self, run_params, pipeline, catalog):  # type: ignore[no-untyped-def]
+    def after_pipeline_run(self, run_params, pipeline, catalog):
         self.after_pipeline_run_calls += 1
 
 
-@pytest.mark.parametrize("env", ["base", "local"])
-def test_hooks_are_invoked_end_to_end(project_variant_factory, tmp_path, env):
-    # Arrange: build a project variant with file-backed datasets so IO managers are used
-    data_dir = tmp_path / "data"
-    input_csv = data_dir / "01_raw" / "input.csv"
-    output_dir = data_dir / "08_reporting"
-    primary_dir = data_dir / "03_primary"
-    (input_csv.parent).mkdir(parents=True, exist_ok=True)
-    (output_dir).mkdir(parents=True, exist_ok=True)
-    (primary_dir).mkdir(parents=True, exist_ok=True)
-
-    # Write input CSV
-    pd.DataFrame({"x": [1, 2, 3]}).to_csv(input_csv, index=False)
-
-    project_path = project_variant_factory(
-        options_hooks_filebacked(env=env, input_csv=input_csv, primary_dir=primary_dir, output_dir=output_dir)
-    )
+@pytest.mark.parametrize("kedro_project_hooks_filebacked_env", ["base", "local"], indirect=True)
+def test_hooks_are_invoked_end_to_end(kedro_project_hooks_filebacked_env):
+    # Arrange: use a project variant with file-backed datasets so IO managers are used
+    project_path, env = kedro_project_hooks_filebacked_env
 
     # Bootstrap and session
     bootstrap_project(project_path)
@@ -90,7 +74,7 @@ def test_hooks_are_invoked_end_to_end(project_variant_factory, tmp_path, env):
 
     # Register recording hooks on Kedro hook manager
     hooks = RecordingHooks()
-    context._hook_manager.register(hooks)  # noqa: SLF001
+    context._hook_manager.register(hooks)
 
     # Translate configurations
     dagster_config = get_dagster_config(context)
@@ -99,7 +83,7 @@ def test_hooks_are_invoked_end_to_end(project_variant_factory, tmp_path, env):
     catalog_translator = CatalogTranslator(
         catalog=context.catalog,
         pipelines=[default_pipeline],
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         env=env,
     )
     named_io_managers, asset_partitions = catalog_translator.to_dagster()
@@ -107,7 +91,7 @@ def test_hooks_are_invoked_end_to_end(project_variant_factory, tmp_path, env):
     node_translator = NodeTranslator(
         pipelines=[default_pipeline],
         catalog=context.catalog,
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},

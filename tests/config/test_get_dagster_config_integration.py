@@ -18,13 +18,12 @@ from tests.scenarios.helpers import (
     dagster_schedules_config,
     make_jobs_config,
 )
-from tests.scenarios.kedro_projects import options_exec_filebacked
 
 
-@pytest.mark.parametrize("env", ["base", "local"])
-def test_get_dagster_config_loads_and_parses(project_variant_factory, env):
+@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
+def test_get_dagster_config_loads_and_parses(kedro_project_exec_filebacked_env):
     # Prepare a project variant with executors, schedules, jobs defined in conf/<env>/dagster.yml
-    project_path = project_variant_factory(options_exec_filebacked(env))
+    project_path, env = kedro_project_exec_filebacked_env
 
     # Bootstrap and load Kedro context for the selected env
     bootstrap_project(project_path)

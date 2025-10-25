@@ -129,6 +129,8 @@ def test_get_filter_params_dict():
 
 
 def test_get_mlflow_resource_from_config():
+    # Only run this test when kedro-mlflow is available
+    pytest.importorskip("kedro_mlflow")
     mock_mlflow_config = SimpleNamespace(
         tracking=SimpleNamespace(experiment=SimpleNamespace(name="test_experiment")),
         server=SimpleNamespace(mlflow_tracking_uri="http://localhost:5000"),

@@ -14,17 +14,10 @@ from kedro_dagster.dagster import LoggerTranslator, ScheduleCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 
-from .scenarios.helpers import envs, make_jobs_config
-from .scenarios.kedro_projects import options_exec_filebacked
-from .scenarios.project_factory import KedroProjectOptions
 
-
-@pytest.mark.parametrize("env", envs())
-def test_logger_translator_builds_package_loggers(project_variant_factory, env):
-    options = KedroProjectOptions(
-        env=env, dagster={"executors": {"seq": {"in_process": {}}}, "jobs": make_jobs_config()}
-    )
-    project_path = project_variant_factory(options)
+@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
+def test_logger_translator_builds_package_loggers(kedro_project_exec_filebacked_env):
+    project_path, env = kedro_project_exec_filebacked_env
 
     metadata = bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -40,10 +33,10 @@ def test_logger_translator_builds_package_loggers(project_variant_factory, env):
     assert all(isinstance(v, dg.LoggerDefinition) for v in named_loggers.values())
 
 
-@pytest.mark.parametrize("env", envs())
-def test_schedule_creator_uses_named_schedule(project_variant_factory, env):
+@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
+def test_schedule_creator_uses_named_schedule(kedro_project_exec_filebacked_env):
     # Use the integration scenario which includes executors, schedules and a default job
-    project_path = project_variant_factory(options_exec_filebacked(env))
+    project_path, env = kedro_project_exec_filebacked_env
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
@@ -55,14 +48,14 @@ def test_schedule_creator_uses_named_schedule(project_variant_factory, env):
     catalog_translator = CatalogTranslator(
         catalog=context.catalog,
         pipelines=[default_pipeline],
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         env=env,
     )
     named_io_managers, asset_partitions = catalog_translator.to_dagster()
     node_translator = NodeTranslator(
         pipelines=[default_pipeline],
         catalog=context.catalog,
-        hook_manager=context._hook_manager,  # noqa: SLF001
+        hook_manager=context._hook_manager,
         session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},

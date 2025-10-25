@@ -9,12 +9,10 @@ from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.translator import KedroProjectTranslator
 
-from .scenarios.kedro_projects import options_exec_filebacked
 
-
-@pytest.mark.parametrize("env", ["base", "local"])
-def test_kedro_project_translator_end_to_end(project_variant_factory, env):
-    project_path = project_variant_factory(options_exec_filebacked(env))
+@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
+def test_kedro_project_translator_end_to_end(kedro_project_exec_filebacked_env):
+    project_path, env = kedro_project_exec_filebacked_env
 
     # Initialize Kedro and run the full translator like definitions.py would
     bootstrap_project(project_path)
@@ -44,5 +42,3 @@ def test_kedro_project_translator_end_to_end(project_variant_factory, env):
     # Resources include dataset-specific IO manager for file-backed output2
     expected_io_manager_key = f"{env}__output2_ds_io_manager"
     assert expected_io_manager_key in location.named_resources
-
-    # No op factories exposed in DagsterCodeLocation
