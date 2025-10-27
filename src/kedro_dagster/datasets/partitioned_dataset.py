@@ -287,9 +287,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
             partitions_def = self._get_partitions_definition()
             partition_keys = partitions_def.get_partition_keys()
             if not isinstance(data, dict):
-                raise TypeError(
-                    f"Expected data to be a dict mapping partition keys to data, but got: {type(data)}"
-                )
+                raise TypeError(f"Expected data to be a dict mapping partition keys to data, but got: {type(data)}")
             elif all(key not in partition_keys for key in data.keys()):
                 raise ValueError(
                     "No matching partitions found to save the provided data. Partition keys: "

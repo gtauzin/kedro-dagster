@@ -262,6 +262,7 @@ def kedro_project_multi_executors_local(project_scenario_factory) -> tuple[Path,
         KedroProjectOptions(env="local", dagster=dagster_cfg), project_name="kedro-project-multi-executors-local"
     )
 
+
 # General scenario builder fixture driven by (scenario_key, env)
 
 

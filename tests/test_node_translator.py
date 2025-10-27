@@ -29,7 +29,7 @@ def _get_node_producing_output(pipeline: Pipeline, dataset_name: str) -> Node:
 def test_create_op_wires_resources(env, request):
     _fixture_val = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
     project_path = _fixture_val
-    while isinstance(project_path, (tuple, list)) and len(project_path) > 0:
+    while isinstance(project_path, tuple | list) and len(project_path) > 0:
         if isinstance(project_path[0], Path):
             project_path = project_path[0]
             break
@@ -82,7 +82,7 @@ def test_create_op_wires_resources(env, request):
 def test_create_op_partition_tags_and_name_suffix(env, request):
     _fixture_val = request.getfixturevalue(f"kedro_project_exec_filebacked_output2_memory_{env}")
     project_path = _fixture_val
-    while isinstance(project_path, (tuple, list)) and len(project_path) > 0:
+    while isinstance(project_path, tuple | list) and len(project_path) > 0:
         if isinstance(project_path[0], Path):
             project_path = project_path[0]
             break
@@ -178,7 +178,7 @@ def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi
 def test_node_translator_handles_nothing_datasets(env, request):
     _fixture_val = request.getfixturevalue(f"kedro_project_nothing_assets_{env}")
     project_path = _fixture_val
-    while isinstance(project_path, (tuple, list)) and len(project_path) > 0:
+    while isinstance(project_path, tuple | list) and len(project_path) > 0:
         if isinstance(project_path[0], Path):
             project_path = project_path[0]
             break
@@ -246,7 +246,7 @@ def test_node_translator_handles_nothing_datasets(env, request):
 def test_node_translator_handles_no_output_node(env, request):
     _fixture_val = request.getfixturevalue(f"kedro_project_no_outputs_node_{env}")
     project_path = _fixture_val
-    while isinstance(project_path, (tuple, list)) and len(project_path) > 0:
+    while isinstance(project_path, tuple | list) and len(project_path) > 0:
         if isinstance(project_path[0], Path):
             project_path = project_path[0]
             break

@@ -2,7 +2,6 @@ from typing import Any
 
 from kedro.io.core import AbstractDataset
 
-
 NOTHING_OUTPUT = "__nothing__"
 
 
