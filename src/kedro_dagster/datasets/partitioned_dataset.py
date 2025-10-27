@@ -35,12 +35,15 @@ def parse_dagster_definition(
             raise TypeError("'type' class path does not support relative paths or paths ending with a dot.")
         class_paths = (prefix + definition_type for prefix in _DEFAULT_PACKAGES)
 
+        # Try to resolve the class by attempting a few import paths; record the last error message if all fail
         for class_path in class_paths:
-            tmp, error_msg = _load_obj(class_path)  # Try to load partition class
-
-            if tmp is not None:
-                class_obj = tmp
-                break
+            try:
+                tmp = _load_obj(class_path)  # Try to load partition class
+                if tmp is not None:
+                    class_obj = tmp
+                    break
+            except Exception as exc:  # noqa: BLE001 - we want to bubble a concise message later
+                error_msg = str(exc)
 
         if class_obj is None:  # If no valid class was found, raise an error
             default_error_msg = f"Class '{definition_type}' not found, is this a typo?"
@@ -53,7 +56,38 @@ def parse_dagster_definition(
 
 
 class DagsterPartitionedDataset(PartitionedDataset):
-    """A Kedro dataset that integrates with Dagster's partitioning system."""
+    """A Kedro dataset that integrates with Dagster's partitioning system.
+
+    Args:
+        path (str): Base path for partitions.
+        dataset (dict[str, Any]): Underlying dataset config.
+        partition (dict[str, Any]): Partition definition config or type.
+        partition_mapping (dict[str, Any] | None): Optional downstream partition mappings.
+        filepath_arg (str): Arg name in underlying dataset to pass the resolved path.
+        filename_suffix (str): Optional suffix appended to partitioned filename.
+        credentials (dict[str, Any] | None): Credentials for the underlying dataset.
+        load_args (dict[str, Any] | None): Load args for the underlying dataset.
+        fs_args (dict[str, Any] | None): Filesystem args for the underlying dataset.
+        overwrite (bool): Whether to overwrite on save.
+        save_lazily (bool): Whether to save lazily.
+        metadata (dict[str, Any] | None): Arbitrary metadata.
+
+    Examples:
+        ```python
+        from kedro_dagster.datasets import DagsterPartitionedDataset
+
+        partitioned_dataset = DagsterPartitionedDataset(
+            path="data/partitions/",
+            dataset=CSVDataSet(
+                filepath_arg="filepath",
+                sep=",",
+            ),
+            partition=StaticPartitionsDefinition(["2023-01-01", "2023-01-02"]),
+            partition_mapping={"downstream_dataset": TimeWindowPartitionMapping()},
+            filename_suffix=".csv",
+        )
+        ```
+    """
 
     def __init__(
         self,
@@ -71,22 +105,6 @@ class DagsterPartitionedDataset(PartitionedDataset):
         save_lazily: bool = True,
         metadata: dict[str, Any] | None = None,
     ):
-        """Create a partitioned Kedro dataset backed by Dagster partitions.
-
-        Args:
-            path (str): Base path for partitions.
-            dataset (dict[str, Any]): Underlying dataset config.
-            partition (dict[str, Any]): Partition definition config or type.
-            partition_mapping (dict[str, Any] | None): Optional downstream partition mappings.
-            filepath_arg (str): Arg name in underlying dataset to pass the resolved path.
-            filename_suffix (str): Optional suffix appended to partitioned filename.
-            credentials (dict[str, Any] | None): Credentials for the underlying dataset.
-            load_args (dict[str, Any] | None): Load args for the underlying dataset.
-            fs_args (dict[str, Any] | None): Filesystem args for the underlying dataset.
-            overwrite (bool): Whether to overwrite on save.
-            save_lazily (bool): Whether to save lazily.
-            metadata (dict[str, Any] | None): Arbitrary metadata.
-        """
         super().__init__(
             path=path,
             dataset=dataset,
