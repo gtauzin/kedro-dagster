@@ -174,30 +174,29 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
 
 
 @pytest.mark.parametrize(
-    "kedro_project_scenario_env",
+    "env_fixture",
     [
-        ("exec_filebacked", "base"),
-        ("exec_filebacked", "local"),
-        ("partitioned_intermediate_output2", "base"),
-        ("partitioned_intermediate_output2", "local"),
-        ("partitioned_static_mapping", "base"),
-        ("partitioned_static_mapping", "local"),
-        ("multiple_inputs", "base"),
-        ("multiple_inputs", "local"),
-        ("multiple_outputs_tuple", "base"),
-        ("multiple_outputs_tuple", "local"),
-        ("multiple_outputs_dict", "base"),
-        ("multiple_outputs_dict", "local"),
-        ("no_outputs_node", "base"),
-        ("no_outputs_node", "local"),
-        ("nothing_assets", "base"),
-        ("nothing_assets", "local"),
+        "kedro_project_exec_filebacked_base",
+        "kedro_project_exec_filebacked_local",
+        "kedro_project_partitioned_intermediate_output2_base",
+        "kedro_project_partitioned_intermediate_output2_local",
+        "kedro_project_partitioned_static_mapping_base",
+        "kedro_project_partitioned_static_mapping_local",
+        "kedro_project_multiple_inputs_base",
+        "kedro_project_multiple_inputs_local",
+        "kedro_project_multiple_outputs_tuple_base",
+        "kedro_project_multiple_outputs_tuple_local",
+        "kedro_project_multiple_outputs_dict_base",
+        "kedro_project_multiple_outputs_dict_local",
+        "kedro_project_no_outputs_node_base",
+        "kedro_project_no_outputs_node_local",
+        "kedro_project_nothing_assets_base",
+        "kedro_project_nothing_assets_local",
     ],
-    indirect=True,
 )
-def test_pipeline_translator_builds_jobs_for_scenarios(kedro_project_scenario_env):
+def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
     """Ensure PipelineTranslator can build a job across diverse scenarios without errors."""
-    project_path, options = kedro_project_scenario_env
+    project_path, options = request.getfixturevalue(env_fixture)
     env = options.env
 
     bootstrap_project(project_path)

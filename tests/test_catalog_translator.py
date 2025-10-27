@@ -17,27 +17,26 @@ from kedro_dagster.utils import format_dataset_name
 
 
 @pytest.mark.parametrize(
-    "kedro_project_scenario_env",
+    "env_fixture",
     [
-        ("exec_filebacked", "base"),
-        ("partitioned_intermediate_output2", "local"),
-        ("partitioned_static_mapping", "base"),
-        ("multiple_inputs", "local"),
-        ("multiple_outputs_tuple", "base"),
-        ("multiple_outputs_dict", "local"),
-        ("no_outputs_node", "base"),
-        ("nothing_assets", "local"),
+        "kedro_project_exec_filebacked_base",
+        "kedro_project_partitioned_intermediate_output2_local",
+        "kedro_project_partitioned_static_mapping_base",
+        "kedro_project_multiple_inputs_local",
+        "kedro_project_multiple_outputs_tuple_base",
+        "kedro_project_multiple_outputs_dict_local",
+        "kedro_project_no_outputs_node_base",
+        "kedro_project_nothing_assets_local",
     ],
-    indirect=True,
 )
-def test_catalog_translator_covers_scenarios(kedro_project_scenario_env):
+def test_catalog_translator_covers_scenarios(request, env_fixture):
     """Test CatalogTranslator across diverse scenarios and assert core invariants.
 
     - File-backed datasets (CSVDataset) get IO managers.
     - Partitioned datasets expose partitions_def in asset_partitions.
     - Memory datasets do not result in dedicated IO managers.
     """
-    project_path, options = kedro_project_scenario_env
+    project_path, options = request.getfixturevalue(env_fixture)
     env = options.env
 
     bootstrap_project(project_path)

@@ -87,6 +87,9 @@ def kedro_project_partitioned_identity_mapping_local(project_scenario_factory) -
     )
 
 
+# Per-env wrappers for identity mapping returning (Path, env)
+
+
 @fixture(scope="function")
 def kedro_project_partitioned_static_mapping_base(project_scenario_factory) -> tuple[Path, KedroProjectOptions]:
     return project_scenario_factory(
@@ -121,7 +124,7 @@ def kedro_project_hooks_filebacked_base(project_scenario_factory, tmp_path: Path
     return project_scenario_factory(opts, project_name="kedro-project-hooks-filebacked")
 
 
-# Per-env variants and wrappers returning (Path, options)
+# Per-env variants returning (Path, options)
 
 
 @fixture(scope="function")
@@ -148,9 +151,51 @@ def kedro_project_partitioned_static_mapping_local(project_scenario_factory) -> 
 
 
 @fixture(scope="function")
+def kedro_project_multiple_inputs_base(project_scenario_factory) -> tuple[Path, KedroProjectOptions]:
+    return project_scenario_factory(
+        options_multiple_inputs(env="base"), project_name="kedro-project-multiple-inputs-base"
+    )
+
+
+@fixture(scope="function")
+def kedro_project_multiple_inputs_local(project_scenario_factory) -> tuple[Path, KedroProjectOptions]:
+    return project_scenario_factory(
+        options_multiple_inputs(env="local"), project_name="kedro-project-multiple-inputs-local"
+    )
+
+
+@fixture(scope="function")
 def kedro_project_no_outputs_node_local(project_scenario_factory) -> tuple[Path, KedroProjectOptions]:
     return project_scenario_factory(
         options_no_outputs_node(env="local"), project_name="kedro-project-no-outputs-node-local"
+    )
+
+
+@fixture(scope="function")
+def kedro_project_multiple_outputs_tuple_base(project_scenario_factory) -> tuple[Path, KedroProjectOptions]:
+    return project_scenario_factory(
+        options_multiple_outputs_tuple(env="base"), project_name="kedro-project-multiple-outputs-tuple-base"
+    )
+
+
+@fixture(scope="function")
+def kedro_project_multiple_outputs_tuple_local(project_scenario_factory) -> tuple[Path, KedroProjectOptions]:
+    return project_scenario_factory(
+        options_multiple_outputs_tuple(env="local"), project_name="kedro-project-multiple-outputs-tuple-local"
+    )
+
+
+@fixture(scope="function")
+def kedro_project_multiple_outputs_dict_base(project_scenario_factory) -> tuple[Path, KedroProjectOptions]:
+    return project_scenario_factory(
+        options_multiple_outputs_dict(env="base"), project_name="kedro-project-multiple-outputs-dict-base"
+    )
+
+
+@fixture(scope="function")
+def kedro_project_multiple_outputs_dict_local(project_scenario_factory) -> tuple[Path, KedroProjectOptions]:
+    return project_scenario_factory(
+        options_multiple_outputs_dict(env="local"), project_name="kedro-project-multiple-outputs-dict-local"
     )
 
 

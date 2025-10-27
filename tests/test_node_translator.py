@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 
 import dagster as dg
 import pytest
@@ -26,7 +27,13 @@ def _get_node_producing_output(pipeline: Pipeline, dataset_name: str) -> Node:
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_create_op_wires_resources(env, request):
-    project_path, _ = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+    _fixture_val = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+    project_path = _fixture_val
+    while isinstance(project_path, (tuple, list)) and len(project_path) > 0:
+        if isinstance(project_path[0], Path):
+            project_path = project_path[0]
+            break
+        project_path = project_path[0]
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -73,7 +80,13 @@ def test_create_op_wires_resources(env, request):
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_create_op_partition_tags_and_name_suffix(env, request):
-    project_path, _ = request.getfixturevalue(f"kedro_project_exec_filebacked_output2_memory_{env}")
+    _fixture_val = request.getfixturevalue(f"kedro_project_exec_filebacked_output2_memory_{env}")
+    project_path = _fixture_val
+    while isinstance(project_path, (tuple, list)) and len(project_path) > 0:
+        if isinstance(project_path[0], Path):
+            project_path = project_path[0]
+            break
+        project_path = project_path[0]
 
     # Configure project before accessing pipelines; then reload project module to avoid stale state
     bootstrap_project(project_path)
@@ -163,7 +176,13 @@ def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_node_translator_handles_nothing_datasets(env, request):
-    project_path, _ = request.getfixturevalue(f"kedro_project_nothing_assets_{env}")
+    _fixture_val = request.getfixturevalue(f"kedro_project_nothing_assets_{env}")
+    project_path = _fixture_val
+    while isinstance(project_path, (tuple, list)) and len(project_path) > 0:
+        if isinstance(project_path[0], Path):
+            project_path = project_path[0]
+            break
+        project_path = project_path[0]
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -225,7 +244,13 @@ def test_node_translator_handles_nothing_datasets(env, request):
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_node_translator_handles_no_output_node(env, request):
-    project_path, _ = request.getfixturevalue(f"kedro_project_no_outputs_node_{env}")
+    _fixture_val = request.getfixturevalue(f"kedro_project_no_outputs_node_{env}")
+    project_path = _fixture_val
+    while isinstance(project_path, (tuple, list)) and len(project_path) > 0:
+        if isinstance(project_path[0], Path):
+            project_path = project_path[0]
+            break
+        project_path = project_path[0]
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
