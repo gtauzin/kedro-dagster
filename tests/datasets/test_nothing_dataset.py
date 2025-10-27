@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from kedro_dagster.datasets.nothing_dataset import DagsterNothingDataset
+from kedro_dagster.datasets.nothing_dataset import NOTHING_OUTPUT, DagsterNothingDataset
 
 
 class TestDagsterNothingDataset:
     def test_load_returns_none(self):
         ds = DagsterNothingDataset(metadata={"a": 1})
-        assert ds.load() is None
+        assert ds.load() == NOTHING_OUTPUT
 
     def test_save_is_noop(self):
         ds = DagsterNothingDataset()

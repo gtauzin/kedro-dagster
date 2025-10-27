@@ -20,6 +20,7 @@ from kedro.io import DatasetNotFoundError, MemoryDataset
 from kedro.pipeline import Pipeline
 from pydantic import ConfigDict
 
+from kedro_dagster.datasets.nothing_dataset import NOTHING_OUTPUT
 from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
@@ -384,6 +385,9 @@ class NodeTranslator:
                 out_asset_key = get_asset_key_from_dataset_name(out_dataset_name, self._env)
                 context.log_event(dg.AssetMaterialization(asset_key=out_asset_key, partition=partition_key))
 
+                if is_nothing_asset_name(self._catalog, out_dataset_name) and outputs[out_dataset_name] == NOTHING_OUTPUT:
+                    outputs[out_dataset_name] = None
+
             if len(outputs) > 0:
                 res = tuple(outputs.values())
                 if is_in_last_layer:
@@ -479,7 +483,7 @@ class NodeTranslator:
             outputs = node.run(inputs)
 
             for out_dataset_name in node.outputs:
-                if is_nothing_asset_name(self._catalog, out_dataset_name):
+                if is_nothing_asset_name(self._catalog, out_dataset_name) and outputs[out_dataset_name] == NOTHING_OUTPUT:
                     outputs[out_dataset_name] = None
 
             if len(outputs) == 1:

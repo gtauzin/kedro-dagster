@@ -4,7 +4,7 @@ import logging
 
 from .catalog import CatalogTranslator
 from .dagster import ExecutorCreator, LoggerTranslator, ScheduleCreator
-from .datasets import DagsterNothingDataset, DagsterPartitionedDataset
+from .datasets import NOTHING_OUTPUT, DagsterNothingDataset, DagsterPartitionedDataset
 from .kedro import KedroRunTranslator
 from .nodes import NodeTranslator
 from .pipelines import PipelineTranslator
@@ -15,6 +15,7 @@ logging.getLogger(__name__).setLevel(logging.INFO)
 
 __all__ = [
     "CatalogTranslator",
+    "NOTHING_OUTPUT",
     "DagsterNothingDataset",
     "DagsterPartitionedDataset",
     "ExecutorCreator",

@@ -34,7 +34,7 @@ def parse_dagster_definition(
         if len(definition_type.strip(".")) != len(definition_type):
             raise TypeError("'type' class path does not support relative paths or paths ending with a dot.")
         class_paths = (prefix + definition_type for prefix in _DEFAULT_PACKAGES)
-    
+
         for class_path in class_paths:
             tmp, error_msg = _load_obj(class_path)  # Try to load partition class
 
@@ -102,7 +102,6 @@ class DagsterPartitionedDataset(PartitionedDataset):
 
         partition = partition if isinstance(partition, dict) else {"type": partition}
         self._validate_partitions_definition(partition)
-        print("PARTITION:", partition)
         self._partition_type, self._partition_config = parse_dagster_definition(partition)
 
         self._partition_mapping: dict[str, Any] | None = None
@@ -137,8 +136,6 @@ class DagsterPartitionedDataset(PartitionedDataset):
         Returns:
             PartitionsDefinition: Instantiated partitions definition.
         """
-        print("PARTITION TYPE:", self._partition_type)
-        print("PARTITION CONFIG:", self._partition_config)
         try:
             partition_def = self._partition_type(**self._partition_config)
         except Exception as exc:
@@ -285,9 +282,19 @@ class DagsterPartitionedDataset(PartitionedDataset):
         Args:
             data (dict[str, Any]): Map of partition key to data.
         """
-        if self._partition_type is dg.DynamicPartitionsDefinition:
-            instance = dg.DagsterInstance.get()
-            instance.add_dynamic_partitions(self._partition_config["name"], self._list_available_partition_keys())
+
+        if self._partition_type is not dg.DynamicPartitionsDefinition:
+            partitions_def = self._get_partitions_definition()
+            partition_keys = partitions_def.get_partition_keys()
+            if not isinstance(data, dict):
+                raise TypeError(
+                    f"Expected data to be a dict mapping partition keys to data, but got: {type(data)}"
+                )
+            elif all(key not in partition_keys for key in data.keys()):
+                raise ValueError(
+                    "No matching partitions found to save the provided data. Partition keys: "
+                    f"{list(data.keys())}. Expected keys: {partition_keys}"
+                )
 
         super().save(data)
 

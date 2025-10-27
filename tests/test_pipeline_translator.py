@@ -18,9 +18,9 @@ from kedro_dagster.pipelines import PipelineTranslator
 from kedro_dagster.utils import format_dataset_name, format_node_name
 
 
-@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
-def test_pipeline_translator_to_dagster_with_executor(kedro_project_exec_filebacked_env):
-    project_path, env = kedro_project_exec_filebacked_env
+@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+def test_pipeline_translator_to_dagster_with_executor(env, request):
+    project_path, _ = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -95,15 +95,15 @@ def test_pipeline_translator_to_dagster_with_executor(kedro_project_exec_filebac
     assert isinstance(jobs["default"], dg.JobDefinition)
 
 
-@pytest.mark.parametrize("kedro_project_partitioned_intermediate_output2_env", ["base", "local"], indirect=True)
-def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(kedro_project_partitioned_intermediate_output2_env):
+@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
     """Ensure the after-pipeline-run hook op declares a Nothing input per partition.
 
     We configure a partitioned path intermediate -> output2 with identity mapping,
     then build the job and introspect the hook op input names to confirm they include
     the per-partition fan-in inputs (e.g., node2__p1_after_pipeline_run_hook_input).
     """
-    project_path, env = kedro_project_partitioned_intermediate_output2_env
+    project_path, _ = request.getfixturevalue(f"kedro_project_partitioned_intermediate_output2_{env}")
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -197,7 +197,8 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(kedro_project_part
 )
 def test_pipeline_translator_builds_jobs_for_scenarios(kedro_project_scenario_env):
     """Ensure PipelineTranslator can build a job across diverse scenarios without errors."""
-    project_path, env = kedro_project_scenario_env
+    project_path, options = kedro_project_scenario_env
+    env = options.env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)

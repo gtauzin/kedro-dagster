@@ -24,9 +24,9 @@ def _get_node_producing_output(pipeline: Pipeline, dataset_name: str) -> Node:
     raise AssertionError(f"No node produces dataset '{dataset_name}' in pipeline")
 
 
-@pytest.mark.parametrize("kedro_project_exec_filebacked_env", ["base", "local"], indirect=True)
-def test_create_op_wires_resources(kedro_project_exec_filebacked_env):
-    project_path, env = kedro_project_exec_filebacked_env
+@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+def test_create_op_wires_resources(env, request):
+    project_path, _ = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -71,9 +71,9 @@ def test_create_op_wires_resources(kedro_project_exec_filebacked_env):
     assert f"{env}__output2_ds_io_manager" in op.required_resource_keys
 
 
-@pytest.mark.parametrize("kedro_project_exec_filebacked_output2_memory_env", ["base", "local"], indirect=True)
-def test_create_op_partition_tags_and_name_suffix(kedro_project_exec_filebacked_output2_memory_env):
-    project_path, env = kedro_project_exec_filebacked_output2_memory_env
+@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+def test_create_op_partition_tags_and_name_suffix(env, request):
+    project_path, _ = request.getfixturevalue(f"kedro_project_exec_filebacked_output2_memory_{env}")
 
     # Configure project before accessing pipelines; then reload project module to avoid stale state
     bootstrap_project(project_path)
@@ -128,7 +128,8 @@ def test_create_op_partition_tags_and_name_suffix(kedro_project_exec_filebacked_
     indirect=True,
 )
 def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi_in_out_env):
-    project_path, env = kedro_project_multi_in_out_env
+    project_path, options = kedro_project_multi_in_out_env
+    env = options.env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -160,9 +161,9 @@ def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi
     assert isinstance(op, dg.OpDefinition)
 
 
-@pytest.mark.parametrize("kedro_project_nothing_assets_env", ["base", "local"], indirect=True)
-def test_node_translator_handles_nothing_datasets(kedro_project_nothing_assets_env):
-    project_path, env = kedro_project_nothing_assets_env
+@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+def test_node_translator_handles_nothing_datasets(env, request):
+    project_path, _ = request.getfixturevalue(f"kedro_project_nothing_assets_{env}")
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -222,9 +223,9 @@ def test_node_translator_handles_nothing_datasets(kedro_project_nothing_assets_e
     )
 
 
-@pytest.mark.parametrize("kedro_project_no_outputs_node_env", ["base", "local"], indirect=True)
-def test_node_translator_handles_no_output_node(kedro_project_no_outputs_node_env):
-    project_path, env = kedro_project_no_outputs_node_env
+@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+def test_node_translator_handles_no_output_node(env, request):
+    project_path, _ = request.getfixturevalue(f"kedro_project_no_outputs_node_{env}")
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)

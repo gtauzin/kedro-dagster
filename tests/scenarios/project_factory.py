@@ -55,7 +55,7 @@ def build_kedro_project_scenario(
     temp_directory: Path,
     options: KedroProjectOptions,
     project_name: str,
-) -> Path:
+) -> tuple[Path, KedroProjectOptions]:
     """Create a fresh Kedro project in an isolated env and inject scenario-specific configs.
 
     The project is created via `uv run` to ensure a clean environment that only includes
@@ -63,12 +63,13 @@ def build_kedro_project_scenario(
     from the developer machine. After creation, env-specific conf files are written.
 
     Args:
-        project_path: Path to an existing Kedro project to use as template.
+        temp_directory: Temporary base directory under which the project variant will be created.
         options: Variant options including env, catalog, dagster config, and parameters.
-        project_name: Optional name for the new project variant directory.
+        project_name: Name for the new project variant directory.
 
     Returns:
-        Path: The path to the new project variant.
+        tuple[Path, KedroProjectOptions]: The path to the new project variant and the
+        options used to build it (including env and scenario-specific configs).
     """
     # Create the Kedro project in an isolated, fresh environment using `uv run`
     # so that local Kedro plugins installed on the developer machine are not picked up.
@@ -152,4 +153,4 @@ def build_kedro_project_scenario(
     configure_project = importlib.import_module("kedro.framework.project").configure_project
     configure_project(package_name)
 
-    return project_path
+    return project_path, options

@@ -62,10 +62,10 @@ class RecordingHooks:
         self.after_pipeline_run_calls += 1
 
 
-@pytest.mark.parametrize("kedro_project_hooks_filebacked_env", ["base", "local"], indirect=True)
-def test_hooks_are_invoked_end_to_end(kedro_project_hooks_filebacked_env):
+@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+def test_hooks_are_invoked_end_to_end(env, request):
     # Arrange: use a project variant with file-backed datasets so IO managers are used
-    project_path, env = kedro_project_hooks_filebacked_env
+    project_path, _ = request.getfixturevalue(f"kedro_project_hooks_filebacked_{env}")
 
     # Bootstrap and session
     bootstrap_project(project_path)

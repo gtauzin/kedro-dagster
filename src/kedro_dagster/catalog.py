@@ -124,8 +124,10 @@ class CatalogTranslator:
                 elif getattr(context, "has_partition_key", False):
                     partition = context.partition_key
 
-                if partition is not None:
-                    obj = {partition: obj}
+                if partition is not None and isinstance(obj, dict) and set(obj.keys()) != {partition}:
+                    raise ValueError(
+                        f"Expected data for downstream partition to be a dict with key '{partition}' but got: {obj}"
+                    )
 
                 dataset.save(obj)
 
@@ -162,12 +164,9 @@ class CatalogTranslator:
                 elif getattr(context, "has_partition_key", False):
                     partition = context.partition_key
 
+                # TODO: Mapping has to be dict concatenation?
                 if partition is not None and isinstance(data, dict):
-                    val = data.get(partition)
-                    if callable(val):
-                        data = val()
-                    else:
-                        data = val
+                    data = {partition: data.get(partition)}
 
                 if is_node_op:
                     context.log.info("Executing `after_dataset_loaded` Kedro hook.")

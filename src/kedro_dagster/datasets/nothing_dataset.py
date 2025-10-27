@@ -3,6 +3,9 @@ from typing import Any
 from kedro.io.core import AbstractDataset
 
 
+NOTHING_OUTPUT = "__nothing__"
+
+
 class DagsterNothingDataset(AbstractDataset):
     """A Kedro dataset used to represent placeholder outputs.
 
@@ -30,7 +33,7 @@ class DagsterNothingDataset(AbstractDataset):
         Returns:
             Any: Always None.
         """
-        return None
+        return NOTHING_OUTPUT
 
     def save(self, data: Any) -> None:
         """Do nothing when saving data.
@@ -39,7 +42,7 @@ class DagsterNothingDataset(AbstractDataset):
             data (Any): Ignored.
         """
         # Intentionally do not persist anything
-        return None
+        pass
 
     def _exists(self) -> bool:
         """Always report that the dataset exists.
