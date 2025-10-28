@@ -37,7 +37,6 @@ def parse_dagster_definition(
 
         # Try to resolve the class by attempting a few import paths; record the last error message if all fail
         for class_path in class_paths:
-            error_msg = None
             try:
                 tmp, error_msg = _load_obj(class_path)  # Try to load partition class
             except TypeError:  # noqa: BLE001
@@ -45,9 +44,7 @@ def parse_dagster_definition(
                     tmp = _load_obj(class_path)
                 except Exception as exc:
                     error_msg = str(exc)
-
-            if error_msg is not None:
-                raise TypeError(f"Error loading class '{class_path}': {error_msg}")
+                    raise TypeError(f"Error loading class '{class_path}': {error_msg}")
 
             if tmp is not None:
                 class_obj = tmp
