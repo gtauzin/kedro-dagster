@@ -1,7 +1,5 @@
 """Nox sessions."""
 
-import re
-
 import nox
 
 # Require Nox version 2024.3.2 or newer to support the 'default_venv_backend' option
@@ -11,7 +9,7 @@ nox.needs_version = ">=2024.3.2"
 nox.options.default_venv_backend = "uv|virtualenv"
 
 # Default sessions to run when nox is called without arguments
-nox.options.sessions = ["fix", "tests", "serve_docs"]
+nox.options.sessions = ["fix", "tests_coverage", "serve_docs"]
 
 
 # --------------------------------------------------------------------------------------
@@ -19,12 +17,12 @@ nox.options.sessions = ["fix", "tests", "serve_docs"]
 # Update these lists to expand or narrow the test matrix.
 # We prefer spec ranges over exact pins so latest patch for each line is exercised.
 # Examples:
-#   "kedro~=0.19.0" installs latest 0.19.x
+#   "kedro>=0.19,<1.0" installs latest 0.19.x
 #   "dagster>=1.10,<1.11" installs latest 1.10.x
 # --------------------------------------------------------------------------------------
 KEDRO_SPECS = [
     "kedro>=0.19,<1.0",
-    "kedro>=1.0<1.1",
+    "kedro>=1.0,<1.1",
 ]
 
 # Keep dagster and dagster-webserver on the same minor line where possible
@@ -32,11 +30,6 @@ DAGSTER_SPECS = [
     "dagster>=1.10,<1.11",
     "dagster>=1.11,<1.12",
 ]
-
-
-def _slug(s: str) -> str:
-    """Create a filesystem-friendly slug for use in filenames from a spec string."""
-    return re.sub(r"[^A-Za-z0-9_.-]+", "-", s)
 
 
 # Test sessions for different Python versions

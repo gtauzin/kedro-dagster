@@ -148,7 +148,7 @@ uvx nox -s tests_versions-3.11
 * Select specific dependency ranges (quote carefully in zsh):
 
 ```zsh
-uvx nox -s "tests_versions(dagster_spec='dagster>=1.10,<1.11',kedro_spec='kedro~=0.19.0')"
+uvx nox -s "tests_versions(dagster_spec='dagster>=1.10,<1.11', kedro_spec='kedro~=0.19.0')"
 ```
 
 * Toggle the optional MLflow extra:
@@ -164,7 +164,7 @@ uvx nox -s "tests_versions(with_mlflow=False)"
 You can combine selectors, for example:
 
 ```zsh
-uvx nox -s "tests_versions(python=3.12,with_mlflow=False,dagster_spec='dagster>=1.11,<1.12')"
+uvx nox -s "tests_versions(python=3.12, with_mlflow=False, dagster_spec='dagster>=1.11,<1.12')"
 ```
 
 Notes:
