@@ -82,7 +82,6 @@ class KedroProjectTranslator:
             self._project_path = project_path
 
         if env is None:
-            # TODO: Double check if this is the right way to get the default environment
             default_run_env = settings._CONFIG_LOADER_ARGS["default_run_env"]
             env = os.getenv("KEDRO_ENV", default_run_env) or ""
 

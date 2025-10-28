@@ -44,7 +44,7 @@ def test_get_dagster_config_loads_and_parses(kedro_project_exec_filebacked_base)
     assert isinstance(dagster_config.executors["seq"], InProcessExecutorOptions)
     assert isinstance(dagster_config.executors["multiproc"], MultiprocessExecutorOptions)
     EXPECTED_MAX_CONCURRENT = 2
-    assert dagster_config.executors["multiproc"].max_concurrent == EXPECTED_MAX_CONCURRENT  # type: ignore[union-attr]
+    assert dagster_config.executors["multiproc"].max_concurrent == EXPECTED_MAX_CONCURRENT
 
     # And: schedules are represented as ScheduleOptions and match conf
     expected_sched = dagster_schedules_config()

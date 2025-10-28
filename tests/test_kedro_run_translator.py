@@ -166,14 +166,14 @@ def test_after_context_created_hook_invokes_hook_manager(
     )
     # Install fake hook manager BEFORE resource creation so the closure captures it
     fake_hook_mgr = _FakeHookManager()
-    translator._context._hook_manager = fake_hook_mgr  # type: ignore[attr-defined]
+    translator._context._hook_manager = fake_hook_mgr
     translator._hook_manager = fake_hook_mgr  # also update translator cache used in closure
     resource = translator.to_dagster(pipeline_name="__default__", filter_params={})
 
     # Call the hook and ensure the underlying kedro hook was triggered
     resource.after_context_created_hook()
 
-    fake_ctx = translator._context  # type: ignore[attr-defined]
+    fake_ctx = translator._context
     assert fake_ctx._hook_manager.hook.after_context_created_called_with == [fake_ctx]
 
 

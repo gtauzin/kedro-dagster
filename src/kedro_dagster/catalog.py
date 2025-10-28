@@ -115,10 +115,12 @@ class CatalogTranslator:
                     )
 
                 partition = None
+                # Partition key passed via op tags for fanned-out ops
                 if "downstream_partition_key" in context.op_def.tags:
                     downstream_partition_key = context.op_def.tags["downstream_partition_key"]
                     if asset_name == downstream_partition_key.split("|")[0]:
                         partition = downstream_partition_key.split("|")[1]
+                # Partition key passed via context for asset jobs
                 # Prefer Dagster's asset partition when available, otherwise fall back to plain partition_key
                 elif getattr(context, "has_asset_partitions", False):
                     partition = context.asset_partition_key
@@ -155,17 +157,18 @@ class CatalogTranslator:
                 data = dataset.load()
 
                 partition = None
+                # Partition key passed via op tags for fanned-out ops
                 if "upstream_partition_key" in context.op_def.tags:
                     upstream_partition_key = context.op_def.tags["upstream_partition_key"]
                     if asset_name == upstream_partition_key.split("|")[0]:
                         partition = upstream_partition_key.split("|")[1]
+                # Partition key passed via context for asset jobs
                 # Prefer Dagster's asset partition when available, otherwise fall back to plain partition_key
                 elif getattr(context, "has_asset_partitions", False):
                     partition = context.asset_partition_key
                 elif getattr(context, "has_partition_key", False):
                     partition = context.partition_key
 
-                # TODO: Mapping has to be dict concatenation?
                 if partition is not None and isinstance(data, dict):
                     data = {partition: data.get(partition)}
 

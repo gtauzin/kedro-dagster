@@ -185,7 +185,7 @@ class TestDagsterPartitionedDataset:
         """Saving a non-dict raises DatasetError and includes the inner validation message."""
         dataset = _make_static_dataset(tmp_path)
         with pytest.raises(DatasetError) as exc:
-            dataset.save(["not", "a", "dict"])  # type: ignore[arg-type]
+            dataset.save(["not", "a", "dict"])
         # Wrapped by Kedro's DatasetError; ensure our inner message is present
         assert "Expected data to be a dict mapping partition keys to data, but got: <class 'list'>" in str(exc.value)
 
@@ -214,7 +214,7 @@ class TestDagsterPartitionedDataset:
         # create unsuffixed candidate too to allow fallback
         (base / "p1").write_text("dup-one")
 
-        def flaky_exists(path: str) -> bool:  # type: ignore[override]
+        def flaky_exists(path: str) -> bool:
             if path.endswith(".csv"):
                 raise OSError("boom")
             return True

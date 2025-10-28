@@ -106,7 +106,7 @@ def test_get_node_pipeline_name(monkeypatch):
 
     monkeypatch.setattr("kedro_dagster.utils.find_pipelines", lambda: {"pipeline": mock_pipeline})
 
-    pipeline_name = _get_node_pipeline_name(mock_node)  # type: ignore[arg-type]
+    pipeline_name = _get_node_pipeline_name(mock_node)
     assert pipeline_name == "test__pipeline"
 
 
@@ -116,7 +116,7 @@ def test_get_node_pipeline_name_default(monkeypatch, caplog):
     # Only __default__ pipeline or empty mapping means no match
     monkeypatch.setattr("kedro_dagster.utils.find_pipelines", lambda: {"__default__": SimpleNamespace(nodes=[])})
     with caplog.at_level("WARNING"):
-        result = _get_node_pipeline_name(mock_node)  # type: ignore[arg-type]
+        result = _get_node_pipeline_name(mock_node)
         assert result == "__none__"
         assert "not part of any pipelines" in caplog.text
 
@@ -176,7 +176,7 @@ def test_get_partition_mapping_exact_and_pattern(monkeypatch, caplog):
     """Resolve partition mapping by exact key or pattern; warn and return None when missing."""
 
     class DummyResolver:
-        def match_pattern(self, name):  # noqa: D401
+        def match_pattern(self, name):
             # Simulate pattern match for values starting with "foo"
             return "pattern" if name.startswith("foo") else None
 

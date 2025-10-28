@@ -83,7 +83,6 @@ class NodeTranslator:
         self._named_resources = named_resources
         self._env = env
 
-    # TODO: Remove multi partition support and raise a not implemented error
     def _get_node_partitions_definition(self, node: "Node") -> dg.PartitionsDefinition | None:
         """Infer the partitions definition for a node's outputs.
 

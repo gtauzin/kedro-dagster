@@ -146,7 +146,7 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
                 break
 
     assert node_def is not None, "Hook op definition not found in job"
-    ins_keys = set(getattr(node_def, "ins").keys())  # type: ignore[no-any-return]
+    ins_keys = set(getattr(node_def, "ins").keys())
     # Expect a Nothing input per partition for the last node (node2)
     # The naming includes both upstream and downstream partition keys for clarity
     assert "node2__p1__p1_after_pipeline_run_hook_input" in ins_keys

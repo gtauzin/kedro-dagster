@@ -30,7 +30,7 @@ def test_dev_options_defaults_and_forbid_extra():
     assert dev.live_data_poll_rate == "2000"
 
     with pytest.raises(ValidationError):
-        DevOptions(extra_field=True)  # type: ignore[arg-type]
+        DevOptions(extra_field=True)
 
 
 def test_dev_options_python_file_property(monkeypatch, tmp_path: Path):
@@ -78,19 +78,19 @@ def test_pipeline_options_forbid_extra_and_defaults():
     assert p.tags is None
 
     with pytest.raises(ValidationError):
-        PipelineOptions(unknown="x")  # type: ignore[arg-type]
+        PipelineOptions(unknown="x")
 
 
 def test_job_options_requires_pipeline_and_forbid_extra():
     """JobOptions require a PipelineOptions instance and reject extra fields."""
     with pytest.raises(ValidationError):
-        JobOptions()  # type: ignore[call-arg]
+        JobOptions()
 
     job = JobOptions(pipeline=PipelineOptions())
     assert isinstance(job.pipeline, PipelineOptions)
 
     with pytest.raises(ValidationError):
-        JobOptions(pipeline=PipelineOptions(), extra_field=1)  # type: ignore[arg-type]
+        JobOptions(pipeline=PipelineOptions(), extra_field=1)
 
 
 def test_inprocess_and_multiprocess_executor_defaults():
@@ -142,7 +142,7 @@ def test_kedrodagster_config_parses_executors_map_happy_path():
     assert isinstance(cfg.executors["local"], InProcessExecutorOptions)
     assert isinstance(cfg.executors["multi"], MultiprocessExecutorOptions)
     MAX_CONCURRENCY = 3
-    assert cfg.executors["multi"].max_concurrent == MAX_CONCURRENCY  # type: ignore[union-attr]
+    assert cfg.executors["multi"].max_concurrent == MAX_CONCURRENCY
     assert isinstance(cfg.executors["dock"], DockerExecutorOptions)
     assert isinstance(cfg.executors["k8s"], K8sJobExecutorOptions)
 

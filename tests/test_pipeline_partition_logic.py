@@ -13,7 +13,7 @@ class DummyContext:
     def __init__(self, catalog: DataCatalog):
         self.catalog = catalog
         # Not used in the methods under test, but present to satisfy initializer
-        self._hook_manager = None  # type: ignore[assignment]
+        self._hook_manager = None
 
 
 class DummyNode:

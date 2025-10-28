@@ -162,7 +162,6 @@ class PipelineTranslator:
                             upstream_partitions_def=in_partitions_def,
                             downstream_partitions_def=out_partitions_def,
                         )[0]
-                        # TODO: Support 1 to many
                         mapped_downstream_key = list(mapped_downstream_key)[0]
                         downstream_per_upstream_partition_key[f"{in_asset_name}|{in_partition_key}"] = (
                             f"{out_asset_name}|{mapped_downstream_key}"
@@ -368,7 +367,6 @@ class PipelineTranslator:
                         continue
 
                     # Partitioned: clone per partition key
-                    # TODO: support 1 to many partition mappings
                     for (
                         in_asset_partition_key,
                         out_asset_partition_key,
