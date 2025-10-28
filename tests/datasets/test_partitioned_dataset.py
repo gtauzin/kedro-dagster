@@ -136,7 +136,7 @@ class TestDagsterPartitionedDataset:
         calls: list[tuple[str, list[str]]] = []
 
         class DummyInstance:
-            def add_dynamic_partitions(self, name: str, keys: list[str]) -> None:  # noqa: D401
+            def add_dynamic_partitions(self, name: str, keys: list[str]) -> None:
                 calls.append((name, keys))
 
         monkeypatch.setattr(dg.DagsterInstance, "get", lambda: DummyInstance())
@@ -254,7 +254,7 @@ class TestDagsterPartitionedDataset:
         calls: list[tuple[str, list[str]]] = []
 
         class DummyInstance:
-            def add_dynamic_partitions(self, name: str, keys: list[str]) -> None:  # noqa: D401
+            def add_dynamic_partitions(self, name: str, keys: list[str]) -> None:
                 calls.append((name, keys))
 
         monkeypatch.setattr(dg.DagsterInstance, "get", lambda: DummyInstance())

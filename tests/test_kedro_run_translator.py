@@ -21,7 +21,7 @@ class _FakeHook:
         self.on_pipeline_error_called_with: list[dict[str, Any]] = []
 
     # signature used in kedro.py
-    def after_context_created(self, *, context: Any) -> None:  # noqa: D401
+    def after_context_created(self, *, context: Any) -> None:
         self.after_context_created_called_with.append(context)
 
     def on_pipeline_error(self, *, error: Exception, run_params: dict[str, Any], pipeline: Any, catalog: Any) -> None:
