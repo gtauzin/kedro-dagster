@@ -42,7 +42,7 @@ def parse_dagster_definition(
                 if tmp is not None:
                     class_obj = tmp
                     break
-            except Exception as exc:  # noqa: BLE001 - we want to bubble a concise message later
+            except Exception as exc:  # noqa: BLE001
                 error_msg = str(exc)
 
         if class_obj is None:  # If no valid class was found, raise an error
