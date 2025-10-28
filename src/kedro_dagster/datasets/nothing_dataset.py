@@ -33,7 +33,7 @@ class DagsterNothingDataset(AbstractDataset):
 
         self._metadata = metadata or {}
 
-    def load(self) -> Any:
+    def load(self) -> str:
         """Return None for every load.
 
         Returns:

@@ -104,9 +104,6 @@ def test_get_node_pipeline_name(monkeypatch):
     mock_node = SimpleNamespace(name="test.node")
     mock_pipeline = SimpleNamespace(nodes=[mock_node])
 
-    def fake_find_pipelines():
-        return {"pipeline": mock_pipeline}
-
     monkeypatch.setattr("kedro_dagster.utils.find_pipelines", lambda: {"pipeline": mock_pipeline})
 
     pipeline_name = _get_node_pipeline_name(mock_node)  # type: ignore[arg-type]

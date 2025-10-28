@@ -168,6 +168,9 @@ class CeleryExecutorOptions(BaseModel):
 class CeleryDockerExecutorOptions(CeleryExecutorOptions, DockerExecutorOptions):
     """Options for the Celery-based executor which launches tasks as Docker containers.
 
+    Uses fields from both CeleryExecutorOptions and DockerExecutorOptions to configure
+    Celery workers running in Docker.
+
     Attributes:
         broker (str | None): Celery broker URL.
         backend (str | None): Celery backend URL.
@@ -184,8 +187,7 @@ class CeleryDockerExecutorOptions(CeleryExecutorOptions, DockerExecutorOptions):
         retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
     """
 
-    # Uses fields from both CeleryExecutorOptions and DockerExecutorOptions
-    # to configure Celery workers running in Docker.
+    pass
 
 
 class K8sJobConfig(BaseModel):
