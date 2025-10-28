@@ -37,13 +37,21 @@ def parse_dagster_definition(
 
         # Try to resolve the class by attempting a few import paths; record the last error message if all fail
         for class_path in class_paths:
+            error_msg = None
             try:
-                tmp = _load_obj(class_path)  # Try to load partition class
-                if tmp is not None:
-                    class_obj = tmp
-                    break
-            except Exception as exc:  # noqa: BLE001
-                error_msg = str(exc)
+                tmp, error_msg = _load_obj(class_path)  # Try to load partition class
+            except Exception:  # noqa: BLE001
+                if error_msg is None:
+                    try:
+                        tmp = _load_obj(class_path)
+                    except Exception as exc:
+                        error_msg = str(exc)
+
+                raise TypeError(f"Error loading class '{class_path}': {error_msg}")
+
+            if tmp is not None:
+                class_obj = tmp
+                break
 
         if class_obj is None:  # If no valid class was found, raise an error
             default_error_msg = f"Class '{definition_type}' not found, is this a typo?"
