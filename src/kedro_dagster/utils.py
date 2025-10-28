@@ -174,7 +174,10 @@ def format_partition_key(partition_key: Any) -> str:
         str: Serialized partition key.
     """
     dagster_partition_key = re.sub(r"[^A-Za-z0-9_]", "_", partition_key)
-    dagster_partition_key = dagster_partition_key.strip("_") or "all"
+    dagster_partition_key = dagster_partition_key.strip("_")
+
+    if not dagster_partition_key:
+        raise ValueError(f"Partition key `{partition_key}` cannot be formatted into a valid Dagster key.")
     return dagster_partition_key
 
 

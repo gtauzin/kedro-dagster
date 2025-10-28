@@ -78,8 +78,11 @@ def test_format_partition_key():
     """Normalize partition key strings; fallback to 'all' when empty after normalization."""
     assert format_partition_key("2024-01-01") == "2024_01_01"
     assert format_partition_key("a b/c") == "a_b_c"
-    # Only underscores become empty -> fallback to "all"
-    assert format_partition_key("__") == "all"
+
+    with pytest.raises(ValueError) as exc:
+        format_partition_key("__")
+
+    assert str(exc.value) == "Partition key `__` cannot be formatted into a valid Dagster key."
 
 
 def test_create_pydantic_model_from_dict():
@@ -94,6 +97,7 @@ def test_create_pydantic_model_from_dict():
     assert instance.nested.inner == INNER_VALUE
 
 
+@pytest.mark.mlflow
 def test_is_mlflow_enabled():
     """Return True when kedro-mlflow is importable and enabled in the environment."""
     assert isinstance(is_mlflow_enabled(), bool)
@@ -136,6 +140,7 @@ def test_get_filter_params_dict():
     assert filter_params == pipeline_config
 
 
+@pytest.mark.mlflow
 def test_get_mlflow_resource_from_config():
     """Build a Dagster ResourceDefinition from a kedro-mlflow configuration object."""
     # Only run this test when kedro-mlflow is available

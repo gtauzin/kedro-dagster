@@ -7,8 +7,9 @@ from pathlib import Path
 
 from pytest import fixture
 
-from .scenarios.helpers import dagster_executors_config, make_jobs_config
 from .scenarios.kedro_projects import (
+    dagster_executors_config,
+    make_jobs_config,
     options_exec_filebacked,
     options_hooks_filebacked,
     options_multiple_inputs,

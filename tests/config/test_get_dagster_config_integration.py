@@ -12,7 +12,7 @@ from kedro_dagster.config.execution import (
     MultiprocessExecutorOptions,
 )
 from kedro_dagster.config.job import JobOptions
-from tests.scenarios.helpers import (
+from tests.scenarios.kedro_projects import (
     dagster_executors_config,
     dagster_schedules_config,
     make_jobs_config,

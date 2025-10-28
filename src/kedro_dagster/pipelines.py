@@ -283,7 +283,7 @@ class PipelineTranslator:
         def pipeline_graph() -> None:
             before_pipeline_run_hook_output = before_pipeline_run_hook_op()
 
-            # Collect initial external assets (broadcastable to partitions)
+            # Collect input assets
             materialized_in_assets: dict[str, Any] = {}
             for dataset_name in pipeline.inputs():
                 asset_name = format_dataset_name(dataset_name)
@@ -301,6 +301,7 @@ class PipelineTranslator:
             after_pipeline_run_hook_inputs: dict[str, Any] = {}
 
             n_layers = len(pipeline.grouped_nodes)
+            # Iterate in topological order over layers of the pipeline
             for i_layer, layer in enumerate(pipeline.grouped_nodes):
                 is_node_in_first_layer = i_layer == 0
                 is_node_in_last_layer = i_layer == n_layers - 1
@@ -366,7 +367,7 @@ class PipelineTranslator:
                                 after_pipeline_run_hook_inputs[out_asset_name] = out_asset
                         continue
 
-                    # Partitioned: clone per partition key
+                    # Partitioned: fan out node execution per partition key
                     for (
                         in_asset_partition_key,
                         out_asset_partition_key,
