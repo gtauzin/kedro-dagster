@@ -15,7 +15,7 @@ from kedro_dagster.datasets import DagsterNothingDataset
 
 try:
     from dagster_mlflow import mlflow_tracking
-except Exception:
+except ImportError:
     mlflow_tracking = None
 
 if TYPE_CHECKING:
