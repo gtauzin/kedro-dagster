@@ -20,6 +20,9 @@ class KedroProjectOptions:
     """Options to build a fake Kedro project scenario for testing.
 
     Attributes:
+        project_name: Name of the Kedro project.
+        project_path: Optional path where the project is created.
+        package_name: Optional Python package name for the Kedro project.
         env: Kedro environment to write configs to (e.g., "base", "local").
         catalog: Python dict for catalog.yml content to write under conf/<env>/.
         dagster: Optional Python dict for dagster.yml content to write under conf/<env>/.
@@ -29,6 +32,9 @@ class KedroProjectOptions:
                  environment used to create the test project (e.g., ["kedro-mlflow"]).
     """
 
+    project_name: str | None = None
+    project_path: Path | None = None
+    package_name: str | None = None
     env: str = "base"
     catalog: dict[str, Any] = field(default_factory=dict)
     dagster: dict[str, Any] | None = None
@@ -55,7 +61,7 @@ def build_kedro_project_scenario(
     temp_directory: Path,
     options: KedroProjectOptions,
     project_name: str,
-) -> tuple[Path, KedroProjectOptions]:
+) -> KedroProjectOptions:
     """Create a fresh Kedro project in an isolated env and inject scenario-specific configs.
 
     The project is created via `uv run` to ensure a clean environment that only includes
@@ -68,8 +74,8 @@ def build_kedro_project_scenario(
         project_name: Name for the new project variant directory.
 
     Returns:
-        tuple[Path, KedroProjectOptions]: The path to the new project variant and the
-        options used to build it (including env and scenario-specific configs).
+        KedroProjectOptions: The options object populated with project_name, project_path,
+        package_name and any scenario-specific configs.
     """
     # Create the Kedro project in an isolated, fresh environment using `uv run`
     # so that local Kedro plugins installed on the developer machine are not picked up.
@@ -133,7 +139,7 @@ def build_kedro_project_scenario(
     src_dir = project_path / "src"
     package_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
     if not package_dirs:
-        return project_path
+        raise RuntimeError(f"No package directory found under {src_dir}")
 
     if package_dirs:
         package_name = package_dirs[0].name
@@ -153,4 +159,8 @@ def build_kedro_project_scenario(
     configure_project = importlib.import_module("kedro.framework.project").configure_project
     configure_project(package_name)
 
-    return project_path, options
+    options.project_name = project_name
+    options.project_path = project_path
+    options.package_name = package_name
+
+    return options

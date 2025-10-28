@@ -30,13 +30,9 @@ from kedro_dagster.utils import format_dataset_name
     ],
 )
 def test_catalog_translator_covers_scenarios(request, env_fixture):
-    """Test CatalogTranslator across diverse scenarios and assert core invariants.
-
-    - File-backed datasets (CSVDataset) get IO managers.
-    - Partitioned datasets expose partitions_def in asset_partitions.
-    - Memory datasets do not result in dedicated IO managers.
-    """
-    project_path, options = request.getfixturevalue(env_fixture)
+    """Test CatalogTranslator across diverse scenarios and assert core invariants."""
+    options = request.getfixturevalue(env_fixture)
+    project_path = options.project_path
     env = options.env
 
     bootstrap_project(project_path)
@@ -74,10 +70,9 @@ def test_catalog_translator_covers_scenarios(request, env_fixture):
             assert asset_name in asset_partitions
             assert isinstance(asset_partitions[asset_name]["partitions_def"], dg.PartitionsDefinition)
             # IO manager naming is allowed but not required; do not assert here to avoid false negatives
-        # Other dataset types (e.g., DagsterNothingDataset) have no IO managers
-        # TODO: Is that correct? Should we assert absence here?
-        # elif ds_type == "kedro_dagster.datasets.DagsterNothingDataset":
-        #     assert f"{env}__{ds_name}_io_manager" not in named_io_managers
+        # Other DagsterNothingDataset have no IO managers
+        elif ds_type == "kedro_dagster.datasets.DagsterNothingDataset":
+            assert f"{env}__{ds_name}_io_manager" not in named_io_managers
 
 
 @pytest.mark.parametrize(
@@ -86,27 +81,18 @@ def test_catalog_translator_covers_scenarios(request, env_fixture):
     indirect=True,
 )
 def test_catalog_translator_builds_configurable_io_managers(kedro_project_scenario_env):
-    """Ensure IO managers are created with expected names, types and config.
-
-    We validate for file-backed datasets (CSVDataset):
-    - IO manager key naming: "{env}__{asset_name}_io_manager"
-    - Value is a ConfigurableIOManager instance exposing handle_output/load_input
-    - The pydantic config fields reflect the catalog entry (dataset, filepath)
-    """
-    project_path, options = kedro_project_scenario_env
+    """Ensure IO managers are created with expected names, types and config."""
+    options = kedro_project_scenario_env
+    project_path = options.project_path
+    package_name = options.package_name
     env = options.env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    # Force Kedro to use the current project's package for the pipeline registry
-    src_dir = project_path / "src"
-    pkg_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
-    if pkg_dirs:
-        package_name = pkg_dirs[0].name
-        project_module = importlib.import_module("kedro.framework.project")
-        project_module.configure_project(package_name)
+    project_module = importlib.import_module("kedro.framework.project")
+    project_module.configure_project(package_name)
 
     pipeline = pipelines.get("__default__")
     translator = CatalogTranslator(
@@ -132,25 +118,25 @@ def test_catalog_translator_builds_configurable_io_managers(kedro_project_scenar
         key = f"{env}__{asset_name}_io_manager"
         assert key in named_io_managers, f"Missing IO manager for {ds_name}"
 
-        io_mgr = named_io_managers[key]
+        io_manager = named_io_managers[key]
 
         # It should behave like a Dagster ConfigurableIOManager
-        assert hasattr(io_mgr, "handle_output") and callable(getattr(io_mgr, "handle_output"))
-        assert hasattr(io_mgr, "load_input") and callable(getattr(io_mgr, "load_input"))
+        assert hasattr(io_manager, "handle_output") and callable(getattr(io_manager, "handle_output"))
+        assert hasattr(io_manager, "load_input") and callable(getattr(io_manager, "load_input"))
 
         # Config fields should be present on the instance
         # dataset field equals the class short name (e.g., CSVDataset)
-        assert getattr(io_mgr, "dataset", None) == "CSVDataset"
+        assert getattr(io_manager, "dataset", None) == "CSVDataset"
 
         # filepath is commonly configured for CSVDataset; if present, it must match
         if "filepath" in ds_cfg:
-            io_fp = getattr(io_mgr, "filepath", None)
+            io_fp = getattr(io_manager, "filepath", None)
             rel_fp = ds_cfg["filepath"]
             abs_fp = str((project_path / rel_fp).resolve())
             assert io_fp in {rel_fp, abs_fp}
 
         # Docstring carries the dataset name for clarity
-        assert ds_name in (getattr(io_mgr.__class__, "__doc__", "") or "")
+        assert ds_name in (getattr(io_manager.__class__, "__doc__", "") or "")
 
 
 @pytest.mark.parametrize(
@@ -165,19 +151,17 @@ def test_io_manager_roundtrip_matches_dataset(kedro_project_scenario_env):
     generated IO manager and verify that loading through both the dataset and the
     IO manager produces identical DataFrames.
     """
-    project_path, options = kedro_project_scenario_env
+    options = kedro_project_scenario_env
+    project_path = options.project_path
+    package_name = options.package_name
     env = options.env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    src_dir = project_path / "src"
-    pkg_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
-    if pkg_dirs:
-        package_name = pkg_dirs[0].name
-        project_module = importlib.import_module("kedro.framework.project")
-        project_module.configure_project(package_name)
+    project_module = importlib.import_module("kedro.framework.project")
+    project_module.configure_project(package_name)
 
     pipeline = pipelines.get("__default__")
     translator = CatalogTranslator(
@@ -209,11 +193,11 @@ def test_io_manager_roundtrip_matches_dataset(kedro_project_scenario_env):
         asset_name = format_dataset_name(ds_name)
         key = f"{env}__{asset_name}_io_manager"
         assert key in named_io_managers
-        io_mgr = named_io_managers[key]
+        io_manager = named_io_managers[key]
 
         # Save via IO manager
         out_ctx = dg.build_output_context(op_def=op_def, name="result")
-        io_mgr.handle_output(out_ctx, df_to_write)
+        io_manager.handle_output(out_ctx, df_to_write)
 
         # Load via dataset
         dataset = context.catalog._get_dataset(ds_name)
@@ -222,13 +206,13 @@ def test_io_manager_roundtrip_matches_dataset(kedro_project_scenario_env):
         # Load via IO manager
         upstream_out_ctx = dg.build_output_context(op_def=op_def, name="result")
         in_ctx = dg.build_input_context(op_def=op_def, upstream_output=upstream_out_ctx)
-        df_via_io_mgr = io_mgr.load_input(in_ctx)
+        df_via_io_manager = io_manager.load_input(in_ctx)
 
         # Both should equal the source
         assert list(df_via_dataset.columns) == list(df_to_write.columns)
-        assert list(df_via_io_mgr.columns) == list(df_to_write.columns)
+        assert list(df_via_io_manager.columns) == list(df_to_write.columns)
         assert df_via_dataset.equals(df_to_write)
-        assert df_via_io_mgr.equals(df_to_write)
+        assert df_via_io_manager.equals(df_to_write)
 
 
 @pytest.mark.parametrize(
@@ -244,19 +228,17 @@ def test_create_dataset_config_contains_parameters(kedro_project_scenario_env):
       - dataset: short class name (e.g., CSVDataset)
       - entries from _describe() (except version), with PurePosixPath converted to str
     """
-    project_path, options = kedro_project_scenario_env
+    options = kedro_project_scenario_env
+    project_path = options.project_path
+    package_name = options.package_name
     env = options.env
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    src_dir = project_path / "src"
-    pkg_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
-    if pkg_dirs:
-        package_name = pkg_dirs[0].name
-        project_module = importlib.import_module("kedro.framework.project")
-        project_module.configure_project(package_name)
+    project_module = importlib.import_module("kedro.framework.project")
+    project_module.configure_project(package_name)
 
     pipeline = pipelines.get("__default__")
     translator = CatalogTranslator(
@@ -302,18 +284,16 @@ def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(env
     - Load via load_input with upstream_partition_key tag -> returns that partition.
     - Load via load_input with partition_key + asset_partitions_def in context -> returns that partition.
     """
-    project_path, _ = request.getfixturevalue(f"kedro_project_partitioned_identity_mapping_{env}")
+    options = request.getfixturevalue(f"kedro_project_partitioned_identity_mapping_{env}")
+    project_path = options.project_path
+    package_name = options.package_name
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    src_dir = project_path / "src"
-    pkg_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
-    if pkg_dirs:
-        package_name = pkg_dirs[0].name
-        project_module = importlib.import_module("kedro.framework.project")
-        project_module.configure_project(package_name)
+    project_module = importlib.import_module("kedro.framework.project")
+    project_module.configure_project(package_name)
 
     pipeline = pipelines.get("__default__")
     translator = CatalogTranslator(
@@ -341,7 +321,7 @@ def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(env
     asset_name = format_dataset_name(part_ds_name)
     io_key = f"{env}__{asset_name}_io_manager"
     assert io_key in named_io_managers
-    io_mgr = named_io_managers[io_key]
+    io_manager = named_io_managers[io_key]
 
     # Prepare a couple of valid partition keys from the partitions definition
     partitions_def = asset_partitions[asset_name]["partitions_def"]
@@ -359,7 +339,7 @@ def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(env
         return None
 
     out_ctx = dg.build_output_context(op_def=_out, name="result")
-    io_mgr.handle_output(out_ctx, df1)
+    io_manager.handle_output(out_ctx, df1)
 
     # Verify dataset holds that partition
     loaded_map = dataset.load()
@@ -375,7 +355,7 @@ def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(env
 
     upstream_out_ctx = dg.build_output_context(op_def=_out, name="result")
     in_ctx_tags = dg.build_input_context(op_def=_in, upstream_output=upstream_out_ctx)
-    loaded_via_io_tags = io_mgr.load_input(in_ctx_tags)
+    loaded_via_io_tags = io_manager.load_input(in_ctx_tags)
     df_via_io_tags = loaded_via_io_tags[k1]() if callable(loaded_via_io_tags[k1]) else loaded_via_io_tags[k1]
     assert isinstance(df_via_io_tags, pd.DataFrame)
     assert df_via_io_tags.equals(df1[k1])
@@ -387,7 +367,7 @@ def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(env
         return None
 
     out_ctx_k2 = dg.build_output_context(op_def=_out2, name="result")
-    io_mgr.handle_output(out_ctx_k2, df2)
+    io_manager.handle_output(out_ctx_k2, df2)
 
     # Now load using context-based partition info
     upstream_out_ctx2 = dg.build_output_context(op_def=_out2, name="result")
@@ -403,7 +383,7 @@ def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(env
         partition_key=k2,
         asset_partitions_def=partitions_def,
     )
-    loaded_via_io_ctx = io_mgr.load_input(in_ctx_ctx)
+    loaded_via_io_ctx = io_manager.load_input(in_ctx_ctx)
     df_via_io_ctx = loaded_via_io_ctx[k2]() if callable(loaded_via_io_ctx[k2]) else loaded_via_io_ctx[k2]
     assert isinstance(df_via_io_ctx, pd.DataFrame)
     assert df_via_io_ctx.equals(df2[k2])

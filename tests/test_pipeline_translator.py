@@ -20,7 +20,8 @@ from kedro_dagster.utils import format_dataset_name, format_node_name
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_pipeline_translator_to_dagster_with_executor(env, request):
-    project_path, _ = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+    options = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+    project_path = options.project_path
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -103,7 +104,8 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
     then build the job and introspect the hook op input names to confirm they include
     the per-partition fan-in inputs (e.g., node2__p1_after_pipeline_run_hook_input).
     """
-    project_path, _ = request.getfixturevalue(f"kedro_project_partitioned_intermediate_output2_{env}")
+    options = request.getfixturevalue(f"kedro_project_partitioned_intermediate_output2_{env}")
+    project_path = options.project_path
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -196,7 +198,8 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
 )
 def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
     """Ensure PipelineTranslator can build a job across diverse scenarios without errors."""
-    project_path, options = request.getfixturevalue(env_fixture)
+    options = request.getfixturevalue(env_fixture)
+    project_path = options.project_path
     env = options.env
 
     bootstrap_project(project_path)

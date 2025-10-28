@@ -20,6 +20,7 @@ from kedro_dagster.utils import (
     _is_param_name,
     format_dataset_name,
     format_node_name,
+    is_nothing_asset_name,
 )
 
 if TYPE_CHECKING:
@@ -193,7 +194,7 @@ class CatalogTranslator:
         asset_partitions: dict[str, dict[str, Any]] = {}
 
         for dataset_name in sum(self._pipelines, start=Pipeline([])).datasets():
-            if _is_param_name(dataset_name):
+            if _is_param_name(dataset_name) or is_nothing_asset_name(self._catalog, dataset_name):
                 continue
 
             asset_name = format_dataset_name(dataset_name)

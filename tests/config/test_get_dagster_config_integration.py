@@ -21,7 +21,8 @@ from tests.scenarios.helpers import (
 
 def test_get_dagster_config_loads_and_parses(kedro_project_exec_filebacked_base):
     # Prepare a project variant with executors, schedules, jobs defined in conf/<env>/dagster.yml
-    project_path, options = kedro_project_exec_filebacked_base
+    options = kedro_project_exec_filebacked_base
+    project_path = options.project_path
     env = options.env
 
     # Bootstrap and load Kedro context for the selected env

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib
-from pathlib import Path
 
 import dagster as dg
 import pytest
@@ -27,27 +26,16 @@ def _get_node_producing_output(pipeline: Pipeline, dataset_name: str) -> Node:
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_create_op_wires_resources(env, request):
-    _fixture_val = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
-    project_path = _fixture_val
-    while isinstance(project_path, tuple | list) and len(project_path) > 0:
-        if isinstance(project_path[0], Path):
-            project_path = project_path[0]
-            break
-        project_path = project_path[0]
+    options = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+    project_path = options.project_path
+    package_name = options.package_name
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    # Ensure Kedro is configured to the just-created project's package to avoid
-    # stale global configuration affecting hooks (e.g., telemetry importing pipelines).
-    src_dir = project_path / "src"
-    pkg_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
-    if pkg_dirs:
-        package_name = pkg_dirs[0].name
-        project_module = importlib.import_module("kedro.framework.project")
-        project_module.configure_project(package_name)
     project_module = importlib.import_module("kedro.framework.project")
+    project_module.configure_project(package_name)
 
     pipeline = project_module.pipelines.get("__default__")
 
@@ -80,28 +68,18 @@ def test_create_op_wires_resources(env, request):
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_create_op_partition_tags_and_name_suffix(env, request):
-    _fixture_val = request.getfixturevalue(f"kedro_project_exec_filebacked_output2_memory_{env}")
-    project_path = _fixture_val
-    while isinstance(project_path, tuple | list) and len(project_path) > 0:
-        if isinstance(project_path[0], Path):
-            project_path = project_path[0]
-            break
-        project_path = project_path[0]
+    options = request.getfixturevalue(f"kedro_project_exec_filebacked_output2_memory_{env}")
+    project_path = options.project_path
+    package_name = options.package_name
 
     # Configure project before accessing pipelines; then reload project module to avoid stale state
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    # Force Kedro to use the current project's package for the pipeline registry
-    # by re-configuring the project with its detected package name.
-    src_dir = project_path / "src"
-    pkg_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
-    if pkg_dirs:
-        package_name = pkg_dirs[0].name
-        project_module = importlib.import_module("kedro.framework.project")
-        project_module.configure_project(package_name)
     project_module = importlib.import_module("kedro.framework.project")
+    project_module.configure_project(package_name)
+
     pipeline = project_module.pipelines.get("__default__")
 
     node_translator = NodeTranslator(
@@ -141,7 +119,8 @@ def test_create_op_partition_tags_and_name_suffix(env, request):
     indirect=True,
 )
 def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi_in_out_env):
-    project_path, options = kedro_project_multi_in_out_env
+    options = kedro_project_multi_in_out_env
+    project_path = options.project_path
     env = options.env
 
     bootstrap_project(project_path)
@@ -176,13 +155,8 @@ def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_node_translator_handles_nothing_datasets(env, request):
-    _fixture_val = request.getfixturevalue(f"kedro_project_nothing_assets_{env}")
-    project_path = _fixture_val
-    while isinstance(project_path, tuple | list) and len(project_path) > 0:
-        if isinstance(project_path[0], Path):
-            project_path = project_path[0]
-            break
-        project_path = project_path[0]
+    options = request.getfixturevalue(f"kedro_project_nothing_assets_{env}")
+    project_path = options.project_path
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -244,25 +218,17 @@ def test_node_translator_handles_nothing_datasets(env, request):
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_node_translator_handles_no_output_node(env, request):
-    _fixture_val = request.getfixturevalue(f"kedro_project_no_outputs_node_{env}")
-    project_path = _fixture_val
-    while isinstance(project_path, tuple | list) and len(project_path) > 0:
-        if isinstance(project_path[0], Path):
-            project_path = project_path[0]
-            break
-        project_path = project_path[0]
+    options = request.getfixturevalue(f"kedro_project_no_outputs_node_{env}")
+    project_path = options.project_path
+    package_name = options.package_name
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    src_dir = project_path / "src"
-    pkg_dirs = [p for p in src_dir.iterdir() if p.is_dir() and p.name != "__pycache__"]
-    if pkg_dirs:
-        package_name = pkg_dirs[0].name
-        project_module = importlib.import_module("kedro.framework.project")
-        project_module.configure_project(package_name)
     project_module = importlib.import_module("kedro.framework.project")
+    project_module.configure_project(package_name)
+
     pipeline = project_module.pipelines.get("__default__")
 
     catalog_translator = CatalogTranslator(

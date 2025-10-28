@@ -27,8 +27,9 @@ def _extract_cmd_from_help(msg: str) -> list[str]:
     return cmd_list
 
 
-def test_dagster_commands_discovered(monkeypatch, kedro_project_no_dagster_config):
-    project_path, options = kedro_project_no_dagster_config
+def test_dagster_commands_discovered(monkeypatch, kedro_project_no_dagster_config_base):
+    options = kedro_project_no_dagster_config_base
+    project_path = options.project_path
     monkeypatch.chdir(project_path)
     runner = CliRunner()
     result = runner.invoke(cli_dagster)
@@ -40,9 +41,10 @@ def test_dagster_commands_discovered(monkeypatch, kedro_project_no_dagster_confi
 
 
 @pytest.mark.parametrize("inside_subdirectory", (True, False))
-def test_cli_init_creates_files(monkeypatch, kedro_project_no_dagster_config, inside_subdirectory):
+def test_cli_init_creates_files(monkeypatch, kedro_project_no_dagster_config_base, inside_subdirectory):
     # Ensure project is bootstrapped so package_name is known for definitions.py path
-    project_path, options = kedro_project_no_dagster_config
+    options = kedro_project_no_dagster_config_base
+    project_path = options.project_path
     bootstrap_project(project_path)
 
     cwd = project_path / "src" if inside_subdirectory else project_path
@@ -70,8 +72,8 @@ def test_cli_init_creates_files(monkeypatch, kedro_project_no_dagster_config, in
     )
 
 
-def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project_no_dagster_config):
-    project_path, _ = kedro_project_no_dagster_config
+def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project_no_dagster_config_base):
+    project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     runner = CliRunner()
     # First initialization
@@ -85,8 +87,8 @@ def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project_no_da
     assert "A 'definitions.py' already exists" in second.output
 
 
-def test_cli_init_force_overwrites(monkeypatch, kedro_project_no_dagster_config):
-    project_path, _ = kedro_project_no_dagster_config
+def test_cli_init_force_overwrites(monkeypatch, kedro_project_no_dagster_config_base):
+    project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     runner = CliRunner()
     # Ensure files exist
@@ -98,8 +100,8 @@ def test_cli_init_force_overwrites(monkeypatch, kedro_project_no_dagster_config)
     assert "successfully updated" in result.output
 
 
-def test_cli_init_with_wrong_env_prints_message(monkeypatch, kedro_project_no_dagster_config):
-    project_path, _ = kedro_project_no_dagster_config
+def test_cli_init_with_wrong_env_prints_message(monkeypatch, kedro_project_no_dagster_config_base):
+    project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     runner = CliRunner()
     result = runner.invoke(cli_init, ["--env", "debug"])  # non-existing env in starter
@@ -107,8 +109,8 @@ def test_cli_init_with_wrong_env_prints_message(monkeypatch, kedro_project_no_da
     assert "No env 'debug' found" in result.output
 
 
-def test_cli_init_silent_suppresses_success_logs(monkeypatch, kedro_project_no_dagster_config):
-    project_path, _ = kedro_project_no_dagster_config
+def test_cli_init_silent_suppresses_success_logs(monkeypatch, kedro_project_no_dagster_config_base):
+    project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     runner = CliRunner()
     result = runner.invoke(cli_init, ["--force", "--silent"])  # ensure it writes but no logs
@@ -118,9 +120,9 @@ def test_cli_init_silent_suppresses_success_logs(monkeypatch, kedro_project_no_d
 
 @pytest.mark.parametrize("inside_subdirectory", (True, False))
 def test_cli_dev_invokes_dagster_with_defaults(
-    monkeypatch, mocker, kedro_project_no_dagster_config, inside_subdirectory
+    monkeypatch, mocker, kedro_project_no_dagster_config_base, inside_subdirectory
 ):
-    project_path, _ = kedro_project_no_dagster_config
+    project_path = kedro_project_no_dagster_config_base.project_path
     bootstrap_project(project_path)
     cwd = project_path / "src" if inside_subdirectory else project_path
     monkeypatch.chdir(cwd)
@@ -146,8 +148,8 @@ def test_cli_dev_invokes_dagster_with_defaults(
     assert args_map["--live-data-poll-rate"] == "2000"
 
 
-def test_cli_dev_overrides(monkeypatch, mocker, kedro_project_no_dagster_config):
-    project_path, _ = kedro_project_no_dagster_config
+def test_cli_dev_overrides(monkeypatch, mocker, kedro_project_no_dagster_config_base):
+    project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     bootstrap_project(project_path)
 

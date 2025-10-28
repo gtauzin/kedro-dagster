@@ -19,7 +19,8 @@ from kedro_dagster.pipelines import PipelineTranslator
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_static_partitions_and_identity_mapping(env, request):
-    project_path, _ = request.getfixturevalue(f"kedro_project_partitioned_identity_mapping_{env}")
+    options = request.getfixturevalue(f"kedro_project_partitioned_identity_mapping_{env}")
+    project_path = options.project_path
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -72,7 +73,8 @@ def test_static_partitions_and_static_mapping(env, request):
 
     Mapping configured: p1 -> a, p2 -> b, p3 -> b
     """
-    project_path, _ = request.getfixturevalue(f"kedro_project_partitioned_static_mapping_{env}")
+    options = request.getfixturevalue(f"kedro_project_partitioned_static_mapping_{env}")
+    project_path = options.project_path
 
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)

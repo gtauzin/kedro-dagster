@@ -17,7 +17,8 @@ from kedro_dagster.pipelines import PipelineTranslator
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_logger_translator_builds_package_loggers(env, request):
-    project_path, _ = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+    options = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+    project_path = options.project_path
 
     metadata = bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
@@ -36,7 +37,8 @@ def test_logger_translator_builds_package_loggers(env, request):
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_schedule_creator_uses_named_schedule(env, request):
     # Use the integration scenario which includes executors, schedules and a default job
-    project_path, _ = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+    options = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+    project_path = options.project_path
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
