@@ -37,6 +37,7 @@ def _builds_dg_definitions(module: ast.Module) -> bool:
 
 
 def test_definitions_template_ast_structure():
+    """AST of definitions.py includes translator var, to_dagster() call, and dg.Definitions build."""
     code = (files("kedro_dagster") / "templates" / "definitions.py").read_text(encoding="utf-8")
     tree = ast.parse(code)
 

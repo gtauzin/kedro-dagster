@@ -19,6 +19,7 @@ from kedro_dagster.pipelines import PipelineTranslator
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_static_partitions_and_identity_mapping(env, request):
+    """Identity mapping keeps upstream and downstream partition keys aligned (p -> p)."""
     options = request.getfixturevalue(f"kedro_project_partitioned_identity_mapping_{env}")
     project_path = options.project_path
 

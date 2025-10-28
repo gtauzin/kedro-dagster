@@ -28,6 +28,7 @@ def _extract_cmd_from_help(msg: str) -> list[str]:
 
 
 def test_dagster_commands_discovered(monkeypatch, kedro_project_no_dagster_config_base):
+    """Discover 'dagster' plugin commands in the Kedro CLI entrypoint."""
     options = kedro_project_no_dagster_config_base
     project_path = options.project_path
     monkeypatch.chdir(project_path)
@@ -42,6 +43,7 @@ def test_dagster_commands_discovered(monkeypatch, kedro_project_no_dagster_confi
 
 @pytest.mark.parametrize("inside_subdirectory", (True, False))
 def test_cli_init_creates_files(monkeypatch, kedro_project_no_dagster_config_base, inside_subdirectory):
+    """CLI 'init' writes dagster.yml and package definitions.py in the project."""
     # Ensure project is bootstrapped so package_name is known for definitions.py path
     options = kedro_project_no_dagster_config_base
     project_path = options.project_path
@@ -73,6 +75,7 @@ def test_cli_init_creates_files(monkeypatch, kedro_project_no_dagster_config_bas
 
 
 def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project_no_dagster_config_base):
+    """A second 'init' without --force warns about existing config files."""
     project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     runner = CliRunner()
@@ -88,6 +91,7 @@ def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project_no_da
 
 
 def test_cli_init_force_overwrites(monkeypatch, kedro_project_no_dagster_config_base):
+    """'init --force' overwrites existing configuration files successfully."""
     project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     runner = CliRunner()
@@ -101,6 +105,7 @@ def test_cli_init_force_overwrites(monkeypatch, kedro_project_no_dagster_config_
 
 
 def test_cli_init_with_wrong_env_prints_message(monkeypatch, kedro_project_no_dagster_config_base):
+    """Invalid --env prints a helpful message and exits cleanly."""
     project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     runner = CliRunner()
@@ -110,6 +115,7 @@ def test_cli_init_with_wrong_env_prints_message(monkeypatch, kedro_project_no_da
 
 
 def test_cli_init_silent_suppresses_success_logs(monkeypatch, kedro_project_no_dagster_config_base):
+    """'--silent' suppresses success logs while still performing updates."""
     project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     runner = CliRunner()
@@ -122,6 +128,7 @@ def test_cli_init_silent_suppresses_success_logs(monkeypatch, kedro_project_no_d
 def test_cli_dev_invokes_dagster_with_defaults(
     monkeypatch, mocker, kedro_project_no_dagster_config_base, inside_subdirectory
 ):
+    """'dagster dev' is invoked with default options derived from config."""
     project_path = kedro_project_no_dagster_config_base.project_path
     bootstrap_project(project_path)
     cwd = project_path / "src" if inside_subdirectory else project_path
@@ -149,6 +156,7 @@ def test_cli_dev_invokes_dagster_with_defaults(
 
 
 def test_cli_dev_overrides(monkeypatch, mocker, kedro_project_no_dagster_config_base):
+    """Command-line flags override default 'dagster dev' options."""
     project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     bootstrap_project(project_path)
@@ -182,6 +190,7 @@ def test_cli_dev_overrides(monkeypatch, mocker, kedro_project_no_dagster_config_
 
 
 def test_cli_plugin_shows_in_info(monkeypatch, tmp_path):
+    """The 'kedro_dagster' plugin appears in 'kedro info' output."""
     # Sanity check that the plugin is discoverable by Kedro
     monkeypatch.chdir(tmp_path)
     runner = CliRunner()

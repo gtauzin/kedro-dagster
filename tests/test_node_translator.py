@@ -14,7 +14,7 @@ from kedro.pipeline.node import Node
 
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.nodes import NodeTranslator
-from kedro_dagster.utils import format_node_name, is_nothing_asset_name
+from kedro_dagster.utils import format_node_name, is_nothing_asset_name, unformat_asset_name
 
 
 def _get_node_producing_output(pipeline: Pipeline, dataset_name: str) -> Node:
@@ -24,8 +24,9 @@ def _get_node_producing_output(pipeline: Pipeline, dataset_name: str) -> Node:
     raise AssertionError(f"No node produces dataset '{dataset_name}' in pipeline")
 
 
-@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+@pytest.mark.parametrize("env", ["base", "local"])
 def test_create_op_wires_resources(env, request):
+    """Ensure create_op wires required IO-manager resources for file-backed datasets."""
     options = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
     project_path = options.project_path
     package_name = options.package_name
@@ -68,6 +69,7 @@ def test_create_op_wires_resources(env, request):
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_create_op_partition_tags_and_name_suffix(env, request):
+    """Ensure op name suffix and tags include provided partition keys."""
     options = request.getfixturevalue(f"kedro_project_exec_filebacked_output2_memory_{env}")
     project_path = options.project_path
     package_name = options.package_name
@@ -119,6 +121,7 @@ def test_create_op_partition_tags_and_name_suffix(env, request):
     indirect=True,
 )
 def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi_in_out_env):
+    """Translate nodes with multiple inputs/outputs into a valid Dagster op."""
     options = kedro_project_multi_in_out_env
     project_path = options.project_path
     env = options.env
@@ -147,14 +150,41 @@ def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi
         env=env,
     )
 
-    # Pick a node with outputs and ensure op creation works (covers wiring for multi in/out)
-    node_with_outputs = next(n for n in pipeline.nodes if len(n.outputs) > 0)
-    op = node_translator.create_op(node_with_outputs)
-    assert isinstance(op, dg.OpDefinition)
+    # Pick the node that exercises the scenario and assert ins/outs are as expected
+    node_multi_inputs = next((n for n in pipeline.nodes if len(n.inputs) > 1), None)
+    node_multi_outputs = next((n for n in pipeline.nodes if len(n.outputs) > 1), None)
+
+    if node_multi_inputs is not None:
+        # multiple_inputs scenario: node 'add_ab' takes two inputs and produces 'sum'
+        op = node_translator.create_op(node_multi_inputs)
+        assert isinstance(op, dg.OpDefinition)
+        assert set(op.ins.keys()) == {"a_cleaned", "b_cleaned"}
+        assert set(op.outs.keys()) == {"sum", "add_ab_after_pipeline_run_hook_input"}
+
+    elif node_multi_outputs is not None:
+        # multiple_outputs scenarios: either tuple ('split') or dict ('fanout')
+        op = node_translator.create_op(node_multi_outputs)
+        assert isinstance(op, dg.OpDefinition)
+
+        if node_multi_outputs.name == "split":
+            expected_ins = {"input_numbers"}
+            expected_outs = {"even_numbers", "odd_numbers", "split_after_pipeline_run_hook_input"}
+        elif node_multi_outputs.name == "fanout":
+            expected_ins = {"input_value"}
+            expected_outs = {"value_copy", "value_double", "fanout_after_pipeline_run_hook_input"}
+        else:
+            pytest.fail(f"Unexpected multi-output node name: {node_multi_outputs.name}")
+
+        assert set(op.ins.keys()) == expected_ins
+        assert set(op.outs.keys()) == expected_outs
+
+    else:
+        pytest.fail("No multi-input or multi-output node found in pipeline")
 
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_node_translator_handles_nothing_datasets(env, request):
+    """Handle Nothing datasets by exposing signaling ins/outs on generated ops."""
     options = request.getfixturevalue(f"kedro_project_nothing_assets_{env}")
     project_path = options.project_path
 
@@ -194,9 +224,6 @@ def test_node_translator_handles_nothing_datasets(env, request):
     produce_node = next((n for n in pipeline.nodes if _has_nothing_output(n)), None)
     gated_node = next((n for n in pipeline.nodes if _has_nothing_input(n)), None)
 
-    # if not produce_node or not gated_node:
-    #     pytest.skip("Scenario did not materialize Nothing-producing or Nothing-consuming nodes in this run")
-
     op_produce = node_translator.create_op(produce_node)
     op_gated = node_translator.create_op(gated_node)
 
@@ -207,17 +234,25 @@ def test_node_translator_handles_nothing_datasets(env, request):
     # Ensure the op exposes the start_signal output and input respectively
     # Ensure op outs/ins include Nothing-typed assets by name presence
     assert any(
-        is_nothing_asset_name(context.catalog, name.replace("__", "."))
-        for name in getattr(op_produce, "outs").keys()  # type: ignore[attr-defined]
+        is_nothing_asset_name(context.catalog, unformat_asset_name(asset_name))
+        for asset_name in getattr(op_produce, "outs").keys()
     )
     assert any(
-        is_nothing_asset_name(context.catalog, name.replace("__", "."))
-        for name in getattr(op_gated, "ins").keys()  # type: ignore[attr-defined]
+        is_nothing_asset_name(context.catalog, unformat_asset_name(asset_name))
+        for asset_name in getattr(op_gated, "ins").keys()
     )
+
+    # Additionally verify the Dagster type for Nothing assets is dg.Nothing on both sides
+    assert "start_signal" in op_produce.outs
+    assert getattr(op_produce.outs["start_signal"], "dagster_type").is_nothing is True
+
+    assert "start_signal" in op_gated.ins
+    assert getattr(op_gated.ins["start_signal"], "dagster_type").is_nothing is True
 
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_node_translator_handles_no_output_node(env, request):
+    """Create an op for a no-output node without an asset and only the after-hook output."""
     options = request.getfixturevalue(f"kedro_project_no_outputs_node_{env}")
     project_path = options.project_path
     package_name = options.package_name
@@ -251,8 +286,6 @@ def test_node_translator_handles_no_output_node(env, request):
 
     # Select the known no-output node from the scenario
     no_out_node = next((n for n in pipeline.nodes if n.name == "sink"), None)
-    # if no_out_node is None:
-    #     pytest.skip("No-output node 'sink' not present in this scenario variant")
 
     # to_dagster should create an op factory but not an asset for this node
     named_op_factories, named_assets = node_translator.to_dagster()
@@ -262,5 +295,5 @@ def test_node_translator_handles_no_output_node(env, request):
 
     # The op should only expose the after_pipeline_run Nothing output (no dataset outs)
     op = node_translator.create_op(no_out_node)
-    out_keys = list(getattr(op, "outs").keys())  # type: ignore[attr-defined]
+    out_keys = list(getattr(op, "outs").keys())
     assert len(out_keys) == 1 and out_keys[0].endswith("_after_pipeline_run_hook_input")

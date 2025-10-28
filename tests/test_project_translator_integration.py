@@ -12,6 +12,7 @@ from kedro_dagster.translator import KedroProjectTranslator
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_kedro_project_translator_end_to_end(env, request):
+    """End-to-end project translation yields jobs, schedules, sensors, assets, and resources."""
     options = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
     project_path = options.project_path
 

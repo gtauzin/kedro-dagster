@@ -145,12 +145,7 @@ def test_catalog_translator_builds_configurable_io_managers(kedro_project_scenar
     indirect=True,
 )
 def test_io_manager_roundtrip_matches_dataset(kedro_project_scenario_env):
-    """Saving/loading via the IO manager should match the underlying Kedro dataset.
-
-    For each CSVDataset in the scenario, we write a small DataFrame through the
-    generated IO manager and verify that loading through both the dataset and the
-    IO manager produces identical DataFrames.
-    """
+    """Saving/loading via the IO manager should match the underlying Kedro dataset."""
     options = kedro_project_scenario_env
     project_path = options.project_path
     package_name = options.package_name
@@ -221,13 +216,7 @@ def test_io_manager_roundtrip_matches_dataset(kedro_project_scenario_env):
     indirect=True,
 )
 def test_create_dataset_config_contains_parameters(kedro_project_scenario_env):
-    """The dataset config built by CatalogTranslator should reflect dataset._describe().
-
-    We focus on CSVDatasets in the exec_filebacked scenario and verify that the
-    translator's helper returns a superset containing:
-      - dataset: short class name (e.g., CSVDataset)
-      - entries from _describe() (except version), with PurePosixPath converted to str
-    """
+    """The dataset config built by CatalogTranslator should reflect dataset._describe()."""
     options = kedro_project_scenario_env
     project_path = options.project_path
     package_name = options.package_name
@@ -278,12 +267,7 @@ def test_create_dataset_config_contains_parameters(kedro_project_scenario_env):
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures via request.getfixturevalue
 def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(env, request):
-    """Ensure IO manager for DagsterPartitionedDataset handles partition keys from tags and context.
-
-    - Save via handle_output with downstream_partition_key tag -> data stored under that key.
-    - Load via load_input with upstream_partition_key tag -> returns that partition.
-    - Load via load_input with partition_key + asset_partitions_def in context -> returns that partition.
-    """
+    """Ensure IO manager for DagsterPartitionedDataset handles partition keys from tags and context."""
     options = request.getfixturevalue(f"kedro_project_partitioned_identity_mapping_{env}")
     project_path = options.project_path
     package_name = options.package_name

@@ -46,11 +46,13 @@ def _make_pipeline_translator(named_resources: dict | None = None) -> PipelineTr
 
 
 def test_enumerate_partition_keys_none_returns_empty_list():
+    """Enumerating partition keys for None yields an empty list."""
     t = _make_pipeline_translator()
     assert t._enumerate_partition_keys(None) == []
 
 
 def test_before_after_pipeline_hooks_require_mlflow_conditionally():
+    """Before/after pipeline hook ops require 'mlflow' resource only when enabled."""
     # without mlflow
     t1 = _make_pipeline_translator()
     op1 = t1._create_before_pipeline_run_hook("job", Pipeline([]))
@@ -70,6 +72,7 @@ def test_before_after_pipeline_hooks_require_mlflow_conditionally():
 
 
 def test_node_op_declares_after_hook_output_and_mlflow_requirement():
+    """Node op declares the after-pipeline-run Nothing output and mlflow resource conditionally."""
     # minimal NodeTranslator using a dummy pipeline and no catalog IO managers
     catalog = DataCatalog()
     nt_without_mlflow = NodeTranslator(

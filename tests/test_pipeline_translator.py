@@ -20,6 +20,7 @@ from kedro_dagster.utils import format_dataset_name, format_node_name
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_pipeline_translator_to_dagster_with_executor(env, request):
+    """Translate a Kedro pipeline to Dagster jobs with configured executors and resources."""
     options = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
     project_path = options.project_path
 
@@ -162,7 +163,7 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
                 node_def = nd
                 break
     if node_def is None and hasattr(job, "all_node_defs"):
-        for nd in job.all_node_defs:  # type: ignore[attr-defined]
+        for nd in job.all_node_defs:
             if getattr(nd, "name", None) == hook_name:
                 node_def = nd
                 break

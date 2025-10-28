@@ -40,6 +40,7 @@ def _make_translator(catalog: DataCatalog, asset_partitions: dict[str, dict] | N
 
 
 def test_enumerate_partition_keys_raises_for_multi_partitions():
+    """MultiPartitionsDefinition is unsupported and should raise NotImplementedError."""
     catalog = DataCatalog()
     translator = _make_translator(catalog)
 
@@ -55,6 +56,7 @@ def test_enumerate_partition_keys_raises_for_multi_partitions():
 
 
 def test_get_node_partition_keys_raises_on_mixed_outputs():
+    """Mixing partitioned and non-partitioned outputs should raise a ValueError."""
     # one partitioned output and one non-partitioned non-nothing output -> error
     catalog = DataCatalog(
         datasets={
@@ -84,6 +86,7 @@ def test_get_node_partition_keys_raises_on_mixed_outputs():
 
 
 def test_get_node_partition_keys_identity_mapping():
+    """Partition keys map one-to-one when input and output share the same partitions."""
     # input and output both partitioned with same keys -> identity mapping
     catalog = DataCatalog(datasets={"in": MemoryDataset(), "out": MemoryDataset()})
     partitions_def = dg.StaticPartitionsDefinition(["2024-01", "2024-02"])
@@ -106,6 +109,7 @@ def test_get_node_partition_keys_identity_mapping():
 
 
 def test_get_node_partition_keys_all_partition_mapping_downstream_selection():
+    """AllPartitionMapping returns a single downstream key from multiple candidates."""
     # AllPartitionMapping should still return a single mapped downstream key
     catalog = DataCatalog(datasets={"in": MemoryDataset(), "out": MemoryDataset()})
     in_def = dg.StaticPartitionsDefinition(["a", "b"])

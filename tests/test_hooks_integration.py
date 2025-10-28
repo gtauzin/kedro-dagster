@@ -64,6 +64,7 @@ class RecordingHooks:
 
 @pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
 def test_hooks_are_invoked_end_to_end(env, request):
+    """Execute a translated job and assert Kedro hooks are invoked (pipeline, node, dataset)."""
     # Arrange: use a project variant with file-backed datasets so IO managers are used
     options = request.getfixturevalue(f"kedro_project_hooks_filebacked_{env}")
     project_path = options.project_path

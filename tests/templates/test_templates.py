@@ -14,6 +14,7 @@ def _read_text_from_package(relative_path: str) -> str:
 
 
 def test_definitions_template_is_valid_python_and_contains_expected_constructs():
+    """definitions.py template parses and includes expected translator/definitions snippets."""
     code = _read_text_from_package("templates/definitions.py")
 
     # Check it parses as valid Python (without executing it)
