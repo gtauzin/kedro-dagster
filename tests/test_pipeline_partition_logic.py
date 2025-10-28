@@ -56,6 +56,29 @@ def test_enumerate_partition_keys_raises_for_multi_partitions():
     assert "MultiPartitionsDefinition is not supported" in str(exc.value)
 
 
+def test_enumerate_partition_keys_raises_for_time_window_partitions():
+    """TimeWindowPartitionsDefinition is unsupported and should raise NotImplementedError."""
+    catalog = DataCatalog()
+    translator = _make_translator(catalog)
+
+    pd = dg.TimeWindowPartitionsDefinition(
+        start="2024-01-01",
+        end="2024-02-01",
+        cron_schedule="0 0 * * *",
+        fmt="%Y-%m-%d",
+    )
+
+    with pytest.raises(NotImplementedError) as exc:
+        translator._enumerate_partition_keys(pd)
+    assert "TimeWindowPartitionsDefinition is not supported" in str(exc.value)
+
+    pd_daily = dg.DailyPartitionsDefinition(start_date="2024-01-01", fmt="%Y-%m-%d")
+
+    with pytest.raises(NotImplementedError) as exc:
+        translator._enumerate_partition_keys(pd_daily)
+    assert "TimeWindowPartitionsDefinition is not supported" in str(exc.value)
+
+
 def test_get_node_partition_keys_raises_on_mixed_outputs():
     """Mixing partitioned and non-partitioned outputs should raise a ValueError."""
     # one partitioned output and one non-partitioned non-nothing output -> error

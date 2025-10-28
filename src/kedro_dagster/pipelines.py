@@ -92,6 +92,9 @@ class PipelineTranslator:
         if isinstance(partitions_def, dg.MultiPartitionsDefinition):
             raise NotImplementedError("MultiPartitionsDefinition is not supported.")
 
+        if isinstance(partitions_def, dg.TimeWindowPartitionsDefinition):
+            raise NotImplementedError("TimeWindowPartitionsDefinition is not supported.")
+
         return list(partitions_def.get_partition_keys())
 
     def _get_node_partition_keys(self, node: "Node") -> dict[str, str]:
