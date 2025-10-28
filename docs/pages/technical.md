@@ -5,6 +5,160 @@ This section provides an in-depth look at the architecture, configuration, and c
 !!! danger
     This documentation section is a work in progress. The translation configuration and logic are not fully defined here. Please check back later for a more complete guide!
 
+## Kedro-Dagster Concept Mapping
+
+Kedro-Dagster translates core Kedro concepts into their Dagster equivalents. Understanding this mapping helps you reason about how your Kedro project appears and behaves in Dagster.
+
+| Kedro Concept   | Dagster Concept      | Description |
+|-----------------|----------------------|-------------|
+| **Node**        | Op,&nbsp;Asset            | Each [Kedro node](https://docs.kedro.org/en/stable/nodes_and_pipelines/nodes.html) becomes a Dagster op. Node parameters are passed as config. |
+| **Pipeline**    | Job                  | [Kedro pipelines](https://docs.kedro.org/en/stable/nodes_and_pipelines/pipeline_introduction.html) are filtered and translated into a Dagster job. Jobs can be scheduled and can target executors. |
+| **Dataset**     | Asset,&nbsp;IO&nbsp;Manager    | Each [Kedro data catalog](https://docs.kedro.org/en/stable/data/data_catalog.html)'s dataset become Dagster assets managed by a dedicated IO managers. |
+| **Hooks**       | Hooks,&nbsp;Sensors       | [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) are executed at the appropriate points in the Dagster job lifecycle. |
+| **Parameters**  | Config,&nbsp;Resources    | [Kedro parameters](https://docs.kedro.org/en/stable/configuration/parameters.html) are passed as Dagster config. |
+| **Logging**     | Logger               | [Kedro logging](https://docs.kedro.org/en/stable/logging/index.html) is integrated with Dagster's logging system. |
+
+Additionally, we provide Kedro datasets, namely `DagsterPartitionedDataset` and `DagsterNothingDataset`, to enable [Dagster partitions](https://docs.dagster.io/guides/build/partitions-and-backfills).
+
+### Catalog
+
+Kedro-Dagster translates Kedro datasets into Dagster assets and IO managers. This allows you to use Kedro's [Data Catalog](https://docs.kedro.org/en/stable/data/data_catalog.html) with Dagster's asset materialization and IO management features.
+
+For the Kedro pipelines specified in `dagster.yml`, the following Dagster objects are defined:
+
+- **External assets**: Input datasets to the pipelines are registered as Dagster external assets.
+- **Assets**: Output datasets to the pipelines are defined as Dagster assets
+- **IO Managers**: Custom Dagster IO managers are created for each dataset involved in the deployed pipelines mapping both their save and load functions.
+
+See the API reference for [`CatalogTranslator`](api.md#catalogtranslator) for more details.
+
+!!! note
+    Each Kedro dataset can take a `metadata` parameter to define additional metadata for the corresponding Dagster asset, such as a description. This description will appear in the Dagster UI.
+
+### Node
+
+Kedro nodes are translated into Dagster ops and assets. Each node becomes a Dagster op, and, additionally, nodes that return outputs are mapped to Dagster multi-assets.
+
+For the Kedro pipelines specified in `dagster.yml`, the following Dagster objects are defined:
+
+- **Ops**: Each Kedro node within the pipelines is mapped to a Dagster op.
+- **Assets**: Kedro nodes that return output datasets are registered as Dagster multi-assets.
+- **Parameters**: Node parameters are passed as Dagster config to enable them to be modified in a Dagster run launchpad.
+
+See the API reference for [`NodeTranslator`](api.md#nodetranslator) for more details.
+
+### Pipeline
+
+Kedro pipelines are translated into Dagster jobs. Each job can be filtered, scheduled, and assigned an executor via configuration.
+
+- **Jobs**: Each pipeline is mapped to a Dagster job.
+- **Filtering**: Jobs are defined granuarily from Kedro pipelines by allowing the filtering of their nodes, namespaces, tags, and inputs/outputs.
+
+If one of the datasets involved in the pipeline is a `DagsterPartitionedDataset`, the corresponding job will fan-out the nodes the partitioned datasets are involved in according to the defined partitions.
+
+See the API reference for [`PipelineTranslator`](api.md#pipelinetranslator) for more details.
+
+### Hook
+
+Kedro-Dagster preserves all [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) in the Dagster context. Hooks are executed at the appropriate points in the Dagster job lifecycle. Catalog hooks are called in the `handle_output` and `load_input` function of each Dagster IO manager. Node hooks are plugged in the appropriate Dagster Op. As for the Context hook, they are called within a Dagster Op running at the beginning of each job along with the `before_pipeline_run` pipeline hook. The `after_pipeline_run` is called in a Dagster op running at the end of each job. Finally the `on_pipeline_error` pipeline, is embedded in a dedicated Dagster sensor that is triggered by a run failure.
+
+## Compatibility issues between Kedro and Dagster
+
+### Naming convention
+
+Dagster enforces strong constraints for asset, op, and job names  as they must match the regex `^[A-Za-z0-9_]+$`. As those Dagster objects are created directly from Kedro datasets, nodes, and pipelines, Kedro-Dagster applies a small set of deterministic transformations so Kedro names map predictably to Dagster names:
+
+- **Datasets**: only the dot "." namespace separator is converted to a double underscore "__" when mapping a Kedro dataset name to a Dagster-friendly identifier. Example: `my.dataset.name` -> `my__dataset__name`. Other characters (for example, hyphens `-`) are preserved by the formatter. Internally Kedro-Dagster will get back the dataset name from the asset name by replacing double underscored by dots.
+- **Nodes**: dots are replaced with double underscores to keep namespaces (`my.node` -> `my__node`). If the resulting node name still contains disallowed characters (anything outside A–Z, a–z, 0–9 and underscore), the node name is replaced with a stable hashed placeholder of the form `unnamed_node_<md5>` to ensure it meets Dagster's constraints.
+
+These rules are implemented in `src/kedro_dagster/utils.py` by `format_dataset_name`, `format_node_name`, and `unformat_asset_name` and are intentionally minimal and deterministic so names remain readable while complying with Dagster's requirements.
+
+## Kedro Datasets for Dagster Partitioning
+
+Kedro-Dagster provides two custom datasets to enable Dagster partitioning and asset management within Kedro projects:
+
+- **`DagsterPartitionedDataset`**: A Kedro dataset that is partitioned according to Dagster's partitioning scheme. This allows for more efficient data processing and management within Kedro pipelines.
+- **`DagsterNothingDataset`**: A special Kedro dataset that represents a "no-op" or empty dataset in Dagster. This can be useful for cases where an order in execution between two nodes needs to be enforced.
+
+!!! danger
+    Dagster Partitions support is currently experimental. Please open an issue if you encounter any problems or have feature requests!
+
+### `DagsterPartitionedDataset`
+
+Works as a wrapper around Kedro's `PartitionedDataset` to enable Dagster partitioning capabilities and enables the definition of a Dagster partitions along with an optional partition mapping to downstream datasets.
+
+#### Example Usage
+
+A `DagsterPartitionedDataset` can be defined in your Kedro data catalog as follows:
+
+```yaml
+my_downstream_partitioned_dataset:
+  type: kedro_dagster.datasets.DagsterPartitionedDataset
+  path: data/01_raw/my_data/
+  dataset: # Underlying Kedro PartitionedDataset configuration
+    type: pandas.CSVDataSet
+  partition: dagster.StaticPartitionsDefinition # Define Dagster partitions
+    partitions:
+      - 2023-01-01.csv
+      - 2023-01-02.csv
+      - 2023-01-03.csv
+```
+
+!!! danger
+    `MultiPartitionsDefinition` is currently not supported.
+
+To define a partition mapping to downstream datasets, you can use the `partition_mappings` parameter:
+
+```yaml
+my_upstream_partitioned_dataset:
+  type: kedro_dagster.datasets.DagsterPartitionedDataset
+  partition: dagster.StaticPartitionsDefinition
+    partitions:
+      - 2023-01-01.csv
+      - 2023-01-02.csv
+      - 2023-01-03.csv
+  partition_mappings:
+    my_downstream_partitioned_dataset: # Map to downstream dataset
+      type: dagster.StaticPartitionMapping
+      downstream_partition_keys_by_upstream_partition_key:
+        1.csv: 2023-01-01.csv
+        2.csv: 2023-01-02.csv
+        3.csv: 2023-01-03.csv
+```
+
+The dataset mapped to in `partition_mappings` can also be refered to using a pattern with the `{}` syntax:
+
+```yaml
+my_upstream_partitioned_dataset:
+  ...
+  partition_mappings:
+    {namespace}.partitioned_dataset: # Map to downstream dataset
+      type: dagster.StaticPartitionMapping
+  ...
+```
+
+!!! note
+    The `partition` and `partition_mapping` parameters expect Dagster partition definitions and mappings. Refer to the [Dagster Partitions Documentation](https://docs.dagster.io/concepts/partitions-schedules-sensors/partitions) for more details on available partition types and mappings.
+
+See the API reference for [`DagsterPartitionedDataset`](api.md#dagsterpartitioneddataset) for more details.
+
+### `DagsterNothingDataset`
+
+A dummy dataset representing a Dagster asset of type `Nothing` without associated data used to enforce links between nodes. It does not read or write any data but allows you to create dependencies between nodes in your Kedro pipelines that translate to Dagster assets of type `Nothing`.
+
+#### Example Usage
+
+It is straightforward to define a `DagsterNothingDataset` in your Kedro data catalog as follows:
+
+```yaml
+my_nothing_dataset:
+  type: kedro_dagster.datasets.DagsterNothingDataset
+  metadata:
+      description: "Nothing dataset."
+```
+
+See the API reference for [`DagsterNothingDataset`](api.md#dagsternothingdataset) for more details.
+
 ## Project Configuration
 
 Kedro-Dagster expects a standard [Kedro project structure](https://docs.kedro.org/en/stable/get_started/kedro_concepts.html#kedro-project-directory-structure). The main configuration file for Dagster integration is `dagster.yml`, located in your Kedro project's `conf/<ENV_NAME>/` directory.
@@ -91,67 +245,6 @@ To each job, you can assign a schedule and/or an executor by name if it was prev
 The `definitions.py` file is auto-generated by the plugin and serves as the main entry point for Dagster to discover all translated Kedro objects. It contains the Dagster [`Definitions`](https://docs.dagster.io/api/dagster/definitions#dagster.Definitions) object, which registers all jobs, assets, resources, schedules, and sensors derived from your Kedro project.
 
 In most cases, you should not manually edit `definitions.py`; instead, update your Kedro project or `dagster.yml` configuration.
-
-## Kedro-Dagster Concept Mapping
-
-Kedro-Dagster translates core Kedro concepts into their Dagster equivalents. Understanding this mapping helps you reason about how your Kedro project appears and behaves in Dagster.
-
-| Kedro Concept   | Dagster Concept      | Description |
-|-----------------|----------------------|-------------|
-| **Node**        | Op,&nbsp;Asset            | Each [Kedro node](https://docs.kedro.org/en/stable/nodes_and_pipelines/nodes.html) becomes a Dagster op. Node parameters are passed as config. |
-| **Pipeline**    | Job                  | [Kedro pipelines](https://docs.kedro.org/en/stable/nodes_and_pipelines/pipeline_introduction.html) are filtered and translated into a Dagster job. Jobs can be scheduled and can target executors. |
-| **Dataset**     | Asset,&nbsp;IO&nbsp;Manager    | Each [Kedro data catalog](https://docs.kedro.org/en/stable/data/data_catalog.html)'s dataset become Dagster assets managed by a dedicated IO managers. |
-| **Hooks**       | Hooks,&nbsp;Sensors       | [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) are executed at the appropriate points in the Dagster job lifecycle. |
-| **Parameters**  | Config,&nbsp;Resources    | [Kedro parameters](https://docs.kedro.org/en/stable/configuration/parameters.html) are passed as Dagster config. |
-| **Logging**     | Logger               | [Kedro logging](https://docs.kedro.org/en/stable/logging/index.html) is integrated with Dagster's logging system. |
-
-### Catalog
-
-Kedro-Dagster translates Kedro datasets into Dagster assets and IO managers. This allows you to use Kedro's [Data Catalog](https://docs.kedro.org/en/stable/data/data_catalog.html) with Dagster's asset materialization and IO management features.
-
-For the Kedro pipelines specified in `dagster.yml`, the following Dagster objects are defined:
-
-- **External assets**: Input datasets to the pipelines are registered as Dagster external assets.
-- **Assets**: Output datasets to the pipelines are defined as Dagster assets
-- **IO Managers**: Custom Dagster IO managers are created for each dataset involved in the deployed pipelines mapping both their save and load functions.
-
-See the API reference for [`CatalogTranslator`](api.md#catalogtranslator) for more details.
-
-### Node
-
-Kedro nodes are translated into Dagster ops and assets. Each node becomes a Dagster op, and, additionally, nodes that return outputs are mapped to Dagster multi-assets.
-
-For the Kedro pipelines specified in `dagster.yml`, the following Dagster objects are defined:
-
-- **Ops**: Each Kedro node within the pipelines is mapped to a Dagster op.
-- **Assets**: Kedro nodes that return output datasets are registered as Dagster multi-assets.
-- **Parameters**: Node parameters are passed as Dagster config to enable them to be modified in a Dagster run launchpad.
-
-See the API reference for [`NodeTranslator`](api.md#nodetranslator) for more details.
-
-### Pipeline
-
-Kedro pipelines are translated into Dagster jobs. Each job can be filtered, scheduled, and assigned an executor via configuration.
-
-- **Jobs**: Each pipeline is mapped to a Dagster job.
-- **Filtering**: Jobs are defined granuarily from Kedro pipelines by allowing the filtering of their nodes, namespaces, tags, and inputs/outputs.
-
-See the API reference for [`PipelineTranslator`](api.md#pipelinetranslator) for more details.
-
-### Hook
-
-Kedro-Dagster preserves all [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) in the Dagster context. Hooks are executed at the appropriate points in the Dagster job lifecycle. Catalog hooks are called in the `handle_output` and `load_input` function of each Dagster IO manager. Node hooks are plugged in the appropriate Dagster Op. As for the Context hook, they are called within a Dagster Op running at the beginning of each job along with the `before_pipeline_run` pipeline hook. The `after_pipeline_run` is called in a Dagster op running at the end of each job. Finally the `on_pipeline_error` pipeline, is embedded in a dedicated Dagster sensor that is triggered by a run failure.
-
-## Compatibility issues between Kedro and Dagster
-
-### Naming convention
-
-Dagster enforces strong constraints for asset, op, and job names  as they must match the regex `^[A-Za-z0-9_]+$`. As those Dagster objects are created directly from Kedro datasets, nodes, and pipelines, Kedro-Dagster applies a small set of deterministic transformations so Kedro names map predictably to Dagster names:
-
-- **Datasets**: only the dot "." namespace separator is converted to a double underscore "__" when mapping a Kedro dataset name to a Dagster-friendly identifier. Example: `my.dataset.name` -> `my__dataset__name`. Other characters (for example, hyphens `-`) are preserved by the formatter. Internally Kedro-Dagster will get back the dataset name from the asset name by replacing double underscored by dots.
-- **Nodes**: dots are replaced with double underscores to keep namespaces (`my.node` -> `my__node`). If the resulting node name still contains disallowed characters (anything outside A–Z, a–z, 0–9 and underscore), the node name is replaced with a stable hashed placeholder of the form `unnamed_node_<md5>` to ensure it meets Dagster's constraints.
-
-These rules are implemented in `src/kedro_dagster/utils.py` by `format_dataset_name`, `format_node_name`, and `unformat_asset_name` and are intentionally minimal and deterministic so names remain readable while complying with Dagster's requirements.
 
 ---
 

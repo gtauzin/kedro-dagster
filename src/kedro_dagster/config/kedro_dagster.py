@@ -1,4 +1,9 @@
-"""Configuration definitions for Kedro-Dagster."""
+"""Configuration definitions for Kedro-Dagster.
+
+This module parses and validates the top-level `dagster.yml` entries, merging
+sub-models for dev options, executors, schedules, and jobs into a single
+KedroDagsterConfig object.
+"""
 
 from logging import getLogger
 from typing import Any
@@ -16,7 +21,7 @@ LOGGER = getLogger(__name__)
 
 
 class KedroDagsterConfig(BaseModel):
-    """Main configuration class for Kedro-Dagster, representing the structure of the `dagster.yml` file.
+    """Main configuration class representing the `dagster.yml` structure.
 
     Attributes:
         dev (DevOptions | None): Options for `kedro dagster dev` command.
@@ -31,6 +36,8 @@ class KedroDagsterConfig(BaseModel):
     jobs: dict[str, JobOptions] | None = None
 
     class Config:
+        """Pydantic configuration enforcing strict fields and assignment validation."""
+
         validate_assignment = True
         extra = "forbid"
 
@@ -71,10 +78,10 @@ def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
     """Get the Dagster configuration from the `dagster.yml` file.
 
     Args:
-        context: The ``KedroContext`` that was created.
+    context: ``KedroContext`` that was created.
 
     Returns:
-        KedroDagsterConfig: The Dagster configuration.
+        KedroDagsterConfig: Dagster configuration.
     """
     try:
         if "dagster" not in context.config_loader.config_patterns.keys():

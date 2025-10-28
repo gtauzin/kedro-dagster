@@ -1,4 +1,7 @@
-"""Configuration definitions for Kedro-Dagster."""
+"""Configuration definitions for Kedro-Dagster schedules.
+
+Defines the schema for schedule entries referenced by jobs in `dagster.yml`.
+"""
 
 from typing import Any
 

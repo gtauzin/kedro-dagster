@@ -1,4 +1,10 @@
-"""Translation from Kedro to Dagster."""
+"""High-level translation from a Kedro project into a Dagster code location.
+
+This module orchestrates the end-to-end conversion from a Kedro project
+into a Dagster code location composed of assets, jobs, resources, schedules,
+sensors, and loggers. It bootstraps the Kedro session, loads configuration,
+translates the catalog and nodes, and wires the resulting definitions together.
+"""
 
 import os
 from dataclasses import dataclass
@@ -33,20 +39,18 @@ LOGGER = getLogger(__name__)
 
 @dataclass
 class DagsterCodeLocation:
-    """Represents a Kedro-based Dagster code location.
+    """A typed container for all artifacts that make up a Dagster code location.
 
     Attributes:
-        named_ops: A dictionary of named Dagster operations.
-        named_assets: A dictionary of named Dagster assets.
-        named_resources: A dictionary of named Dagster resources.
-        named_jobs: A dictionary of named Dagster jobs.
-        named_executors: A dictionary of named Dagster executors.
-        named_schedules: A dictionary of named Dagster schedules.
-        named_sensors: A dictionary of named Dagster sensors.
-        named_loggers: A dictionary of named Dagster loggers.
+        named_assets: Dictionary of named Dagster assets.
+        named_resources: Dictionary of named Dagster resources.
+        named_jobs: Dictionary of named Dagster jobs.
+        named_executors: Dictionary of named Dagster executors.
+        named_schedules: Dictionary of named Dagster schedules.
+        named_sensors: Dictionary of named Dagster sensors.
+        named_loggers: Dictionary of named Dagster loggers.
     """
 
-    named_ops: dict[str, dg.OpDefinition]
     named_assets: dict[str, dg.AssetSpec | dg.AssetsDefinition]
     named_resources: dict[str, dg.ResourceDefinition]
     named_jobs: dict[str, dg.JobDefinition]
@@ -57,12 +61,12 @@ class DagsterCodeLocation:
 
 
 class KedroProjectTranslator:
-    """Translate Kedro project into Dagster code location.
+    """Translate a Kedro project into a Dagster code location.
 
     Args:
-        project_path (Path | None): The path to the Kedro project.
-        env (str | None): Kedro environment to use.
-        conf_source (str | None): Path to the Kedro configuration source directory.
+        project_path (Path | None): Path to the Kedro project. If omitted, auto-discovered.
+        env (str | None): Kedro environment to use. Defaults to Kedro's configured default.
+        conf_source (str | None): Optional path to the Kedro configuration source directory.
     """
 
     def __init__(
@@ -78,7 +82,6 @@ class KedroProjectTranslator:
             self._project_path = project_path
 
         if env is None:
-            # TODO: Double check if this is the right way to get the default environment
             default_run_env = settings._CONFIG_LOADER_ARGS["default_run_env"]
             env = os.getenv("KEDRO_ENV", default_run_env) or ""
 
@@ -88,6 +91,9 @@ class KedroProjectTranslator:
 
     def initialize_kedro(self, conf_source: str | None = None) -> None:
         """Initialize Kedro context and pipelines for translation.
+
+        This bootstraps the Kedro project, starts a session, loads the context,
+        and discovers pipelines to prepare for translation.
 
         Args:
             conf_source (str | None): Optional configuration source directory.
@@ -116,15 +122,15 @@ class KedroProjectTranslator:
         LOGGER.info("Kedro initialization complete.")
 
     def get_defined_pipelines(self, dagster_config: "BaseModel", translate_all: bool) -> list["Pipeline"]:
-        """Get pipelines to translate.
+        """Resolve the list of pipelines to translate.
 
         Args:
-            dagster_config (dict[str, Any]): The configuration of the Dagster job.
-            translate_all (bool): Whether to translate the whole Kedro project.
-            If ``False``, translates only the pipelines defined in `dagster.yml`.
+            dagster_config (BaseModel): Validated configuration for Kedro-Dagster.
+            translate_all (bool): If True, translate all discovered pipelines; otherwise,
+                only those referenced by jobs in the configuration.
 
         Returns:
-            list[Pipeline]: List of Kedro pipelines to translate.
+            list[Pipeline]: Kedro pipelines to translate.
         """
         if translate_all:
             return list(find_pipelines().values())
@@ -141,14 +147,14 @@ class KedroProjectTranslator:
         return defined_pipelines
 
     def to_dagster(self, translate_all: bool = False) -> DagsterCodeLocation:
-        """Translate Kedro project into Dagster.
+        """Translate the Kedro project into a Dagster code location.
 
         Args:
-            translate_all (bool): Whether to translate the whole Kedro project.
-            If ``False``, translates only the pipelines defined in `dagster.yml`.
+            translate_all (bool): Whether to translate all pipelines or only those referenced
+                in the ``dagster.yml`` configuration.
 
         Returns:
-            DagsterCodeLocation: The translated Dagster code location.
+            DagsterCodeLocation: Translated Dagster code location composed of assets, jobs, resources, and more.
         """
         LOGGER.info("Translating Kedro project into Dagster...")
 
@@ -169,8 +175,12 @@ class KedroProjectTranslator:
         named_resources: dict[str, dg.ResourceDefinition] = {"kedro_run": kedro_run_resource}
 
         if is_mlflow_enabled():
-            # Add MLflow resource if enabled in the Kedro context
-            named_resources["mlflow"] = get_mlflow_resource_from_config(self._context.mlflow)
+            # Add MLflow resource only if MLflow is installed and configured on the context
+            ctx_mlflow = getattr(self._context, "mlflow", None)
+            if ctx_mlflow is not None:
+                named_resources["mlflow"] = get_mlflow_resource_from_config(ctx_mlflow)
+            else:
+                LOGGER.info("MLflow is installed but not configured on the Kedro context; skipping MLflow resource.")
 
         LOGGER.info("Mapping Dagster loggers...")
         self.logger_creator = LoggerTranslator(
@@ -186,7 +196,7 @@ class KedroProjectTranslator:
             hook_manager=self._context._hook_manager,
             env=self._env,
         )
-        named_io_managers = self.catalog_translator.to_dagster()
+        named_io_managers, asset_partitions = self.catalog_translator.to_dagster()
         named_resources |= named_io_managers
 
         LOGGER.info("Translating Kedro nodes to Dagster ops and assets...")
@@ -195,11 +205,11 @@ class KedroProjectTranslator:
             catalog=self._context.catalog,
             hook_manager=self._context._hook_manager,
             session_id=self._session_id,
+            asset_partitions=asset_partitions,
             named_resources=named_resources,
             env=self._env,
         )
-        named_ops, named_assets = self.node_translator.to_dagster()
-
+        named_op_factories, named_assets = self.node_translator.to_dagster()
         LOGGER.info("Creating Dagster executors...")
         self.executor_creator = ExecutorCreator(dagster_config=dagster_config)
         named_executors = self.executor_creator.create_executors()
@@ -212,10 +222,11 @@ class KedroProjectTranslator:
             env=self._env,
             session_id=self._session_id,
             named_assets=named_assets,
-            named_ops=named_ops,
+            asset_partitions=asset_partitions,
+            named_op_factories=named_op_factories,
             named_resources=named_resources,
             named_executors=named_executors,
-            enable_mlflow=is_mlflow_enabled(),
+            enable_mlflow=is_mlflow_enabled() and hasattr(self._context, "mlflow"),
         )
         named_jobs = self.pipeline_translator.to_dagster()
 
@@ -231,7 +242,6 @@ class KedroProjectTranslator:
         return DagsterCodeLocation(
             named_resources=named_resources,
             named_assets=named_assets,
-            named_ops=named_ops,
             named_jobs=named_jobs,
             named_executors=named_executors,
             named_schedules=named_schedules,

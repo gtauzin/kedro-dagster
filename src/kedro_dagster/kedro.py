@@ -44,7 +44,7 @@ class KedroRunTranslator:
             filter_params (dict[str, Any]): Parameters used to filter the pipeline.
 
         Returns:
-            ConfigurableResource: A Dagster resource for Kedro pipeline hooks.
+            ConfigurableResource: Dagster resource for Kedro pipeline hooks.
 
         """
 
@@ -118,7 +118,7 @@ class KedroRunTranslator:
             named_jobs (dict[str, JobDefinition]): Dictionary of named Dagster jobs.
 
         Returns:
-            dict[str, dg.SensorDefinition]: A dictionary with the sensor definition
+            dict[str, dg.SensorDefinition]: Dictionary with the sensor definition
             for the `on_pipeline_error` hook.
 
         """

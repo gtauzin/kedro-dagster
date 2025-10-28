@@ -1,4 +1,8 @@
-"""Configuration definitions for Dagster executors."""
+"""Configuration definitions for Dagster executors.
+
+These pydantic models define the parameters accepted by Dagster executors when
+declared in `dagster.yml` under the `executors` section.
+"""
 
 from logging import getLogger
 from typing import Any
@@ -16,9 +20,13 @@ class InProcessExecutorOptions(BaseModel):
     """
 
     class RetriesEnableOptions(BaseModel):
+        """Enable retries for the executor."""
+
         enabled: dict = {}  # type: ignore[type-arg]
 
     class RetriesDisableOptions(BaseModel):
+        """Disable retries for the executor."""
+
         disabled: dict = {}  # type: ignore[type-arg]
 
     retries: RetriesEnableOptions | RetriesDisableOptions = Field(
@@ -159,6 +167,9 @@ class CeleryExecutorOptions(BaseModel):
 
 class CeleryDockerExecutorOptions(CeleryExecutorOptions, DockerExecutorOptions):
     """Options for the Celery-based executor which launches tasks as Docker containers.
+
+    Uses fields from both CeleryExecutorOptions and DockerExecutorOptions to configure
+    Celery workers running in Docker.
 
     Attributes:
         broker (str | None): Celery broker URL.

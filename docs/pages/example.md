@@ -7,7 +7,7 @@ This section introduces an advanced Kedro project with Dagster, inspired by the 
 
 ## Project Overview
 
-This repo builds on the [Kedro Spaceflights tutorial](https://docs.kedro.org/en/stable/tutorial/spaceflights_tutorial.html), augmented with dynamic pipelines following the [GetInData blog post](https://getindata.com/blog/kedro-dynamic-pipelines/).
+This repo builds on the [Kedro Spaceflights tutorial](https://docs.kedro.org/en/stable/tutorial/spaceflights_tutorial.html), augmented with dynamic pipelines following the [GetInData blog post](https://getindata.com/blog/kedro-dynamic-pipelines/) and modified to make full use of [Dagster's partitions](https://docs.dagster.io/guides/build/partitions-and-backfills).
 
 !!! note
     Here, parameters for dynamic pipelines are namespaced via YAML inheritance rather than a custom `merge` resolver.

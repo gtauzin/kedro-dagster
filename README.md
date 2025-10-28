@@ -11,6 +11,7 @@
 [![License](https://img.shields.io/github/license/gtauzin/kedro-dagster)](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE.md)
 [![PyPI Version](https://img.shields.io/pypi/v/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
 [![Run tests and checks](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml/badge.svg)](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml)
+[![CodeCov](https://codecov.io/gh/gtauzin/kedro-dagster/branch/main/graph/badge.svg)](https://codecov.io/gh/gtauzin/kedro-dagster/branch/main)
 [![Slack Organisation](https://img.shields.io/badge/slack-chat-blueviolet.svg?label=Kedro%20Slack&logo=slack)](https://slack.kedro.org)
 
 ## What is Kedro-Dagster?
@@ -23,7 +24,8 @@ The Kedro-Dagster plugin enables seamless integration between [Kedro](https://ke
 - **Customization:** The core integration lives in the auto‑generated Dagster `definitions.py`. For advanced use cases, you can extend or override these definitions.
 - **Kedro Hooks Preservation:** Kedro hooks are preserved and called at the appropriate time during pipeline execution, so custom logic (e.g., data validation, logging) continues to work seamlessly.
 - **MLflow Compatibility:** Use [Kedro-MLflow](https://github.com/Galileo-Galilei/kedro-mlflow) with Dagster’s [MLflow integration](https://dagster.io/integrations/dagster-mlflow) to track experiments, log models, and register artifacts.
-- **Logger Integration:** Unifies Kedro and Dagster logging so logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug.
+- **(Experimental) Dagster Partition Support:** Make use of Dagster's partitions to fan-out Kedro nodes acting on partitioned data.
+- **(Experimental) Logger Integration:** Unifies Kedro and Dagster logging so logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug.
 
 ## How to install Kedro-Dagster?
 
@@ -101,7 +103,7 @@ Start the Dagster UI to monitor and manage your pipelines using the following co
 kedro dagster dev --env <ENV_NAME>
 ```
 
-The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000).
+The Dagster UI will be available at http://127.0.0.1:3000.
 
 For a concrete use-case, see the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example).
 

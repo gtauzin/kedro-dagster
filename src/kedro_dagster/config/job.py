@@ -1,4 +1,9 @@
-"""Configuration definitions for Kedro-Dagster jobs."""
+"""Configuration definitions for Kedro-Dagster jobs.
+
+These pydantic models describe the shape of the `dagster.yml` entries used to
+translate Kedro pipelines into Dagster jobs, including pipeline filtering and
+executor/schedule selection.
+"""
 
 from pydantic import BaseModel
 
@@ -30,6 +35,8 @@ class PipelineOptions(BaseModel):
     tags: list[str] | None = None
 
     class Config:
+        """Pydantic configuration enforcing strict fields."""
+
         extra = "forbid"
 
 

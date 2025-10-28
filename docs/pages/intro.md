@@ -27,7 +27,8 @@ What makes Kedro‑Dagster shine is that it leverages the complementarity of bot
 
 - **No code changes:** Integrate Dagster without modifying your existing Kedro datasets, config, or pipelines.
 - **Enhanced orchestration and observability:** Use Dagster’s UI to visualize, launch, and schedule runs, inspect logs, trace asset lineage, and monitor pipeline health. Gain real-time insights into execution status, track data dependencies, and debug failures with full context.
-- **Variety of execution targets:** Run your pipelines locally, on a remote machine, using Docker, or scale out on Kubernetes and other Dagster-supported executors.
+- **Automatic node parallelization across partitions:** Use Dagster’s partitions to fan out Kedro node execution across time windows or other keys with minimal configuration—no code changes required.
+- **Variety of execution targets:** Run locally for development, in Docker, on a remote machine, or scale on Kubernetes and other Dagster-supported executors, selectable per job via configuration.
 
 Refer to the [Dagster Documentation](https://docs.dagster.io) and in particular to the [Dagster Deployment Options](https://docs.dagster.io/guides/deploy) to find out if Dagster fits your need and connect to the [Dagster Slack](https://dagster.io/slack) to get in touch with the community.
 
@@ -60,7 +61,11 @@ Kedro‑Dagster is designed so that Kedro hooks are preserved and called at the 
 
 Harness the capabilities of MLflow using [Kedro-MLflow](https://github.com/Galileo-Galilei/kedro-mlflow) in conjunction with Dagster’s [MLflow integration](https://dagster.io/integrations/dagster-mlflow). Whether you run your pipelines using Kedro or Dagster, you can track experiments, log models, and register artifacts automatically through the `mlflow.yml` configuration file.
 
-### Logger Integration
+### (Experimental) Dagster Partitions Support
+
+Enable time- or key-based [Dagster partitions](https://docs.dagster.io/guides/build/partitions-and-backfills) to backfill, schedule, and process incremental slices of your pipelines.
+
+### (Experimental) Logger Integration
 
 Kedro and Dagster logging is unified to provide a consistent logging experience across both frameworks, so logs from Kedro nodes appear together in the Dagster UI and are easy to trace and debug.
 

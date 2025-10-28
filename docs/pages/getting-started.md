@@ -27,6 +27,12 @@ Install the plugin with `pip`:
 pip install kedro-dagster
 ```
 
+or with `uv`:
+
+```bash
+uv pip install kedro-dagster
+```
+
 alternatively, you can install it from GitHub:
 
 ```bash

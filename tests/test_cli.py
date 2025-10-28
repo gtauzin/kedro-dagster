@@ -27,9 +27,11 @@ def _extract_cmd_from_help(msg: str) -> list[str]:
     return cmd_list
 
 
-def test_dagster_commands_discovered(monkeypatch, kedro_project):
-    # Running the group with no args should show available subcommands
-    monkeypatch.chdir(kedro_project)
+def test_dagster_commands_discovered(monkeypatch, kedro_project_no_dagster_config_base):
+    """Discover 'dagster' plugin commands in the Kedro CLI entrypoint."""
+    options = kedro_project_no_dagster_config_base
+    project_path = options.project_path
+    monkeypatch.chdir(project_path)
     runner = CliRunner()
     result = runner.invoke(cli_dagster)
 
@@ -40,21 +42,23 @@ def test_dagster_commands_discovered(monkeypatch, kedro_project):
 
 
 @pytest.mark.parametrize("inside_subdirectory", (True, False))
-def test_cli_init_creates_files(monkeypatch, kedro_project, inside_subdirectory):
-    project_path = kedro_project
+def test_cli_init_creates_files(monkeypatch, kedro_project_no_dagster_config_base, inside_subdirectory):
+    """CLI 'init' writes dagster.yml and package definitions.py in the project."""
     # Ensure project is bootstrapped so package_name is known for definitions.py path
+    options = kedro_project_no_dagster_config_base
+    project_path = options.project_path
     bootstrap_project(project_path)
 
     cwd = project_path / "src" if inside_subdirectory else project_path
     monkeypatch.chdir(cwd)
 
-    runner = CliRunner()
-    result = runner.invoke(cli_init)
+    cli_runner = CliRunner()
+    result = cli_runner.invoke(cli_init)
 
     assert result.exit_code == 0
 
     # dagster.yml written to base env by default
-    dagster_yml = project_path / "conf" / "base" / "dagster.yml"
+    dagster_yml = project_path / "conf" / options.env / "dagster.yml"
     assert dagster_yml.is_file()
     assert (
         "'conf/base/dagster.yml' successfully updated." in result.output
@@ -70,8 +74,10 @@ def test_cli_init_creates_files(monkeypatch, kedro_project, inside_subdirectory)
     )
 
 
-def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project):
-    monkeypatch.chdir(kedro_project)
+def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project_no_dagster_config_base):
+    """A second 'init' without --force warns about existing config files."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    monkeypatch.chdir(project_path)
     runner = CliRunner()
     # First initialization
     first = runner.invoke(cli_init)
@@ -84,8 +90,10 @@ def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project):
     assert "A 'definitions.py' already exists" in second.output
 
 
-def test_cli_init_force_overwrites(monkeypatch, kedro_project):
-    monkeypatch.chdir(kedro_project)
+def test_cli_init_force_overwrites(monkeypatch, kedro_project_no_dagster_config_base):
+    """'init --force' overwrites existing configuration files successfully."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    monkeypatch.chdir(project_path)
     runner = CliRunner()
     # Ensure files exist
     runner.invoke(cli_init)
@@ -96,16 +104,20 @@ def test_cli_init_force_overwrites(monkeypatch, kedro_project):
     assert "successfully updated" in result.output
 
 
-def test_cli_init_with_wrong_env_prints_message(monkeypatch, kedro_project):
-    monkeypatch.chdir(kedro_project)
+def test_cli_init_with_wrong_env_prints_message(monkeypatch, kedro_project_no_dagster_config_base):
+    """Invalid --env prints a helpful message and exits cleanly."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    monkeypatch.chdir(project_path)
     runner = CliRunner()
     result = runner.invoke(cli_init, ["--env", "debug"])  # non-existing env in starter
     assert result.exit_code == 0
     assert "No env 'debug' found" in result.output
 
 
-def test_cli_init_silent_suppresses_success_logs(monkeypatch, kedro_project):
-    monkeypatch.chdir(kedro_project)
+def test_cli_init_silent_suppresses_success_logs(monkeypatch, kedro_project_no_dagster_config_base):
+    """'--silent' suppresses success logs while still performing updates."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    monkeypatch.chdir(project_path)
     runner = CliRunner()
     result = runner.invoke(cli_init, ["--force", "--silent"])  # ensure it writes but no logs
     assert result.exit_code == 0
@@ -113,8 +125,11 @@ def test_cli_init_silent_suppresses_success_logs(monkeypatch, kedro_project):
 
 
 @pytest.mark.parametrize("inside_subdirectory", (True, False))
-def test_cli_dev_invokes_dagster_with_defaults(monkeypatch, mocker, kedro_project, inside_subdirectory):
-    project_path = kedro_project
+def test_cli_dev_invokes_dagster_with_defaults(
+    monkeypatch, mocker, kedro_project_no_dagster_config_base, inside_subdirectory
+):
+    """'dagster dev' is invoked with default options derived from config."""
+    project_path = kedro_project_no_dagster_config_base.project_path
     bootstrap_project(project_path)
     cwd = project_path / "src" if inside_subdirectory else project_path
     monkeypatch.chdir(cwd)
@@ -140,9 +155,11 @@ def test_cli_dev_invokes_dagster_with_defaults(monkeypatch, mocker, kedro_projec
     assert args_map["--live-data-poll-rate"] == "2000"
 
 
-def test_cli_dev_overrides(monkeypatch, mocker, kedro_project):
-    monkeypatch.chdir(kedro_project)
-    bootstrap_project(kedro_project)
+def test_cli_dev_overrides(monkeypatch, mocker, kedro_project_no_dagster_config_base):
+    """Command-line flags override default 'dagster dev' options."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    monkeypatch.chdir(project_path)
+    bootstrap_project(project_path)
 
     runner = CliRunner()
     sp_call = mocker.patch("subprocess.call")
@@ -173,6 +190,7 @@ def test_cli_dev_overrides(monkeypatch, mocker, kedro_project):
 
 
 def test_cli_plugin_shows_in_info(monkeypatch, tmp_path):
+    """The 'kedro_dagster' plugin appears in 'kedro info' output."""
     # Sanity check that the plugin is discoverable by Kedro
     monkeypatch.chdir(tmp_path)
     runner = CliRunner()
