@@ -40,13 +40,13 @@ def parse_dagster_definition(
             error_msg = None
             try:
                 tmp, error_msg = _load_obj(class_path)  # Try to load partition class
-            except Exception:  # noqa: BLE001
-                if error_msg is None:
-                    try:
-                        tmp = _load_obj(class_path)
-                    except Exception as exc:
-                        error_msg = str(exc)
+            except TypeError:  # noqa: BLE001
+                try:
+                    tmp = _load_obj(class_path)
+                except Exception as exc:
+                    error_msg = str(exc)
 
+            if error_msg is not None:
                 raise TypeError(f"Error loading class '{class_path}': {error_msg}")
 
             if tmp is not None:
