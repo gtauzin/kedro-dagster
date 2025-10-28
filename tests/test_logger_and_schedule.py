@@ -15,7 +15,7 @@ from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 
 
-@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+@pytest.mark.parametrize("env", ["base", "local"])
 def test_logger_translator_builds_package_loggers(env, request):
     """Build Dagster LoggerDefinitions for package modules declared in config."""
     options = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
@@ -35,7 +35,7 @@ def test_logger_translator_builds_package_loggers(env, request):
     assert all(isinstance(v, dg.LoggerDefinition) for v in named_loggers.values())
 
 
-@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+@pytest.mark.parametrize("env", ["base", "local"])
 def test_schedule_creator_uses_named_schedule(env, request):
     """Create a named schedule for the 'default' job with the expected cron expression."""
     # Use the integration scenario which includes executors, schedules and a default job

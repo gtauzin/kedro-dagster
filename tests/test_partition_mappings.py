@@ -14,10 +14,8 @@ from kedro_dagster.dagster import ExecutorCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 
-# Scenarios are provided via fixtures; imports kept minimal
 
-
-@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+@pytest.mark.parametrize("env", ["base", "local"])
 def test_static_partitions_and_identity_mapping(env, request):
     """Identity mapping keeps upstream and downstream partition keys aligned (p -> p)."""
     options = request.getfixturevalue(f"kedro_project_partitioned_identity_mapping_{env}")
@@ -68,12 +66,9 @@ def test_static_partitions_and_identity_mapping(env, request):
     assert "downstream_partition_key" in op.tags and op.tags["downstream_partition_key"].endswith("|p1")
 
 
-@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+@pytest.mark.parametrize("env", ["base", "local"])
 def test_static_partitions_and_static_mapping(env, request):
-    """Ensure StaticPartitionMapping routes upstream partitions to configured downstream keys.
-
-    Mapping configured: p1 -> a, p2 -> b, p3 -> b
-    """
+    """Ensure StaticPartitionMapping routes upstream partitions to configured downstream keys."""
     options = request.getfixturevalue(f"kedro_project_partitioned_static_mapping_{env}")
     project_path = options.project_path
 
@@ -139,6 +134,6 @@ def test_static_partitions_and_static_mapping(env, request):
     assert node_def is not None, "Hook op definition not found in job"
     ins_keys = set(getattr(node_def, "ins").keys())
 
-    # Expect p1->a, p2->b, p3->b
+    # Expect p1->a, p2->b
     assert "node2__p1__a_after_pipeline_run_hook_input" in ins_keys
     assert "node2__p2__b_after_pipeline_run_hook_input" in ins_keys

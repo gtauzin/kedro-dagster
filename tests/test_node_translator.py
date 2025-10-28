@@ -67,7 +67,7 @@ def test_create_op_wires_resources(env, request):
     assert f"{env}__output2_ds_io_manager" in op.required_resource_keys
 
 
-@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+@pytest.mark.parametrize("env", ["base", "local"])
 def test_create_op_partition_tags_and_name_suffix(env, request):
     """Ensure op name suffix and tags include provided partition keys."""
     options = request.getfixturevalue(f"kedro_project_exec_filebacked_output2_memory_{env}")
@@ -182,7 +182,7 @@ def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi
         pytest.fail("No multi-input or multi-output node found in pipeline")
 
 
-@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+@pytest.mark.parametrize("env", ["base", "local"])
 def test_node_translator_handles_nothing_datasets(env, request):
     """Handle Nothing datasets by exposing signaling ins/outs on generated ops."""
     options = request.getfixturevalue(f"kedro_project_nothing_assets_{env}")
@@ -250,7 +250,7 @@ def test_node_translator_handles_nothing_datasets(env, request):
     assert getattr(op_gated.ins["start_signal"], "dagster_type").is_nothing is True
 
 
-@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+@pytest.mark.parametrize("env", ["base", "local"])
 def test_node_translator_handles_no_output_node(env, request):
     """Create an op for a no-output node without an asset and only the after-hook output."""
     options = request.getfixturevalue(f"kedro_project_no_outputs_node_{env}")

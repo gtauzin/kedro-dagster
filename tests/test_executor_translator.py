@@ -11,7 +11,7 @@ from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import ExecutorCreator
 
 
-@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures
+@pytest.mark.parametrize("env", ["base", "local"])
 def test_executor_translator_creates_multiple_executors(env, request):
     """Build multiple executor definitions from config and validate their names/types."""
     # Arrange: project with multiple executors and a default job

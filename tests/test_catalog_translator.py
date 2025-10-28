@@ -265,7 +265,7 @@ def test_create_dataset_config_contains_parameters(kedro_project_scenario_env):
             assert actual == expected
 
 
-@pytest.mark.parametrize("env", ["base", "local"])  # use existing per-env fixtures via request.getfixturevalue
+@pytest.mark.parametrize("env", ["base", "local"])
 def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(env, request):
     """Ensure IO manager for DagsterPartitionedDataset handles partition keys from tags and context."""
     options = request.getfixturevalue(f"kedro_project_partitioned_identity_mapping_{env}")
