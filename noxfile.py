@@ -1,5 +1,7 @@
 """Nox sessions."""
 
+import re
+
 import nox
 
 # Require Nox version 2024.3.2 or newer to support the 'default_venv_backend' option
@@ -12,9 +14,34 @@ nox.options.default_venv_backend = "uv|virtualenv"
 nox.options.sessions = ["fix", "tests", "serve_docs"]
 
 
+# --------------------------------------------------------------------------------------
+# Compatibility matrix for Kedro and Dagster
+# Update these lists to expand or narrow the test matrix.
+# We prefer spec ranges over exact pins so latest patch for each line is exercised.
+# Examples:
+#   "kedro~=0.19.0" installs latest 0.19.x
+#   "dagster>=1.10,<1.11" installs latest 1.10.x
+# --------------------------------------------------------------------------------------
+KEDRO_SPECS = [
+    "kedro~=0.19.0",
+    "kedro~=1.0.0",
+]
+
+# Keep dagster and dagster-webserver on the same minor line where possible
+DAGSTER_SPECS = [
+    "dagster>=1.10,<1.11",
+    "dagster>=1.11,<1.12",
+]
+
+
+def _slug(s: str) -> str:
+    """Create a filesystem-friendly slug for use in filenames from a spec string."""
+    return re.sub(r"[^A-Za-z0-9_.-]+", "-", s)
+
+
 # Test sessions for different Python versions
-@nox.session(python=["3.10", "3.11", "3.12"], venv_backend="uv")
-def tests(session: nox.Session) -> None:
+@nox.session(python=["3.13"], venv_backend="uv")
+def tests_coverage(session: nox.Session) -> None:
     """Run the tests with pytest under the specified Python version."""
     session.env["COVERAGE_FILE"] = f".coverage.{session.python}"
     session.env["COVERAGE_PROCESS_START"] = "pyproject.toml"
@@ -61,6 +88,50 @@ def tests(session: nox.Session) -> None:
 
     # XML report for CI
     session.run("coverage", "xml", "-o", f"coverage.{session.python}.xml")
+
+
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"], venv_backend="uv")
+@nox.parametrize("kedro_spec", KEDRO_SPECS)
+@nox.parametrize("dagster_spec", DAGSTER_SPECS)
+@nox.parametrize("with_mlflow", [False, True])
+def tests_versions(session: nox.Session, dagster_spec: str, kedro_spec: str, with_mlflow: bool) -> None:
+    """Run the test suite across a matrix of Kedro and Dagster versions.
+
+    This installs the project with test dependencies, then overrides Kedro, Dagster,
+    and Dagster Webserver to the specified constraints using uv.
+    """
+    # Install base deps (tests group + optional mlflow extra)
+    sync_args = [
+        "uv",
+        "sync",
+        "--no-default-groups",
+        "--group",
+        "tests",
+    ]
+    if with_mlflow:
+        sync_args += ["--extra", "mlflow"]
+    session.run_install(*sync_args, env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location})
+
+    # Install specific Kedro / Dagster lines for this run
+    # Keep dagster-webserver aligned with dagster line
+    # TODO
+    # webserver_spec = dagster_spec.replace("dagster", "dagster-webserver", 1)
+    session.run_install(
+        "uv",
+        "pip",
+        "install",
+        kedro_spec,
+        dagster_spec,
+        # webserver_spec,
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+
+    # Unit tests directly (no coverage for version tests)
+    session.run(
+        "pytest",
+        "tests",
+        *session.posargs,
+    )
 
 
 @nox.session(venv_backend="uv")

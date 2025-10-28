@@ -116,12 +116,61 @@ We use a branching model that helps us keep track of branches in a logical, cons
 
   ```bash
   uvx nox -s fix
-  uvx nox -s tests
+  uvx nox -s tests_coverage
   ```
 
   This will run linting, formatting, unit tests, behavior tests, and coverage checks across supported Python versions.
 
 The CI/CD pipeline will run all of these checks automatically on pull requests. Please ensure your code passes locally before submitting a PR.
+
+### Compatibility testing across Kedro/Dagster versions
+
+We provide a Nox session to run the full test suite across a matrix of Python, Kedro, and Dagster versions. This is useful when validating changes against multiple upstream versions.
+
+* List available sessions:
+
+```zsh
+uvx nox -l
+```
+
+* Run the entire version matrix (no coverage collected here):
+
+```zsh
+uvx nox -s tests_versions
+```
+
+* Run only for a specific Python version (example: 3.11):
+
+```zsh
+uvx nox -s tests_versions-3.11
+```
+
+* Select specific dependency ranges (quote carefully in zsh):
+
+```zsh
+uvx nox -s "tests_versions(dagster_spec='dagster>=1.10,<1.11',kedro_spec='kedro~=0.19.0')"
+```
+
+* Toggle the optional MLflow extra:
+
+```zsh
+# Only with MLflow
+uvx nox -s "tests_versions(with_mlflow=True)"
+
+# Only without MLflow
+uvx nox -s "tests_versions(with_mlflow=False)"
+```
+
+You can combine selectors, for example:
+
+```zsh
+uvx nox -s "tests_versions(python=3.12,with_mlflow=False,dagster_spec='dagster>=1.11,<1.12')"
+```
+
+Notes:
+
+* The version test session disables coverage for speed and clarity; the standard `tests` session still runs under coverage and aggregates reports.
+* `DAGSTER_SPECS` and `KEDRO_SPECS` are defined at the top of `noxfile.py`. Adjust them to widen or narrow the matrix.
 
 ## Docstring conventions
 
