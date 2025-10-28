@@ -23,8 +23,8 @@ nox.options.sessions = ["fix", "tests", "serve_docs"]
 #   "dagster>=1.10,<1.11" installs latest 1.10.x
 # --------------------------------------------------------------------------------------
 KEDRO_SPECS = [
-    "kedro~=0.19.0",
-    "kedro~=1.0.0",
+    "kedro>=0.19,<1.0",
+    "kedro>=1.0<1.1",
 ]
 
 # Keep dagster and dagster-webserver on the same minor line where possible

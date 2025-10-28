@@ -30,7 +30,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
         os: [ubuntu-latest]
-        kedro_spec: ["kedro~=0.19", "kedro~=1.0"]
+        kedro_spec: ["kedro>=0.19,<1.0", "kedro>=1.0<1.1"]
         dagster_spec: ["dagster>=1.10,<1.11", "dagster>=1.11,<1.12"]
     steps:
       - name: Checkout repository
