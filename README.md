@@ -18,6 +18,14 @@
 
 The Kedro-Dagster plugin enables seamless integration between [Kedro](https://kedro.readthedocs.io/), a framework for creating reproducible and maintainable data science code, and [Dagster](https://dagster.io/), a data orchestrator for machine learning and data pipelines. This plugin makes use of Dagster's orchestration capabilities to automate and monitor Kedro pipelines effectively.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/docs/images/example/local_asset_graph_light.png">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/docs/images/example/local_asset_graph_dark.png">
+    <img src="https://raw.githubusercontent.com/gtauzin/kedro-dagster/main/docs/images/example/local_asset_graph_light.png" alt="Kedro-Dagster Asset Graph">
+  </picture>
+</p>
+
 ## What are the features of Kedro-Dagster?
 
 - **Configuration‑Driven Workflows:** Centralize orchestration settings in a `dagster.yml` file for each Kedro environment. Define jobs from filtered Kedro pipelines, assign executors, retries, resource limits, and cron-based schedules.

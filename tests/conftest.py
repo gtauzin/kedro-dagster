@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+import kedro.framework.session.session as _kedro_session_mod
+from kedro.framework import project as _kedro_project
 from pytest import fixture
 
 from .scenarios.kedro_projects import (
@@ -29,6 +31,49 @@ from .scenarios.project_factory import KedroProjectOptions, build_kedro_project_
 def temp_directory(tmpdir_factory):
     # Use tmpdir_factory to create a temporary directory with session scope
     return tmpdir_factory.mktemp("session_temp_dir")
+
+
+# Avoid loading third-party Kedro plugin hooks via entry points during tests.
+@fixture(autouse=True)
+def _disable_kedro_plugin_entrypoints(monkeypatch):
+    original = getattr(_kedro_session_mod, "_register_hooks_entry_points", None)
+
+    def _wrapped_register(hook_manager, disabled_plugins):
+        # Call the original registration first (if available) to load entry points
+        if callable(original):
+            original(hook_manager, disabled_plugins)
+
+        # Determine which plugins are allowed for this test run.
+        #  - Project settings variable ALLOWED_HOOK_PLUGINS defined in the generated project
+        #  - If not present or empty: disable all third-party plugin hooks
+        try:
+            proj_allowed = getattr(_kedro_project.settings, "ALLOWED_HOOK_PLUGINS", ())
+        except Exception:
+            proj_allowed = ()
+
+        allowed_set = {str(p).strip() for p in proj_allowed if str(p).strip()}
+
+        # Unregister any plugin not explicitly allowed. If none are allowed,
+        # unregister all loaded third-party plugins.
+        try:
+            for plugin, dist in hook_manager.list_plugin_distinfo():
+                project_name = getattr(dist, "project_name", None)
+                if not project_name:
+                    # Skip if we cannot resolve a project name
+                    hook_manager.unregister(plugin=plugin)
+                    continue
+                if not allowed_set or project_name not in allowed_set:
+                    hook_manager.unregister(plugin=plugin)
+        except Exception:
+            for plugin, _ in hook_manager.list_plugin_distinfo():
+                hook_manager.unregister(plugin=plugin)
+
+    monkeypatch.setattr(
+        _kedro_session_mod,
+        "_register_hooks_entry_points",
+        _wrapped_register,
+        raising=False,
+    )
 
 
 @fixture(scope="session")

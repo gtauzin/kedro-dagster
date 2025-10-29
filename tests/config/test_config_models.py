@@ -50,7 +50,7 @@ def test_dev_options_python_file_property(monkeypatch, tmp_path: Path):
         return DummyMeta
 
     # Patch kedro helpers used by DevOptions.python_file
-    monkeypatch.setattr("kedro_dagster.config.dev._find_kedro_project", fake_find_project)
+    monkeypatch.setattr("kedro_dagster.config.dev.find_kedro_project", fake_find_project)
     monkeypatch.setattr("kedro_dagster.config.dev.bootstrap_project", fake_bootstrap)
 
     dev = DevOptions()

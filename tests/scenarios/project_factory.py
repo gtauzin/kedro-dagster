@@ -104,6 +104,14 @@ def build_kedro_project_scenario(
         ],
     )
 
+    # Update project's settings.py to declare which plugin hooks are allowed to load
+    # during tests. The autouse fixture will consult this variable and unregister others.
+    settings_file = project_path / "src" / package_name / "settings.py"
+    settings_text = settings_file.read_text(encoding="utf-8")
+    allowed_tuple = ", ".join([f"'{p}'" for p in options.plugins])
+    settings_text += f"\n\n# Allowed third-party plugin hooks for tests\nALLOWED_HOOK_PLUGINS = ({allowed_tuple})\n"
+    settings_file.write_text(settings_text, encoding="utf-8")
+
     if "kedro-mlflow" in options.plugins:
         # Ensure a local MLflow file store exists for projects created in tests
         # As kedro-mlflow is installed it will raise if it's missing.
@@ -112,13 +120,6 @@ def build_kedro_project_scenario(
         # MLflow's FileStore also expects a ".trash" subdirectory to exist when querying
         # deleted experiments; ensure it is present to avoid errors during setup/search.
         (mlruns_dir / ".trash").mkdir(parents=True, exist_ok=True)
-    else:
-        # Edit settings.py to add DISABLE_HOOKS_FOR_PLUGINS to avoid errors if plugin
-        # is not installed but the project template includes it in settings.py hooks.
-        settings_file = project_path / "src" / package_name / "settings.py"
-        settings_text = settings_file.read_text(encoding="utf-8")
-        settings_text += "\n\nDISABLE_HOOKS_FOR_PLUGINS = ('kedro_mlflow', )\n"
-        settings_file.write_text(settings_text, encoding="utf-8")
 
     # Inject configuration files
     conf_env_dir = project_path / "conf" / options.env
