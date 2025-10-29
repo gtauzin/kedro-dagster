@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.metadata as _ilmd
 from collections.abc import Callable
 from pathlib import Path
 
@@ -36,37 +37,39 @@ def temp_directory(tmpdir_factory):
 # Avoid loading third-party Kedro plugin hooks via entry points during tests.
 @fixture(autouse=True)
 def _disable_kedro_plugin_entrypoints(monkeypatch):
-    original = getattr(_kedro_session_mod, "_register_hooks_entry_points", None)
+    def _wrapped_register(*args, **kwargs):
+        # Best-effort: locate the hook manager (first positional arg in known Kedro versions)
+        hook_manager = args[0] if args else kwargs.get("hook_manager")
 
-    def _wrapped_register(hook_manager, disabled_plugins):
-        # Call the original registration first (if available) to load entry points
-        if callable(original):
-            original(hook_manager, disabled_plugins)
-
-        # Determine which plugins are allowed for this test run.
-        #  - Project settings variable ALLOWED_HOOK_PLUGINS defined in the generated project
-        #  - If not present or empty: disable all third-party plugin hooks
-        try:
-            proj_allowed = getattr(_kedro_project.settings, "ALLOWED_HOOK_PLUGINS", ())
-        except Exception:
-            proj_allowed = ()
-
+        proj_allowed = getattr(_kedro_project.settings, "ALLOWED_HOOK_PLUGINS", ())
         allowed_set = {str(p).strip() for p in proj_allowed if str(p).strip()}
 
-        # Unregister any plugin not explicitly allowed. If none are allowed,
-        # unregister all loaded third-party plugins.
-        try:
-            for plugin, dist in hook_manager.list_plugin_distinfo():
-                project_name = getattr(dist, "project_name", None)
-                if not project_name:
-                    # Skip if we cannot resolve a project name
-                    hook_manager.unregister(plugin=plugin)
+        # If no plugins are allowed, do not load any third-party entry points.
+        if not allowed_set:
+            return hook_manager
+
+        def _filtered_loader(group: str):
+            # Selectively load only entry points whose distribution name is allowed.
+            try:
+                eps_all = _ilmd.entry_points()
+                if hasattr(eps_all, "select"):
+                    eps = list(eps_all.select(group=group))
+                else:
+                    eps = list(eps_all.get(group, []))  # type: ignore[assignment]
+            except Exception:
+                eps = []
+
+            for ep in eps:
+                try:
+                    dist_name = getattr(getattr(ep, "dist", None), "name", None)
+                    if dist_name and dist_name in allowed_set:
+                        plugin = ep.load()
+                        hook_manager.register(plugin, name=getattr(ep, "name", None))
+                except Exception:
                     continue
-                if not allowed_set or project_name not in allowed_set:
-                    hook_manager.unregister(plugin=plugin)
-        except Exception:
-            for plugin, _ in hook_manager.list_plugin_distinfo():
-                hook_manager.unregister(plugin=plugin)
+            return hook_manager
+
+        hook_manager.load_setuptools_entrypoints = _filtered_loader
 
     monkeypatch.setattr(
         _kedro_session_mod,

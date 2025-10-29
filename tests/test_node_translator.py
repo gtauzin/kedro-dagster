@@ -233,7 +233,7 @@ def test_node_translator_handles_nothing_datasets(env, request):
         datasets_from_catalog = context.catalog.list()
     except AttributeError:
         # kedro > 1.0
-        datasets_from_catalog = context.catalog.keys()
+        datasets_from_catalog = context.catalog.filter()
     assert any(is_nothing_asset_name(context.catalog, name) for name in datasets_from_catalog)
 
     # Ensure the op exposes the start_signal output and input respectively
