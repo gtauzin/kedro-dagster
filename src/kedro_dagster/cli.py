@@ -9,10 +9,9 @@ import click
 from kedro.framework.project import settings
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
-from kedro.utils import _find_kedro_project
 
 from kedro_dagster.config import get_dagster_config
-from kedro_dagster.utils import write_jinja_template
+from kedro_dagster.utils import find_kedro_project, write_jinja_template
 
 LOGGER = getLogger(__name__)
 TEMPLATE_FOLDER_PATH = Path(__file__).parent / "templates"
@@ -63,7 +62,7 @@ def init(env: str, force: bool, silent: bool) -> None:
     """
 
     dagster_yml = "dagster.yml"
-    project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
+    project_path = find_kedro_project(Path.cwd()) or Path.cwd()
     project_metadata = bootstrap_project(project_path)
     package_name = project_metadata.package_name
     dagster_yml_path = project_path / settings.CONF_SOURCE / env / dagster_yml
@@ -171,7 +170,7 @@ def dev(
     project-specific settings of `dagster.yml`.
     """
 
-    project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
+    project_path = find_kedro_project(Path.cwd()) or Path.cwd()
     bootstrap_project(project_path)
 
     with KedroSession.create(

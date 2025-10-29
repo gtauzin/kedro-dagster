@@ -10,7 +10,7 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
-from kedro.io import DatasetNotFoundError, MemoryDataset
+from kedro.io import MemoryDataset
 from kedro.pipeline import Pipeline
 from pydantic import ConfigDict, create_model
 
@@ -20,6 +20,7 @@ from kedro_dagster.utils import (
     _is_param_name,
     format_dataset_name,
     format_node_name,
+    get_dataset_from_catalog,
     is_nothing_asset_name,
 )
 
@@ -201,9 +202,8 @@ class CatalogTranslator:
                 continue
 
             asset_name = format_dataset_name(dataset_name)
-            try:
-                dataset = self._catalog._get_dataset(dataset_name)
-            except DatasetNotFoundError:
+            dataset = get_dataset_from_catalog(self._catalog, dataset_name)
+            if dataset is None:
                 LOGGER.debug(
                     f"Dataset `{dataset_name}` not in catalog. It will be handled by default IO manager `io_manager`."
                 )

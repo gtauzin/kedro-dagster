@@ -6,6 +6,8 @@ import dagster as dg
 from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
 
+from kedro_dagster.utils import _kedro_version, get_filter_params_dict
+
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
 
@@ -65,6 +67,9 @@ class KedroRunTranslator:
             to_nodes: list[str] | None = None
             from_inputs: list[str] | None = None
             to_outputs: list[str] | None = None
+            # Kedro 1.x uses `node_namespaces`; older versions use `node_namespace`.
+            # Accept the appropriate field for the installed Kedro version.
+            node_namespaces: str | None = None
             node_namespace: str | None = None
             tags: list[str] | None = None
 
@@ -83,15 +88,38 @@ class KedroRunTranslator:
 
             @property
             def pipeline(self) -> dict[str, Any]:
-                return pipelines.get(self.pipeline_name).filter(  # type: ignore[no-any-return]
-                    tags=self.tags,
-                    from_nodes=self.from_nodes,
-                    to_nodes=self.to_nodes,
-                    node_names=self.node_names,
-                    from_inputs=self.from_inputs,
-                    to_outputs=self.to_outputs,
-                    node_namespace=self.node_namespace,
-                )
+                # Build a filter dict: prefer the field actually provided by the user.
+                # If both are provided, use Kedro major version to choose; if only one is set, pass it through unchanged.
+                node_namespace_key: str | None = None
+                node_namespace_val: Any | None = None
+                has_plural = getattr(self, "node_namespaces", None) is not None
+                has_singular = getattr(self, "node_namespace", None) is not None
+
+                if has_plural and not has_singular:
+                    node_namespace_key, node_namespace_val = "node_namespaces", getattr(self, "node_namespaces")
+                elif has_singular and not has_plural:
+                    node_namespace_key, node_namespace_val = "node_namespace", getattr(self, "node_namespace")
+                elif has_plural and has_singular:
+                    # Break ties using installed Kedro version
+                    if _kedro_version()[0] >= 1:
+                        node_namespace_key, node_namespace_val = "node_namespaces", getattr(self, "node_namespaces")
+                    else:
+                        node_namespace_key, node_namespace_val = "node_namespace", getattr(self, "node_namespace")
+
+                pipeline_config: dict[str, Any] = {
+                    "tags": self.tags,
+                    "from_nodes": self.from_nodes,
+                    "to_nodes": self.to_nodes,
+                    "node_names": self.node_names,
+                    "from_inputs": self.from_inputs,
+                    "to_outputs": self.to_outputs,
+                }
+                if node_namespace_key is not None and node_namespace_val is not None:
+                    pipeline_config[node_namespace_key] = node_namespace_val
+                filter_kwargs = get_filter_params_dict(pipeline_config)
+
+                pipeline_obj = pipelines.get(self.pipeline_name)
+                return pipeline_obj.filter(**filter_kwargs)  # type: ignore[no-any-return]
 
             def after_context_created_hook(self) -> None:
                 hook_manager.hook.after_context_created(context=context)

@@ -130,7 +130,6 @@ def test_cli_dev_invokes_dagster_with_defaults(
 ):
     """'dagster dev' is invoked with default options derived from config."""
     project_path = kedro_project_no_dagster_config_base.project_path
-    bootstrap_project(project_path)
     cwd = project_path / "src" if inside_subdirectory else project_path
     monkeypatch.chdir(cwd)
 
@@ -141,7 +140,6 @@ def test_cli_dev_invokes_dagster_with_defaults(
     assert result.exit_code == 0
 
     # Expected default arguments from DevOptions
-    # python_file default points to src/<package>/definitions.py
     # Resolve it dynamically similarly to DevOptions
     # We don't strictly require the file to exist for the call to be made
     called_args = sp_call.call_args[0][0]

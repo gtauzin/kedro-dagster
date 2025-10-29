@@ -16,7 +16,7 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
-from kedro.io import DatasetNotFoundError, MemoryDataset
+from kedro.io import MemoryDataset
 from kedro.pipeline import Pipeline
 from pydantic import ConfigDict
 
@@ -25,9 +25,11 @@ from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
     _is_param_name,
+    _kedro_version,
     format_dataset_name,
     format_node_name,
     get_asset_key_from_dataset_name,
+    get_dataset_from_catalog,
     get_partition_mapping,
     is_nothing_asset_name,
     unformat_asset_name,
@@ -192,15 +194,14 @@ class NodeTranslator:
         io_manager_key = "io_manager"
 
         if asset_name in self.asset_names:
-            try:
-                dataset = self._catalog._get_dataset(dataset_name)
+            dataset = get_dataset_from_catalog(self._catalog, dataset_name)
+            if dataset is not None:
                 metadata = getattr(dataset, "metadata", None) or {}
                 description = metadata.pop("description", "")
                 if not isinstance(dataset, MemoryDataset):
-                    io_manager_key = f"{self._env}__{asset_name}_io_manager"
-
-            except DatasetNotFoundError:
-                pass
+                    candidate_key = f"{self._env}__{asset_name}_io_manager"
+                    if candidate_key in self._named_resources:
+                        io_manager_key = candidate_key
 
         out_asset_params: dict[str, Any] = dict(
             io_manager_key=io_manager_key,
@@ -348,36 +349,53 @@ class NodeTranslator:
                 if is_nothing_asset_name(self._catalog, in_dataset_name):
                     inputs[in_dataset_name] = None
 
-            self._hook_manager.hook.before_node_run(
+            before_node_run_params = dict(
                 node=node,
                 catalog=self._catalog,
                 inputs=inputs,
-                is_async=False,  # TODO: Should this be True?
-                session_id=self._session_id,
+                is_async=False,
             )
+            # Kedro 1.x hooks no longer accept session_id; include it only for older versions
+            if _kedro_version()[0] < 1:
+                before_node_run_params["session_id"] = self._session_id
+
+            self._hook_manager.hook.before_node_run(**before_node_run_params)
 
             try:
                 outputs = node.run(inputs)
 
             except Exception as exc:
-                self._hook_manager.hook.on_node_error(
-                    error=exc,
-                    node=node,
-                    catalog=self._catalog,
-                    inputs=inputs,
-                    is_async=False,
-                    session_id=self._session_id,
-                )
+                if _kedro_version()[0] >= 1:
+                    self._hook_manager.hook.on_node_error(
+                        error=exc,
+                        node=node,
+                        catalog=self._catalog,
+                        inputs=inputs,
+                        is_async=False,
+                    )
+                else:
+                    self._hook_manager.hook.on_node_error(
+                        error=exc,
+                        node=node,
+                        catalog=self._catalog,
+                        inputs=inputs,
+                        is_async=False,
+                        session_id=self._session_id,
+                    )
                 raise exc
 
-            self._hook_manager.hook.after_node_run(
+            after_node_run_params = dict(
                 node=node,
                 catalog=self._catalog,
                 inputs=inputs,
                 outputs=outputs,
                 is_async=False,
-                session_id=self._session_id,
             )
+            # Kedro 1.x hooks no longer accept session_id; include it only for older versions
+            if _kedro_version()[0] < 1:
+                after_node_run_params["session_id"] = self._session_id
+
+            self._hook_manager.hook.after_node_run(**after_node_run_params)
 
             # Emit materializations and attach partition metadata when available
             for out_dataset_name in node.outputs:
@@ -517,11 +535,12 @@ class NodeTranslator:
         for external_dataset_name in default_pipeline.inputs():
             external_asset_name = format_dataset_name(external_dataset_name)
             if not _is_param_name(external_dataset_name):
-                dataset = self._catalog._get_dataset(external_dataset_name)
+                dataset = get_dataset_from_catalog(self._catalog, external_dataset_name)
+                metadata: dict[str, Any] | None = None
+                description = None
+                io_manager_key = "io_manager"
                 metadata = getattr(dataset, "metadata", None) or {}
                 description = metadata.pop("description", "")
-
-                io_manager_key = "io_manager"
                 if not isinstance(dataset, MemoryDataset):
                     io_manager_key = f"{self._env}__{external_asset_name}_io_manager"
 

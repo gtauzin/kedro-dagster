@@ -14,6 +14,7 @@ from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
     _is_param_name,
+    _kedro_version,
     format_dataset_name,
     format_node_name,
     format_partition_key,
@@ -126,7 +127,8 @@ def test_get_node_pipeline_name_default(monkeypatch, caplog):
 
 
 def test_get_filter_params_dict():
-    """Pass through pipeline filtering config unchanged as a dictionary."""
+    """Map node namespace key depending on Kedro major version; pass others unchanged."""
+    # Build a config using singular form as the source of truth in this project
     pipeline_config = {
         "tags": ["tag1"],
         "from_nodes": ["node1"],
@@ -137,7 +139,16 @@ def test_get_filter_params_dict():
         "node_namespace": "namespace",
     }
     filter_params = get_filter_params_dict(pipeline_config)
-    assert filter_params == pipeline_config
+    # Determine Kedro major version in the test environment using the helper
+    kedro_major = _kedro_version()[0]
+
+    expected = dict(pipeline_config)
+    if kedro_major >= 1:
+        # Expect pluralized key for Kedro >= 1 and absence of the singular key
+        expected.pop("node_namespace")
+        expected["node_namespaces"] = "namespace"
+    # For Kedro < 1, the dict should remain unchanged
+    assert filter_params == expected
 
 
 @pytest.mark.mlflow

@@ -48,11 +48,11 @@ class RecordingHooks:
         self.after_dataset_saved_calls.append(dataset_name)
 
     @hook_impl
-    def before_node_run(self, node, catalog, inputs, is_async, session_id):
+    def before_node_run(self, node, catalog, inputs, is_async):
         self.before_node_run_calls.append(node.name)
 
     @hook_impl
-    def after_node_run(self, node, catalog, inputs, outputs, is_async, session_id):
+    def after_node_run(self, node, catalog, inputs, outputs, is_async):
         self.after_node_run_calls.append(node.name)
 
     @hook_impl

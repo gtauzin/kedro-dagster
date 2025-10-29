@@ -13,6 +13,7 @@ from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.kedro import KedroRunTranslator
+from kedro_dagster.utils import _kedro_version
 
 
 class _FakeHook:
@@ -101,30 +102,61 @@ def test_resource_pipeline_filters_via_registry(
     # Capture filter arguments received by the dummy pipeline
     captured: dict[str, Any] = {}
 
-    class _DummyPipeline:
-        def filter(
-            self,
-            *,
-            tags=None,
-            from_nodes=None,
-            to_nodes=None,
-            node_names=None,
-            from_inputs=None,
-            to_outputs=None,
-            node_namespace=None,
-        ) -> dict[str, Any]:
-            captured.update(
-                dict(
-                    tags=tags,
-                    from_nodes=from_nodes,
-                    to_nodes=to_nodes,
-                    node_names=node_names,
-                    from_inputs=from_inputs,
-                    to_outputs=to_outputs,
-                    node_namespace=node_namespace,
+    if _kedro_version()[0] >= 1:
+        node_namespace_key = "node_namespaces"
+
+        class _DummyPipeline:
+            def filter(
+                self,
+                *,
+                tags=None,
+                from_nodes=None,
+                to_nodes=None,
+                node_names=None,
+                from_inputs=None,
+                to_outputs=None,
+                node_namespaces=None,
+            ) -> dict[str, Any]:
+                captured.update(
+                    dict(
+                        tags=tags,
+                        from_nodes=from_nodes,
+                        to_nodes=to_nodes,
+                        node_names=node_names,
+                        from_inputs=from_inputs,
+                        to_outputs=to_outputs,
+                        node_namespaces=node_namespaces,
+                    )
                 )
-            )
-            return {"ok": True}
+                return {"ok": True}
+
+    else:
+        node_namespace_key = "node_namespace"
+
+        class _DummyPipeline:
+            def filter(
+                self,
+                *,
+                tags=None,
+                from_nodes=None,
+                to_nodes=None,
+                node_names=None,
+                from_inputs=None,
+                to_outputs=None,
+                node_namespace=None,
+            ) -> dict[str, Any]:
+                captured.update(
+                    dict(
+                        tags=tags,
+                        from_nodes=from_nodes,
+                        to_nodes=to_nodes,
+                        node_names=node_names,
+                        from_inputs=from_inputs,
+                        to_outputs=to_outputs,
+                        node_namespace=node_namespace,
+                    )
+                )
+                return {"ok": True}
 
     # Monkeypatch the Kedro pipelines registry getter used in kedro.py
     monkeypatch.setattr(pipelines, "get", lambda name: _DummyPipeline())
@@ -135,7 +167,7 @@ def test_resource_pipeline_filters_via_registry(
             "tags": ["x"],
             "from_nodes": ["A"],
             "to_outputs": ["out"],
-            "node_namespace": "ns",
+            node_namespace_key: "ns",
         },
     )
 
@@ -149,7 +181,7 @@ def test_resource_pipeline_filters_via_registry(
         "node_names": None,
         "from_inputs": None,
         "to_outputs": ["out"],
-        "node_namespace": "ns",
+        node_namespace_key: "ns",
     }
 
 
