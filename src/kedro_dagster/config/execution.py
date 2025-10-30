@@ -49,7 +49,6 @@ class MultiprocessExecutorOptions(InProcessExecutorOptions):
             "The number of processes that may run concurrently. "
             "By default, this is set to be the return value of `multiprocessing.cpu_count()`."
         ),
-        is_required=False,
     )
 
 
@@ -239,7 +238,7 @@ class K8sJobExecutorOptions(MultiprocessExecutorOptions):
         security_context (dict[str, str]): Security settings for the container.
     """
 
-    job_namespace: str = Field(default="dagster", is_required=False)
+    job_namespace: str = Field(default="dagster")
     load_incluster_config: bool = Field(
         default=True,
         description="""Whether or not the executor is running within a k8s cluster already. If
@@ -249,84 +248,68 @@ class K8sJobExecutorOptions(MultiprocessExecutorOptions):
         using ``kubernetes.config.load_incluster_config``. Otherwise, we will use the k8s config
         specified in ``kubeconfig_file`` (using ``kubernetes.config.load_kube_config``) or fall
         back to the default kubeconfig.""",
-        is_required=False,
     )
     kubeconfig_file: str | None = Field(
         default=None,
         description="""Path to a kubeconfig file to use, if not using default kubeconfig. If
         the job is using the `K8sRunLauncher`, the default value of this parameter will be
         the same as the corresponding value on the run launcher.""",
-        is_required=False,
     )
     step_k8s_config: K8sJobConfig = Field(
         default=K8sJobConfig(),
         description="Raw Kubernetes configuration for each step launched by the executor.",
-        is_required=False,
     )
     per_step_k8s_config: dict[str, K8sJobConfig] = Field(
         default={},
         description="Per op k8s configuration overrides.",
-        is_required=False,
     )
     image_pull_policy: str | None = Field(
         default=None,
         description="Image pull policy to set on launched Pods.",
-        is_required=False,
     )
     image_pull_secrets: list[dict[str, str]] | None = Field(
         default=None,
         description="Specifies that Kubernetes should get the credentials from the Secrets named in this list.",
-        is_required=False,
     )
     service_account_name: str | None = Field(
         default=None,
         description="The name of the Kubernetes service account under which to run.",
-        is_required=False,
     )
     env_config_maps: list[str] | None = Field(
         default=None,
         description="A list of custom ConfigMapEnvSource names from which to draw environment variables (using ``envFrom``) for the Job. Default: ``[]``.",
-        is_required=False,
     )
     env_secrets: list[str] | None = Field(
         default=None,
         description="A list of custom Secret names from which to draw environment variables (using ``envFrom``) for the Job. Default: ``[]``.",
-        is_required=False,
     )
     env_vars: list[str] | None = Field(
         default=None,
         description="A list of environment variables to inject into the Job. Each can be of the form KEY=VALUE or just KEY (in which case the value will be pulled from the current process). Default: ``[]``.",
-        is_required=False,
     )
     volume_mounts: list[dict[str, str]] = Field(
         default=[],
         description="A list of volume mounts to include in the job's container. Default: ``[]``.",
-        is_required=False,
     )
     volumes: list[dict[str, str]] = Field(
         default=[],
         description="A list of volumes to include in the Job's Pod. Default: ``[]``.",
-        is_required=False,
     )
     labels: dict[str, str] = Field(
         default={},
         description="Labels to apply to all created pods.",
-        is_required=False,
     )
     resources: dict[str, dict[str, str]] | None = Field(
         default=None,
         description="Compute resource requirements for the container.",
-        is_required=False,
     )
     scheduler_name: str | None = Field(
         default=None,
         description="Use a custom Kubernetes scheduler for launched Pods.",
-        is_required=False,
     )
     security_context: dict[str, str] = Field(
         default={},
         description="Security settings for the container.",
-        is_required=False,
     )
 
 
