@@ -1,6 +1,5 @@
 # mypy: ignore-errors
 
-from pathlib import Path
 from types import SimpleNamespace
 
 import dagster as dg
@@ -30,10 +29,10 @@ from kedro_dagster.utils import (
 )
 
 
-def test_render_jinja_template():
+def test_render_jinja_template(tmp_path):
     """Render a Jinja template file with provided context variables."""
     template_content = "Hello, {{ name }}!"
-    template_path = Path("/tmp/test_template.jinja")
+    template_path = tmp_path / "test_template.jinja"
     template_path.write_text(template_content)
 
     result = render_jinja_template(template_path, name="World")

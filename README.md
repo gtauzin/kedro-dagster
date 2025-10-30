@@ -26,6 +26,8 @@ The Kedro-Dagster plugin enables seamless integration between [Kedro](https://ke
   </picture>
 </p>
 
+Currently, Kedro-Dagster supports Kedro versions 0.19.x and 1.x, and Dagster versions 1.10.x, 1.11.x, and 1.12.x.
+
 ## What are the features of Kedro-Dagster?
 
 - **Configuration‑Driven Workflows:** Centralize orchestration settings in a `dagster.yml` file for each Kedro environment. Define jobs from filtered Kedro pipelines, assign executors, retries, resource limits, and cron-based schedules.

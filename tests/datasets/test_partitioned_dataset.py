@@ -96,7 +96,8 @@ class TestDagsterPartitionedDataset:
         """Resolve filepath for a valid partition key and raise for unknown keys."""
         dataset = _make_static_dataset(tmp_path)
         ok = dataset._get_filepath("p1")
-        assert ok.endswith("/p1")
+        # Accept platform-native separators
+        assert ok.replace("\\", "/").endswith("/p1")
         with pytest.raises(ValueError) as exc:
             dataset._get_filepath("missing")
         assert str(exc.value) == "Partition 'missing' not found in partition definition."

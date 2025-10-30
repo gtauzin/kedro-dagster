@@ -75,6 +75,14 @@ class CatalogTranslator:
                     params[param] = str(value)
             elif isinstance(value, PathLike):
                 params[param] = str(value)
+            elif param == "filepath" and isinstance(value, str):
+                # If filepath is a string absolute path (may be posix-style on Windows),
+                # normalize it to native separators so tests accept it as abs_fp.
+                try:
+                    p = Path(value)
+                    params[param] = str(p) if p.is_absolute() else value
+                except Exception:
+                    params[param] = value
             else:
                 params[param] = value
 

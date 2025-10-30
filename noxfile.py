@@ -29,6 +29,7 @@ KEDRO_SPECS = [
 DAGSTER_SPECS = [
     "dagster>=1.10,<1.11",
     "dagster>=1.11,<1.12",
+    "dagster>=1.12,<1.13",
 ]
 
 

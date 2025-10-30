@@ -302,7 +302,28 @@ class DagsterPartitionedDataset(PartitionedDataset):
             instance = dg.DagsterInstance.get()
             instance.add_dynamic_partitions(self._partition_config["name"], self._list_available_partition_keys())
 
-        return cast(dict[str, Callable[[], Any]], super().load())
+        loaded = cast(dict[str, Callable[[], Any]], super().load())
+
+        # Normalize keys to logical partition keys (e.g., "p1") instead of full paths.
+        base = Path(self._normalized_path)
+        normalized: dict[str, Callable[[], Any]] = {}
+        for raw_key, value in loaded.items():
+            key_str = str(raw_key)
+            # Only attempt to relativize if key looks like a path pointing under base
+            if os.path.isabs(key_str) or key_str.startswith(str(base)):
+                try:
+                    key_rel = os.path.relpath(key_str, start=str(base))
+                except Exception:
+                    key_rel = Path(key_str).name
+            else:
+                key_rel = key_str
+
+            if self._filename_suffix and key_rel.endswith(self._filename_suffix):
+                key_rel = key_rel[: -len(self._filename_suffix)]
+
+            normalized[key_rel] = value
+
+        return normalized
 
     def save(self, data: dict[str, Any]) -> None:
         """Save partitioned data.
