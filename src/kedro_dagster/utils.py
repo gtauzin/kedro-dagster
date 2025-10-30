@@ -198,7 +198,7 @@ def get_dataset_from_catalog(catalog: "CatalogProtocol", dataset_name: str) -> A
                 result = None
 
     if result is None:
-        LOGGER.warning(f"Dataset '{dataset_name}' not found in catalog.")
+        LOGGER.info(f"Dataset '{dataset_name}' not found in catalog.")
 
     return result
 

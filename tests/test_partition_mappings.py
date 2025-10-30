@@ -13,6 +13,7 @@ from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import ExecutorCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
+from kedro_dagster.utils import _kedro_version
 
 
 @pytest.mark.parametrize("env", ["base", "local"])
@@ -24,6 +25,12 @@ def test_static_partitions_and_identity_mapping(env, request):
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
+
+    if _kedro_version()[0] >= 1:
+        run_id_kwargs = {"run_id": session.session_id}
+    else:
+        run_id_kwargs = {"session_id": session.session_id}
+
     pipeline = pipelines.get("__default__")
 
     catalog_translator = CatalogTranslator(
@@ -45,10 +52,10 @@ def test_static_partitions_and_identity_mapping(env, request):
         pipelines=[pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         env=env,
+        **run_id_kwargs,
     )
 
     # The internal helper will be used by PipelineTranslator, but we assert identity mapping indirectly
@@ -75,6 +82,12 @@ def test_static_partitions_and_static_mapping(env, request):
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
+
+    if _kedro_version()[0] >= 1:
+        run_id_kwargs = {"run_id": session.session_id}
+    else:
+        run_id_kwargs = {"session_id": session.session_id}
+
     pipeline = pipelines.get("__default__")
 
     catalog_translator = CatalogTranslator(
@@ -89,10 +102,10 @@ def test_static_partitions_and_static_mapping(env, request):
         pipelines=[pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         env=env,
+        **run_id_kwargs,
     )
 
     dagster_config = get_dagster_config(context)
@@ -106,13 +119,13 @@ def test_static_partitions_and_static_mapping(env, request):
         context=context,
         project_path=str(project_path),
         env=env,
-        session_id=session.session_id,
         named_assets=named_assets,
         asset_partitions=asset_partitions,
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
         enable_mlflow=False,
+        **run_id_kwargs,
     )
     jobs = pipeline_translator.to_dagster()
     job = jobs["default"]

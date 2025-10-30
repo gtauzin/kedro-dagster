@@ -29,7 +29,7 @@ def _make_translator(catalog: DataCatalog, asset_partitions: dict[str, dict] | N
         context=DummyContext(catalog),
         project_path="/tmp/project",
         env="local",
-        session_id="test-session",
+        run_id="test-session",
         named_assets={},
         asset_partitions=asset_partitions or {},
         named_op_factories={},

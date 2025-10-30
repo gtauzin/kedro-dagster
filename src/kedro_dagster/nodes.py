@@ -61,7 +61,7 @@ class NodeTranslator:
         pipelines (list[Pipeline]): Kedro pipelines used to derive assets and groups.
         catalog (CatalogProtocol): Kedro catalog instance for dataset resolution.
         hook_manager (PluginManager): Kedro hook manager to invoke node-related hooks.
-        session_id (str): Kedro session ID to forward to hooks.
+        run_id (str): Kedro run ID to forward to hooks. In Kedro < 1.0, this is called `session_id`.
         asset_partitions (dict[str, Any]): Mapping of asset name -> {"partitions_def", "partition_mappings"}.
         named_resources (dict[str, dg.ResourceDefinition]): Pre-created Dagster resources keyed by name.
         env (str): Kedro environment (used for namespacing asset keys/resources).
@@ -72,7 +72,7 @@ class NodeTranslator:
         pipelines: list[Pipeline],
         catalog: "CatalogProtocol",
         hook_manager: "PluginManager",
-        session_id: str,
+        run_id: str,
         asset_partitions: dict[str, Any],
         named_resources: dict[str, dg.ResourceDefinition],
         env: str,
@@ -80,7 +80,7 @@ class NodeTranslator:
         self._pipelines = pipelines
         self._catalog = catalog
         self._hook_manager = hook_manager
-        self._session_id = session_id
+        self._run_id = run_id
         self._asset_partitions = asset_partitions
         self._named_resources = named_resources
         self._env = env
@@ -355,9 +355,11 @@ class NodeTranslator:
                 inputs=inputs,
                 is_async=False,
             )
-            # Kedro 1.x hooks no longer accept session_id; include it only for older versions
-            if _kedro_version()[0] < 1:
-                before_node_run_params["session_id"] = self._session_id
+            # Kedro 1.x hooks renamed session_id to run_id
+            if _kedro_version()[0] >= 1:
+                before_node_run_params["run_id"] = self._run_id
+            else:
+                before_node_run_params["session_id"] = self._run_id
 
             self._hook_manager.hook.before_node_run(**before_node_run_params)
 
@@ -372,6 +374,7 @@ class NodeTranslator:
                         catalog=self._catalog,
                         inputs=inputs,
                         is_async=False,
+                        run_id=self._run_id,
                     )
                 else:
                     self._hook_manager.hook.on_node_error(
@@ -380,7 +383,7 @@ class NodeTranslator:
                         catalog=self._catalog,
                         inputs=inputs,
                         is_async=False,
-                        session_id=self._session_id,
+                        session_id=self._run_id,
                     )
                 raise exc
 
@@ -391,9 +394,11 @@ class NodeTranslator:
                 outputs=outputs,
                 is_async=False,
             )
-            # Kedro 1.x hooks no longer accept session_id; include it only for older versions
-            if _kedro_version()[0] < 1:
-                after_node_run_params["session_id"] = self._session_id
+            # Kedro 1.x hooks renamed session_id to run_id
+            if _kedro_version()[0] >= 1:
+                after_node_run_params["run_id"] = self._run_id
+            else:
+                after_node_run_params["session_id"] = self._run_id
 
             self._hook_manager.hook.after_node_run(**after_node_run_params)
 

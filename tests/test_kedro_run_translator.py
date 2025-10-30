@@ -58,7 +58,7 @@ def test_to_dagster_creates_resource_and_merges_params(
         context=kedro_context_base,
         project_path=str(options.project_path),
         env=options.env,
-        session_id="sid-123",
+        run_id="sid-123",
     )
 
     resource = translator.to_dagster(
@@ -73,13 +73,20 @@ def test_to_dagster_creates_resource_and_merges_params(
 
     # run_params include kedro params + pipeline name + defaults
     params = resource.run_params
+    if _kedro_version()[0] >= 1:
+        run_id_key = "run_id"
+    else:
+        run_id_key = "session_id"
     assert params["project_path"] == str(options.project_path)
     assert params["env"] == options.env
-    assert params["session_id"] == "sid-123"
+    assert params[run_id_key] == "sid-123"
     assert params["pipeline_name"] == "__default__"
     # defaults set in to_dagster
     assert params["load_versions"] is None
-    assert params["extra_params"] is None
+    if _kedro_version()[0] >= 1:
+        assert params["runtime_params"] is None
+    else:
+        assert params["extra_params"] is None
     assert params["runner"] is None
     # filter values carried through
     assert params["tags"] == ["a", "b"]
@@ -96,7 +103,7 @@ def test_resource_pipeline_filters_via_registry(
         context=kedro_context_base,
         project_path=str(options.project_path),
         env=options.env,
-        session_id="sid-xyz",
+        run_id="sid-xyz",
     )
 
     # Capture filter arguments received by the dummy pipeline
@@ -196,7 +203,7 @@ def test_after_context_created_hook_invokes_hook_manager(
         context=kedro_context_base,
         project_path=str(options.project_path),
         env=options.env,
-        session_id="sid-123",
+        run_id="sid-123",
     )
     # Install fake hook manager BEFORE resource creation so the closure captures it
     fake_hook_mgr = _FakeHookManager()
@@ -220,7 +227,7 @@ def test_translate_on_pipeline_error_hook_returns_sensor(
         context=kedro_context_base,
         project_path=str(options.project_path),
         env=options.env,
-        session_id="sid-123",
+        run_id="sid-123",
     )
 
     # Provide a minimal job dict; we don't rely on real Dagster types

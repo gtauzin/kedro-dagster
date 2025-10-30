@@ -170,7 +170,7 @@ class KedroProjectTranslator:
             context=self._context,
             project_path=str(self._project_path),
             env=self._env,
-            session_id=self._session_id,
+            run_id=self._session_id,
         )
         kedro_run_resource = kedro_run_translator.to_dagster(
             pipeline_name="__default__",
@@ -208,7 +208,7 @@ class KedroProjectTranslator:
             pipelines=defined_pipelines,
             catalog=self._context.catalog,
             hook_manager=self._context._hook_manager,
-            session_id=self._session_id,
+            run_id=self._session_id,
             asset_partitions=asset_partitions,
             named_resources=named_resources,
             env=self._env,
@@ -224,7 +224,7 @@ class KedroProjectTranslator:
             context=self._context,
             project_path=str(self._project_path),
             env=self._env,
-            session_id=self._session_id,
+            run_id=self._session_id,
             named_assets=named_assets,
             asset_partitions=asset_partitions,
             named_op_factories=named_op_factories,

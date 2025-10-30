@@ -13,6 +13,7 @@ from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import ExecutorCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
+from kedro_dagster.utils import _kedro_version
 
 
 @pytest.mark.parametrize("env", ["base", "local"])
@@ -24,6 +25,11 @@ def test_pipeline_translator_to_dagster_with_executor(env, request):
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
+
+    if _kedro_version()[0] >= 1:
+        run_id_kwargs = {"run_id": session.session_id}
+    else:
+        run_id_kwargs = {"session_id": session.session_id}
 
     dagster_config = get_dagster_config(context)
 
@@ -42,10 +48,10 @@ def test_pipeline_translator_to_dagster_with_executor(env, request):
         pipelines=[default_pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
+        **run_id_kwargs,
     )
     # Obtain op factories and assets via the NodeTranslator API
     named_op_factories, named_assets = node_translator.to_dagster()
@@ -61,13 +67,13 @@ def test_pipeline_translator_to_dagster_with_executor(env, request):
         context=context,
         project_path=str(project_path),
         env=env,
-        session_id=session.session_id,
         named_assets=named_assets,
         asset_partitions=asset_partitions,
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
         enable_mlflow=False,
+        **run_id_kwargs,
     )
     jobs = pipeline_translator.to_dagster()
     assert "default" in jobs
@@ -89,6 +95,11 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
+    if _kedro_version()[0] >= 1:
+        run_id_kwargs = {"run_id": session.session_id}
+    else:
+        run_id_kwargs = {"session_id": session.session_id}
+
     dagster_config = get_dagster_config(context)
     default_pipeline = pipelines.get("__default__")
 
@@ -104,10 +115,10 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
         pipelines=[default_pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         env=env,
+        **run_id_kwargs,
     )
     named_op_factories, named_assets = node_translator.to_dagster()
 
@@ -119,13 +130,13 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
         context=context,
         project_path=str(project_path),
         env=env,
-        session_id=session.session_id,
         named_assets=named_assets,
         asset_partitions=asset_partitions,
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
         enable_mlflow=False,
+        **run_id_kwargs,
     )
     jobs = pipeline_translator.to_dagster()
     job = jobs["default"]
@@ -184,6 +195,11 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
+    if _kedro_version()[0] >= 1:
+        run_id_kwargs = {"run_id": session.session_id}
+    else:
+        run_id_kwargs = {"session_id": session.session_id}
+
     dagster_config = get_dagster_config(context)
     default_pipeline = pipelines.get("__default__")
 
@@ -201,10 +217,10 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
         pipelines=[default_pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         env=env,
+        **run_id_kwargs,
     )
 
     named_op_factories, named_assets = node_translator.to_dagster()
@@ -219,13 +235,13 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
         context=context,
         project_path=str(project_path),
         env=env,
-        session_id=session.session_id,
         named_assets=named_assets,
         asset_partitions=asset_partitions,
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
         enable_mlflow=False,
+        **run_id_kwargs,
     )
     jobs = pipeline_translator.to_dagster()
     assert "default" in jobs

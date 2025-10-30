@@ -19,20 +19,23 @@ class KedroRunTranslator:
         context (KedroContext): Kedro context.
         project_path (str): Path to the Kedro project.
         env (str): Kedro environment.
-        session_id (str): Kedro session ID.
+        run_id (str): Kedro run ID. In Kedro < 1.0, this is called `session_id`.
 
     """
 
-    def __init__(self, context: "KedroContext", project_path: str, env: str, session_id: str):
+    def __init__(self, context: "KedroContext", project_path: str, env: str, run_id: str):
         self._context = context
         self._catalog = context.catalog
         self._hook_manager = context._hook_manager
         self._kedro_params = dict(
             project_path=project_path,
             env=env,
-            session_id=session_id,
             kedro_version=kedro_version,
         )
+        if _kedro_version()[0] >= 1:
+            self._kedro_params["run_id"] = run_id
+        else:
+            self._kedro_params["session_id"] = run_id
 
     def to_dagster(
         self,
@@ -54,13 +57,19 @@ class KedroRunTranslator:
         hook_manager = self._hook_manager
 
         class RunParamsModel(dg.Config):
-            session_id: str
+            if _kedro_version()[0] >= 1:
+                run_id: str
+            else:
+                session_id: str
             project_path: str
             env: str
             kedro_version: str
             pipeline_name: str
             load_versions: list[str] | None = None
-            extra_params: dict[str, Any] | None = None
+            if _kedro_version()[0] >= 1:
+                runtime_params: dict[str, Any] | None = None
+            else:
+                extra_params: dict[str, Any] | None = None
             runner: str | None = None
             node_names: list[str] | None = None
             from_nodes: list[str] | None = None
@@ -122,7 +131,6 @@ class KedroRunTranslator:
             | dict(
                 pipeline_name=pipeline_name,
                 load_versions=None,
-                extra_params=None,
                 runner=None,
             )
         )
