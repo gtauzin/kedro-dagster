@@ -88,11 +88,11 @@ def _setup_context_with_venv(context, venv_dir):
 
 def after_all(context):
     if "E2E_VENV" not in os.environ:
-        # Best-effort cleanup of the temporary virtualenv. On Windows, file locks
-        # from recently-terminated subprocesses can linger briefly; rmtree below
-        # implements a retry strategy to tolerate that. Don't fail the suite if
-        # final cleanup can't remove some locked files: use non-strict mode.
-        rmtree(context.venv_dir, strict=False)
+        # Best-effort cleanup of the temporary virtualenv; ignore final failures.
+        try:
+            rmtree(context.venv_dir)
+        except Exception:
+            pass
 
 
 def before_scenario(context, feature):
@@ -130,12 +130,11 @@ def after_scenario(context, feature):
     rmtree(context.temp_dir)
 
 
-def rmtree(top: Path, retries: int = 8, delay: float = 0.25, strict: bool = True) -> None:
-    """Robust rmtree that tolerates transient Windows file locks.
+def rmtree(top: Path, retries: int = 8, delay: float = 0.25) -> None:
+    """Remove a directory tree with retries and permission fixes on Windows.
 
-    - On Windows, processes may still hold handles on files (e.g. logs, DLLs/PYD)
-      for a short time after exit. We retry with exponential backoff.
-    - We also attempt to remove read-only attributes before unlinking.
+    Keeps behavior simple but resilient: makes files writeable and retries
+    on transient PermissionError/OSError, with exponential backoff on Windows.
     """
 
     path_str = str(top)
@@ -145,44 +144,19 @@ def rmtree(top: Path, retries: int = 8, delay: float = 0.25, strict: bool = True
             mode = os.stat(path).st_mode
             os.chmod(path, mode | stat.S_IWUSR | stat.S_IREAD)
         except Exception:
-            # Best effort only.
             pass
 
     def _onerror(func, path, exc_info):
-        # Legacy callback signature: (func, path, exc_info)
         _chmod_writeable(path)
         try:
             func(path)
         except Exception:
-            # Re-raise to let the outer retry handle it
             raise
-
-    def _onexc(func, path, exc):
-        # Newer callback signature (Python >= 3.12/3.13): (func, path, exc)
-        _chmod_writeable(path)
-        try:
-            func(path)
-        except Exception:
-            # Re-raise to let the outer retry handle it
-            raise
-
-    # Try to atomically rename the directory out of the way first. This often
-    # succeeds even if some files are locked, allowing callers to proceed
-    # without races on the original path.
-    if os.path.isdir(path_str):
-        try:
-            base = path_str.rstrip("\\/")
-            renamed = f"{base}.del-{int(time.time() * 1000)}"
-            os.replace(path_str, renamed)
-            path_str = renamed
-        except Exception:
-            # If rename fails, we'll proceed to delete in place.
-            pass
 
     last_exc: Exception | None = None
     for attempt in range(retries):
         try:
-            # Make files writeable first on Windows to reduce failures.
+            # Make files/dirs writeable first on Windows to reduce failures.
             if os.name == "nt" and os.path.exists(path_str):
                 for root, dirs, files in os.walk(path_str, topdown=False):
                     for name in files:
@@ -190,26 +164,14 @@ def rmtree(top: Path, retries: int = 8, delay: float = 0.25, strict: bool = True
                     for name in dirs:
                         _chmod_writeable(os.path.join(root, name))
 
-            # Prefer the newer onexc API when available, fall back to onerror.
-            try:
-                shutil.rmtree(path_str, onexc=_onexc)  # type: ignore[call-arg]
-            except TypeError:
-                shutil.rmtree(path_str, onerror=_onerror)  # type: ignore[call-arg]
+            shutil.rmtree(path_str, onerror=_onerror)  # type: ignore[call-arg]
             return
         except (PermissionError, OSError) as exc:
             last_exc = exc
             if attempt >= retries - 1:
                 break
-            # Exponential backoff on Windows, constant delay elsewhere.
             sleep_s = delay * (2**attempt) if os.name == "nt" else delay
             time.sleep(sleep_s)
 
-    # If we get here, all attempts failed.
-    if last_exc is not None and strict:
+    if last_exc is not None:
         raise last_exc
-    # Non-strict mode: best-effort cleanup; print a warning and continue.
-    if last_exc is not None and not strict:
-        try:
-            print(f"[cleanup-warning] Failed to delete {path_str}: {last_exc}")
-        except Exception:
-            pass
