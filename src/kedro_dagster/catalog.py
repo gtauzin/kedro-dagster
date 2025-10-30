@@ -202,7 +202,7 @@ class CatalogTranslator:
 
             asset_name = format_dataset_name(dataset_name)
             try:
-                dataset = self._catalog._get_dataset(dataset_name)
+                dataset = self._catalog.get(dataset_name)
             except DatasetNotFoundError:
                 LOGGER.debug(
                     f"Dataset `{dataset_name}` not in catalog. It will be handled by default IO manager `io_manager`."

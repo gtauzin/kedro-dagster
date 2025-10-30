@@ -58,7 +58,7 @@ class KedroRunTranslator:
             kedro_version: str
             pipeline_name: str
             load_versions: list[str] | None = None
-            extra_params: dict[str, Any] | None = None
+            runtime_params: dict[str, Any] | None = None
             runner: str | None = None
             node_names: list[str] | None = None
             from_nodes: list[str] | None = None
@@ -102,7 +102,7 @@ class KedroRunTranslator:
             | dict(
                 pipeline_name=pipeline_name,
                 load_versions=None,
-                extra_params=None,
+                runtime_params=None,
                 runner=None,
             )
         )

@@ -101,16 +101,11 @@ def is_nothing_asset_name(catalog: "CatalogProtocol", dataset_name: str) -> bool
         bool: True if the dataset is a DagsterNothingDataset, False otherwise.
     """
     dataset = None
-    # Prefer Kedro DataCatalog private accessor if available
-    get_dataset = getattr(catalog, "_get_dataset", None)
-    if callable(get_dataset):
+    if hasattr(catalog, "get"):
         try:
-            dataset = get_dataset(dataset_name)
+            dataset = catalog.get(dataset_name)
         except Exception:
             dataset = None
-    elif hasattr(catalog, "get"):
-        # Mapping-like
-        dataset = catalog.get(dataset_name)
 
     return isinstance(dataset, DagsterNothingDataset)
 

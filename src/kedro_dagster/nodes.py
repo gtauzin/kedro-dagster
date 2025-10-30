@@ -193,7 +193,7 @@ class NodeTranslator:
 
         if asset_name in self.asset_names:
             try:
-                dataset = self._catalog._get_dataset(dataset_name)
+                dataset = self._catalog.get(dataset_name)
                 metadata = getattr(dataset, "metadata", None) or {}
                 description = metadata.pop("description", "")
                 if not isinstance(dataset, MemoryDataset):
@@ -517,7 +517,7 @@ class NodeTranslator:
         for external_dataset_name in default_pipeline.inputs():
             external_asset_name = format_dataset_name(external_dataset_name)
             if not _is_param_name(external_dataset_name):
-                dataset = self._catalog._get_dataset(external_dataset_name)
+                dataset = self._catalog.get(external_dataset_name)
                 metadata = getattr(dataset, "metadata", None) or {}
                 description = metadata.pop("description", "")
 

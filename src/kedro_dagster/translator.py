@@ -16,7 +16,7 @@ import dagster as dg
 from kedro.framework.project import find_pipelines, pipelines, settings
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
-from kedro.utils import _find_kedro_project
+from kedro.utils import find_kedro_project
 
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
@@ -77,7 +77,7 @@ class KedroProjectTranslator:
     ) -> None:
         self._project_path: Path
         if project_path is None:
-            self._project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
+            self._project_path = find_kedro_project(Path.cwd()) or Path.cwd()
         else:
             self._project_path = project_path
 
