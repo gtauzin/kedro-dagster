@@ -15,7 +15,6 @@ from kedro.pipeline import Pipeline
 from kedro_dagster.kedro import KedroRunTranslator
 from kedro_dagster.utils import (
     _is_param_name,
-    _kedro_version,
     format_dataset_name,
     format_node_name,
     format_partition_key,
@@ -421,10 +420,7 @@ class PipelineTranslator:
             env=self._env,
             run_id=self._run_id,
         )
-        if _kedro_version()[0] >= 1:
-            kedro_run_params["run_id"] = self._run_id
-        else:
-            kedro_run_params["session_id"] = self._run_id
+
         kedro_run_translator = KedroRunTranslator(**kedro_run_params)
 
         kedro_run_resource = kedro_run_translator.to_dagster(
