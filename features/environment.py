@@ -5,6 +5,7 @@ import os
 import shutil
 import stat
 import tempfile
+import time
 from pathlib import Path
 
 from features.steps.sh_run import run
@@ -87,6 +88,9 @@ def _setup_context_with_venv(context, venv_dir):
 
 def after_all(context):
     if "E2E_VENV" not in os.environ:
+        # Best-effort cleanup of the temporary virtualenv. On Windows, file locks
+        # from recently-terminated subprocesses can linger briefly; rmtree below
+        # implements a retry strategy to tolerate that.
         rmtree(context.venv_dir)
 
 
@@ -98,9 +102,67 @@ def after_scenario(context, feature):
     rmtree(context.temp_dir)
 
 
-def rmtree(top: Path):
-    if os.name != "posix":
-        for root, _, files in os.walk(str(top), topdown=False):
-            for name in files:
-                os.chmod(os.path.join(root, name), stat.S_IWUSR)
-    shutil.rmtree(str(top))
+def rmtree(top: Path, retries: int = 8, delay: float = 0.25) -> None:
+    """Robust rmtree that tolerates transient Windows file locks.
+
+    - On Windows, processes may still hold handles on files (e.g. logs, DLLs/PYD)
+      for a short time after exit. We retry with exponential backoff.
+    - We also attempt to remove read-only attributes before unlinking.
+    """
+
+    path_str = str(top)
+
+    def _chmod_writeable(path: str) -> None:
+        try:
+            mode = os.stat(path).st_mode
+            os.chmod(path, mode | stat.S_IWUSR | stat.S_IREAD)
+        except Exception:
+            # Best effort only.
+            pass
+
+    def _onerror(func, path, exc_info):
+        # Legacy callback signature: (func, path, exc_info)
+        _chmod_writeable(path)
+        try:
+            func(path)
+        except Exception:
+            # Re-raise to let the outer retry handle it
+            raise
+
+    def _onexc(func, path, exc):
+        # Newer callback signature (Python >= 3.12/3.13): (func, path, exc)
+        _chmod_writeable(path)
+        try:
+            func(path)
+        except Exception:
+            # Re-raise to let the outer retry handle it
+            raise
+
+    last_exc: Exception | None = None
+    for attempt in range(retries):
+        try:
+            # Make files writeable first on Windows to reduce failures.
+            if os.name == "nt" and os.path.exists(path_str):
+                for root, dirs, files in os.walk(path_str, topdown=False):
+                    for name in files:
+                        _chmod_writeable(os.path.join(root, name))
+                    for name in dirs:
+                        _chmod_writeable(os.path.join(root, name))
+
+            # Prefer the newer onexc API when available, fall back to onerror.
+            try:
+                shutil.rmtree(path_str, onexc=_onexc)  # type: ignore[call-arg]
+            except TypeError:
+                shutil.rmtree(path_str, onerror=_onerror)  # type: ignore[call-arg]
+            return
+        except (PermissionError, OSError) as exc:
+            last_exc = exc
+            if attempt >= retries - 1:
+                break
+            # Exponential backoff on Windows, constant delay elsewhere.
+            sleep_s = delay * (2**attempt) if os.name == "nt" else delay
+            time.sleep(sleep_s)
+
+    # If we get here, all attempts failed; raise the last error for visibility.
+    if last_exc is not None:
+        raise last_exc
