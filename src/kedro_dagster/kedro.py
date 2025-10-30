@@ -67,10 +67,13 @@ class KedroRunTranslator:
             to_nodes: list[str] | None = None
             from_inputs: list[str] | None = None
             to_outputs: list[str] | None = None
-            # Kedro 1.x uses `node_namespaces`; older versions use `node_namespace`.
-            # Accept the appropriate field for the installed Kedro version.
-            node_namespaces: str | None = None
-            node_namespace: str | None = None
+            # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
+            # Expose the appropriate field name based on the installed Kedro version while
+            # keeping the rest of the configuration stable.
+            if _kedro_version()[0] >= 1:
+                node_namespaces: list[str] | None = None
+            else:
+                node_namespace: str | None = None
             tags: list[str] | None = None
 
             class Config:
@@ -88,23 +91,12 @@ class KedroRunTranslator:
 
             @property
             def pipeline(self) -> dict[str, Any]:
-                # Build a filter dict: prefer the field actually provided by the user.
-                # If both are provided, use Kedro major version to choose; if only one is set, pass it through unchanged.
                 node_namespace_key: str | None = None
                 node_namespace_val: Any | None = None
-                has_plural = getattr(self, "node_namespaces", None) is not None
-                has_singular = getattr(self, "node_namespace", None) is not None
-
-                if has_plural and not has_singular:
+                if _kedro_version()[0] >= 1:
                     node_namespace_key, node_namespace_val = "node_namespaces", getattr(self, "node_namespaces")
-                elif has_singular and not has_plural:
+                else:
                     node_namespace_key, node_namespace_val = "node_namespace", getattr(self, "node_namespace")
-                elif has_plural and has_singular:
-                    # Break ties using installed Kedro version
-                    if _kedro_version()[0] >= 1:
-                        node_namespace_key, node_namespace_val = "node_namespaces", getattr(self, "node_namespaces")
-                    else:
-                        node_namespace_key, node_namespace_val = "node_namespace", getattr(self, "node_namespace")
 
                 pipeline_config: dict[str, Any] = {
                     "tags": self.tags,
@@ -113,9 +105,9 @@ class KedroRunTranslator:
                     "node_names": self.node_names,
                     "from_inputs": self.from_inputs,
                     "to_outputs": self.to_outputs,
+                    node_namespace_key: node_namespace_val,
                 }
-                if node_namespace_key is not None and node_namespace_val is not None:
-                    pipeline_config[node_namespace_key] = node_namespace_val
+
                 filter_kwargs = get_filter_params_dict(pipeline_config)
 
                 pipeline_obj = pipelines.get(self.pipeline_name)

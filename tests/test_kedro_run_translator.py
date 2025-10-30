@@ -104,6 +104,7 @@ def test_resource_pipeline_filters_via_registry(
 
     if _kedro_version()[0] >= 1:
         node_namespace_key = "node_namespaces"
+        node_namespace_val = ["ns"]
 
         class _DummyPipeline:
             def filter(
@@ -132,6 +133,7 @@ def test_resource_pipeline_filters_via_registry(
 
     else:
         node_namespace_key = "node_namespace"
+        node_namespace_val = "ns"
 
         class _DummyPipeline:
             def filter(
@@ -167,7 +169,7 @@ def test_resource_pipeline_filters_via_registry(
             "tags": ["x"],
             "from_nodes": ["A"],
             "to_outputs": ["out"],
-            node_namespace_key: "ns",
+            node_namespace_key: node_namespace_val,
         },
     )
 
@@ -181,7 +183,7 @@ def test_resource_pipeline_filters_via_registry(
         "node_names": None,
         "from_inputs": None,
         "to_outputs": ["out"],
-        node_namespace_key: "ns",
+        node_namespace_key: node_namespace_val,
     }
 
 

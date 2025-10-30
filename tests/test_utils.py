@@ -129,6 +129,14 @@ def test_get_node_pipeline_name_default(monkeypatch, caplog):
 def test_get_filter_params_dict():
     """Map node namespace key depending on Kedro major version; pass others unchanged."""
     # Build a config using singular form as the source of truth in this project
+    kedro_major = _kedro_version()[0]
+    if kedro_major >= 1:
+        node_namespace_key = "node_namespaces"
+        node_namespace_val = ["namespace"]
+    else:
+        node_namespace_key = "node_namespace"
+        node_namespace_val = "namespace"
+
     pipeline_config = {
         "tags": ["tag1"],
         "from_nodes": ["node1"],
@@ -136,18 +144,11 @@ def test_get_filter_params_dict():
         "node_names": ["node3"],
         "from_inputs": ["input1"],
         "to_outputs": ["output1_ds"],
-        "node_namespace": "namespace",
+        node_namespace_key: node_namespace_val,
     }
     filter_params = get_filter_params_dict(pipeline_config)
-    # Determine Kedro major version in the test environment using the helper
-    kedro_major = _kedro_version()[0]
 
     expected = dict(pipeline_config)
-    if kedro_major >= 1:
-        # Expect pluralized key for Kedro >= 1 and absence of the singular key
-        expected.pop("node_namespace")
-        expected["node_namespaces"] = "namespace"
-    # For Kedro < 1, the dict should remain unchanged
     assert filter_params == expected
 
 

@@ -23,8 +23,9 @@ class PipelineOptions(BaseModel):
         node_names (list[str] | None): List of specific node names to include in the pipeline.
         from_inputs (list[str] | None): List of dataset names to use as entry points.
         to_outputs (list[str] | None): List of dataset names to use as exit points.
-        node_namespace(s) (str | None): Namespace to filter nodes by. For Kedro >= 1.0, the
-            filter key is "node_namespaces" (plural); for older versions, it is "node_namespace".
+        node_namespace(s) (list[str] | None): Namespace(s) to filter nodes by. For Kedro >= 1.0, the
+            filter key is "node_namespaces" (plural) and must be a list of strings; for older
+            versions, it is "node_namespace" (singular string).
         tags (list[str] | None): List of tags to filter nodes by.
     """
 
@@ -38,7 +39,7 @@ class PipelineOptions(BaseModel):
     # Expose the appropriate field name based on the installed Kedro version while
     # keeping the rest of the configuration stable.
     if _kedro_version()[0] >= 1:
-        node_namespaces: str | None = None
+        node_namespaces: list[str] | None = None
     else:
         node_namespace: str | None = None
     tags: list[str] | None = None
@@ -47,14 +48,6 @@ class PipelineOptions(BaseModel):
         """Pydantic configuration enforcing strict fields."""
 
         extra = "forbid"
-
-    # Backward-compat attribute for tests and callers that reference
-    # `node_namespace` even under Kedro >= 1.0 where the field is pluralized.
-    if _kedro_version()[0] >= 1:
-
-        @property
-        def node_namespace(self) -> str | None:  # pragma: no cover - thin alias
-            return getattr(self, "node_namespaces", None)
 
 
 class JobOptions(BaseModel):

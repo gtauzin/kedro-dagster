@@ -490,12 +490,11 @@ def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
 
     # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
     # Maintain backward compatibility by switching the key based on the Kedro major version.
-    node_namespace_value = pipeline_config.get("node_namespace")
     if _kedro_version()[0] >= 1:
         # Prefer explicit `node_namespaces` from config if present; otherwise map from `node_namespace`.
-        filter_params["node_namespaces"] = pipeline_config.get("node_namespaces", node_namespace_value)
+        filter_params["node_namespaces"] = pipeline_config.get("node_namespaces")
     else:
-        filter_params["node_namespace"] = node_namespace_value
+        filter_params["node_namespace"] = pipeline_config.get("node_namespace")
 
     return filter_params
 
