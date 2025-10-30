@@ -6,7 +6,8 @@ partitioning information for partitioned datasets.
 """
 
 from logging import getLogger
-from pathlib import PurePosixPath
+from os import PathLike
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
@@ -65,7 +66,17 @@ class CatalogTranslator:
         for param, value in dataset._describe().items():
             if param == "version":
                 continue
-            params[param] = str(value) if isinstance(value, PurePosixPath) else value
+            # Convert any path-like values to strings. On Windows, prefer native
+            # separators for absolute PurePosixPath values to match expectations.
+            if isinstance(value, PurePosixPath):
+                try:
+                    params[param] = str(Path(value)) if value.is_absolute() else str(value)
+                except Exception:
+                    params[param] = str(value)
+            elif isinstance(value, PathLike):
+                params[param] = str(value)
+            else:
+                params[param] = value
 
         DatasetModel = _create_pydantic_model_from_dict(
             name="DatasetModel",
