@@ -5,6 +5,7 @@ loading/saving datasets, while invoking Kedro dataset hooks. It also extracts
 partitioning information for partitioned datasets.
 """
 
+import re
 from logging import getLogger
 from os import PathLike
 from pathlib import Path, PurePosixPath
@@ -63,26 +64,32 @@ class CatalogTranslator:
           `PurePosixPath` values to strings for serialization.
         """
         params: dict[str, Any] = {"dataset": dataset.__class__.__name__}
+        DRIVE_ABS_RE = re.compile(r"^[A-Za-z]:/")
+
+        def _normalize_abs_path_str(s: str) -> str:
+            try:
+                p = Path(s)
+                # Treat Windows-style drive paths like C:/... as absolute even if represented with forward slashes
+                if p.is_absolute() or DRIVE_ABS_RE.match(s):
+                    return str(p)
+            except Exception:
+                pass
+            return s
+
         for param, value in dataset._describe().items():
             if param == "version":
                 continue
             # Convert any path-like values to strings. On Windows, prefer native
             # separators for absolute PurePosixPath values to match expectations.
             if isinstance(value, PurePosixPath):
-                try:
-                    params[param] = str(Path(value)) if value.is_absolute() else str(value)
-                except Exception:
-                    params[param] = str(value)
+                s = str(value)
+                params[param] = _normalize_abs_path_str(s)
             elif isinstance(value, PathLike):
                 params[param] = str(value)
             elif param == "filepath" and isinstance(value, str):
                 # If filepath is a string absolute path (may be posix-style on Windows),
                 # normalize it to native separators so tests accept it as abs_fp.
-                try:
-                    p = Path(value)
-                    params[param] = str(p) if p.is_absolute() else value
-                except Exception:
-                    params[param] = value
+                params[param] = _normalize_abs_path_str(value)
             else:
                 params[param] = value
 
