@@ -18,7 +18,6 @@ from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import ExecutorCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
-from kedro_dagster.utils import _kedro_version
 
 
 @dataclass
@@ -77,11 +76,6 @@ def test_hooks_are_invoked_end_to_end(env, request):
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    if _kedro_version()[0] >= 1:
-        run_id_kwargs = {"run_id": session.session_id}
-    else:
-        run_id_kwargs = {"session_id": session.session_id}
-
     # Register recording hooks on Kedro hook manager
     hooks = RecordingHooks()
     context._hook_manager.register(hooks)
@@ -105,7 +99,7 @@ def test_hooks_are_invoked_end_to_end(env, request):
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         env=env,
-        **run_id_kwargs,
+        run_id=session.session_id,
     )
     named_op_factories, named_assets = node_translator.to_dagster()
 
@@ -123,7 +117,7 @@ def test_hooks_are_invoked_end_to_end(env, request):
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
         enable_mlflow=False,
-        **run_id_kwargs,
+        run_id=session.session_id,
     )
     jobs = pipeline_translator.to_dagster()
 

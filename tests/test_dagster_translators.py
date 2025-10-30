@@ -13,7 +13,6 @@ from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import ExecutorCreator, LoggerTranslator, ScheduleCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
-from kedro_dagster.utils import _kedro_version
 from tests.scenarios.kedro_projects import pipeline_registry_default
 from tests.scenarios.project_factory import KedroProjectOptions
 
@@ -48,11 +47,6 @@ def test_schedule_creator_uses_named_schedule(env, request):
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    if _kedro_version()[0] >= 1:
-        run_id_kwargs = {"run_id": session.session_id}
-    else:
-        run_id_kwargs = {"session_id": session.session_id}
-
     dagster_config = get_dagster_config(context)
 
     # Minimal path to jobs to feed into ScheduleCreator: compose with PipelineTranslator
@@ -71,7 +65,7 @@ def test_schedule_creator_uses_named_schedule(env, request):
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         env=env,
-        **run_id_kwargs,
+        run_id=session.session_id,
     )
     named_op_factories, named_assets = node_translator.to_dagster()
     pipeline_translator = PipelineTranslator(
@@ -85,7 +79,7 @@ def test_schedule_creator_uses_named_schedule(env, request):
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors={"seq": dg.in_process_executor},
         enable_mlflow=False,
-        **run_id_kwargs,
+        run_id=session.session_id,
     )
     named_jobs = pipeline_translator.to_dagster()
 

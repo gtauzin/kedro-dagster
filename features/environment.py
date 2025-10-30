@@ -90,8 +90,9 @@ def after_all(context):
     if "E2E_VENV" not in os.environ:
         # Best-effort cleanup of the temporary virtualenv. On Windows, file locks
         # from recently-terminated subprocesses can linger briefly; rmtree below
-        # implements a retry strategy to tolerate that.
-        rmtree(context.venv_dir)
+        # implements a retry strategy to tolerate that. Don't fail the suite if
+        # final cleanup can't remove some locked files: use non-strict mode.
+        rmtree(context.venv_dir, strict=False)
 
 
 def before_scenario(context, feature):
@@ -99,10 +100,37 @@ def before_scenario(context, feature):
 
 
 def after_scenario(context, feature):
+    # Ensure any background processes started during a scenario are terminated
+    # before attempting to delete temporary directories (Windows file locks).
+    proc = getattr(context, "process", None)
+    if proc is not None:
+        try:
+            # Best effort: terminate, wait and close pipes to release handles.
+            proc.terminate()
+            proc.wait(timeout=20)
+            try:
+                if getattr(proc, "stdout", None):
+                    proc.stdout.close()  # type: ignore[call-arg]
+            except Exception:
+                pass
+        except Exception:
+            # Don't block cleanup if termination fails; continue to cleanup with retries.
+            pass
+        finally:
+            # Remove reference to help GC any remaining resources promptly.
+            try:
+                delattr(context, "process")
+            except Exception:
+                pass
+
+    # Small delay to allow the OS to release file handles (especially on Windows).
+    if os.name == "nt":
+        time.sleep(0.5)
+
     rmtree(context.temp_dir)
 
 
-def rmtree(top: Path, retries: int = 8, delay: float = 0.25) -> None:
+def rmtree(top: Path, retries: int = 8, delay: float = 0.25, strict: bool = True) -> None:
     """Robust rmtree that tolerates transient Windows file locks.
 
     - On Windows, processes may still hold handles on files (e.g. logs, DLLs/PYD)
@@ -138,6 +166,19 @@ def rmtree(top: Path, retries: int = 8, delay: float = 0.25) -> None:
             # Re-raise to let the outer retry handle it
             raise
 
+    # Try to atomically rename the directory out of the way first. This often
+    # succeeds even if some files are locked, allowing callers to proceed
+    # without races on the original path.
+    if os.path.isdir(path_str):
+        try:
+            base = path_str.rstrip("\\/")
+            renamed = f"{base}.del-{int(time.time() * 1000)}"
+            os.replace(path_str, renamed)
+            path_str = renamed
+        except Exception:
+            # If rename fails, we'll proceed to delete in place.
+            pass
+
     last_exc: Exception | None = None
     for attempt in range(retries):
         try:
@@ -163,6 +204,12 @@ def rmtree(top: Path, retries: int = 8, delay: float = 0.25) -> None:
             sleep_s = delay * (2**attempt) if os.name == "nt" else delay
             time.sleep(sleep_s)
 
-    # If we get here, all attempts failed; raise the last error for visibility.
-    if last_exc is not None:
+    # If we get here, all attempts failed.
+    if last_exc is not None and strict:
         raise last_exc
+    # Non-strict mode: best-effort cleanup; print a warning and continue.
+    if last_exc is not None and not strict:
+        try:
+            print(f"[cleanup-warning] Failed to delete {path_str}: {last_exc}")
+        except Exception:
+            pass

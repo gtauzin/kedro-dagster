@@ -14,7 +14,7 @@ from kedro.pipeline.node import Node
 
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.nodes import NodeTranslator
-from kedro_dagster.utils import _kedro_version, format_node_name, is_nothing_asset_name, unformat_asset_name
+from kedro_dagster.utils import format_node_name, is_nothing_asset_name, unformat_asset_name
 
 
 def _get_node_producing_output(pipeline: Pipeline, dataset_name: str) -> Node:
@@ -34,11 +34,6 @@ def test_create_op_wires_resources(env, request):
     bootstrap_project(project_path)
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
-
-    if _kedro_version()[0] >= 1:
-        run_id_kwargs = {"run_id": session.session_id}
-    else:
-        run_id_kwargs = {"session_id": session.session_id}
 
     project_module = importlib.import_module("kedro.framework.project")
     project_module.configure_project(package_name)
@@ -61,7 +56,7 @@ def test_create_op_wires_resources(env, request):
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
-        **run_id_kwargs,
+        run_id=session.session_id,
     )
 
     node = _get_node_producing_output(pipeline, "output2_ds")
@@ -84,11 +79,6 @@ def test_create_op_partition_tags_and_name_suffix(env, request):
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    if _kedro_version()[0] >= 1:
-        run_id_kwargs = {"run_id": session.session_id}
-    else:
-        run_id_kwargs = {"session_id": session.session_id}
-
     project_module = importlib.import_module("kedro.framework.project")
     project_module.configure_project(package_name)
 
@@ -101,7 +91,7 @@ def test_create_op_partition_tags_and_name_suffix(env, request):
         asset_partitions={},
         named_resources={},
         env=env,
-        **run_id_kwargs,
+        run_id=session.session_id,
     )
 
     node = _get_node_producing_output(pipeline, "output2_ds")
@@ -140,11 +130,6 @@ def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    if _kedro_version()[0] >= 1:
-        run_id_kwargs = {"run_id": session.session_id}
-    else:
-        run_id_kwargs = {"session_id": session.session_id}
-
     pipeline = pipelines.get("__default__")
 
     catalog_translator = CatalogTranslator(
@@ -162,7 +147,7 @@ def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
-        **run_id_kwargs,
+        run_id=session.session_id,
     )
 
     # Pick the node that exercises the scenario and assert ins/outs are as expected
@@ -207,11 +192,6 @@ def test_node_translator_handles_nothing_datasets(env, request):
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    if _kedro_version()[0] >= 1:
-        run_id_kwargs = {"run_id": session.session_id}
-    else:
-        run_id_kwargs = {"session_id": session.session_id}
-
     pipeline = pipelines.get("__default__")
 
     catalog_translator = CatalogTranslator(
@@ -229,7 +209,7 @@ def test_node_translator_handles_nothing_datasets(env, request):
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
-        **run_id_kwargs,
+        run_id=session.session_id,
     )
 
     # Debug print removed to avoid noisy test output
@@ -286,11 +266,6 @@ def test_node_translator_handles_no_output_node(env, request):
     session = KedroSession.create(project_path=project_path, env=env)
     context = session.load_context()
 
-    if _kedro_version()[0] >= 1:
-        run_id_kwargs = {"run_id": session.session_id}
-    else:
-        run_id_kwargs = {"session_id": session.session_id}
-
     project_module = importlib.import_module("kedro.framework.project")
     project_module.configure_project(package_name)
 
@@ -311,7 +286,7 @@ def test_node_translator_handles_no_output_node(env, request):
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
-        **run_id_kwargs,
+        run_id=session.session_id,
     )
 
     # Select the known no-output node from the scenario
