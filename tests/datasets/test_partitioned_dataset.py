@@ -283,6 +283,17 @@ class TestDagsterPartitionedDataset:
             filename_suffix=".csv",
         )
 
+        # Ensure super().load() returns an absolute path key so the code path
+        # that calls os.path.relpath is taken. We monkeypatch the parent
+        # PartitionedDataset.load to return a mapping with an absolute key.
+        abs_key = str(base / "p1.csv")
+        monkeypatch.setattr(
+            _pdmod.PartitionedDataset,
+            "load",
+            lambda self: {abs_key: (lambda: None)},
+            raising=True,
+        )
+
         # Force relpath to raise to exercise the except branch in load()
         monkeypatch.setattr(
             _pdmod.os.path,
