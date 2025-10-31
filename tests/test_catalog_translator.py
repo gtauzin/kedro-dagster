@@ -175,7 +175,7 @@ def test_io_manager_roundtrip_matches_dataset(kedro_project_scenario_env):
 
     # Minimal Dagster op definition to build IO manager contexts
     @dg.op(name="dummy_node")
-    def _noop():  # pragma: no cover - execution not needed
+    def _noop():
         return None
 
     op_def = _noop

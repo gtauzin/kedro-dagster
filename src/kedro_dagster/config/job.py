@@ -38,10 +38,10 @@ class PipelineOptions(BaseModel):
     # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
     # Expose the appropriate field name based on the installed Kedro version while
     # keeping the rest of the configuration stable.
-    if _kedro_version()[0] >= 1:
+    if _kedro_version()[0] >= 1:  # pragma: no branch
         node_namespaces: list[str] | None = None
     else:
-        node_namespace: str | None = None  # pragma: no cover
+        node_namespace: str | None = None
     tags: list[str] | None = None
 
     class Config:

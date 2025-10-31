@@ -40,20 +40,14 @@ def _kedro_version() -> tuple[int, int, int]:
     being present on the top-level package across versions.
     """
     try:
-        VERSION_PARTS = 3
         kedro = importlib.import_module("kedro")
-        version_str = str(getattr(kedro, "__version__", "0"))
-        # Try strict SemVer: X.Y.Z[...]
+        version_str = str(getattr(kedro, "__version__", "0.0.0"))
+        # Kedro uses strict SemVer: X.Y.Z[...]
         m = re.match(r"^(\d+)\.(\d+)\.(\d+)", version_str)
         if m:
             return int(m.group(1)), int(m.group(2)), int(m.group(3))
+        return (0, 0, 0)
 
-        # Fallback: split by non-digit separators and take first three numbers
-        parts = re.split(r"[^0-9]+", version_str)
-        nums = [int(p) for p in parts if p.isdigit()]
-        while len(nums) < VERSION_PARTS:
-            nums.append(0)
-        return nums[0], nums[1], nums[2]
     except Exception:
         return (0, 0, 0)
 
@@ -71,16 +65,12 @@ def find_kedro_project(current_dir: Path) -> Path | None:
         Path | None: Project root path if found, else ``None``.
     """
     _KEDRO_VER = _kedro_version()
-    if _KEDRO_VER >= (1, 0, 0):
+    if _KEDRO_VER >= (1, 0, 0):  # pragma: no branch
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "find_kedro_project", None)
     elif _KEDRO_VER >= (0, 19, 12):
-        FIND_KEDRO_PROJECT = getattr(
-            importlib.import_module("kedro.utils"), "_find_kedro_project", None
-        )  # pragma: no cover
+        FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "_find_kedro_project", None)
     elif _KEDRO_VER > (0, 0, 0):
-        FIND_KEDRO_PROJECT = getattr(
-            importlib.import_module("kedro.framework.startup"), "_find_kedro_project", None
-        )  # pragma: no cover
+        FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.framework.startup"), "_find_kedro_project", None)
 
     return FIND_KEDRO_PROJECT(current_dir)  # type: ignore[no-any-return]
 
@@ -500,7 +490,7 @@ def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
         # Prefer explicit `node_namespaces` from config if present; otherwise map from `node_namespace`.
         filter_params["node_namespaces"] = pipeline_config.get("node_namespaces")
     else:
-        filter_params["node_namespace"] = pipeline_config.get("node_namespace")  # pragma: no cover
+        filter_params["node_namespace"] = pipeline_config.get("node_namespace")
 
     return filter_params
 

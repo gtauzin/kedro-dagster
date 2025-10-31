@@ -32,10 +32,10 @@ class KedroRunTranslator:
             env=env,
             kedro_version=kedro_version,
         )
-        if _kedro_version()[0] >= 1:
+        if _kedro_version()[0] >= 1:  # pragma: no branch
             self._kedro_params["run_id"] = run_id
         else:
-            self._kedro_params["session_id"] = run_id  # pragma: no cover
+            self._kedro_params["session_id"] = run_id
 
     def to_dagster(
         self,
@@ -57,19 +57,19 @@ class KedroRunTranslator:
         hook_manager = self._hook_manager
 
         class RunParamsModel(dg.Config):
-            if _kedro_version()[0] >= 1:
+            if _kedro_version()[0] >= 1:  # pragma: no branch
                 run_id: str
             else:
-                session_id: str  # pragma: no cover
+                session_id: str
             project_path: str
             env: str
             kedro_version: str
             pipeline_name: str
             load_versions: list[str] | None = None
-            if _kedro_version()[0] >= 1:
+            if _kedro_version()[0] >= 1:  # pragma: no branch
                 runtime_params: dict[str, Any] | None = None
             else:
-                extra_params: dict[str, Any] | None = None  # pragma: no cover
+                extra_params: dict[str, Any] | None = None
             runner: str | None = None
             node_names: list[str] | None = None
             from_nodes: list[str] | None = None
@@ -79,10 +79,10 @@ class KedroRunTranslator:
             # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
             # Expose the appropriate field name based on the installed Kedro version while
             # keeping the rest of the configuration stable.
-            if _kedro_version()[0] >= 1:
+            if _kedro_version()[0] >= 1:  # pragma: no branch
                 node_namespaces: list[str] | None = None
             else:
-                node_namespace: str | None = None  # pragma: no cover
+                node_namespace: str | None = None
             tags: list[str] | None = None
 
             class Config:
@@ -108,7 +108,7 @@ class KedroRunTranslator:
                     node_namespace_key, node_namespace_val = (
                         "node_namespace",
                         getattr(self, "node_namespace"),
-                    )  # pragma: no cover
+                    )
 
                 pipeline_config: dict[str, Any] = {
                     "tags": self.tags,

@@ -356,10 +356,10 @@ class NodeTranslator:
                 is_async=False,
             )
             # Kedro 1.x hooks renamed session_id to run_id
-            if _kedro_version()[0] >= 1:
+            if _kedro_version()[0] >= 1:  # pragma: no branch
                 before_node_run_params["run_id"] = self._run_id
             else:
-                before_node_run_params["session_id"] = self._run_id  # pragma: no cover
+                before_node_run_params["session_id"] = self._run_id
 
             self._hook_manager.hook.before_node_run(**before_node_run_params)
 
@@ -384,7 +384,7 @@ class NodeTranslator:
                         inputs=inputs,
                         is_async=False,
                         session_id=self._run_id,
-                    )  # pragma: no cover
+                    )
                 raise exc
 
             after_node_run_params = dict(
@@ -395,10 +395,10 @@ class NodeTranslator:
                 is_async=False,
             )
             # Kedro 1.x hooks renamed session_id to run_id
-            if _kedro_version()[0] >= 1:
+            if _kedro_version()[0] >= 1:  # pragma: no branch
                 after_node_run_params["run_id"] = self._run_id
             else:
-                after_node_run_params["session_id"] = self._run_id  # pragma: no cover
+                after_node_run_params["session_id"] = self._run_id
 
             self._hook_manager.hook.after_node_run(**after_node_run_params)
 
