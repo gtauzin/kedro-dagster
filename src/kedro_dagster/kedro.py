@@ -32,9 +32,9 @@ class KedroRunTranslator:
             env=env,
             kedro_version=kedro_version,
         )
-        if _kedro_version()[0] >= 1:  # pragma: no branch
+        if _kedro_version()[0] >= 1:
             self._kedro_params["run_id"] = run_id
-        else:
+        else:  # pragma: no branch
             self._kedro_params["session_id"] = run_id
 
     def to_dagster(
@@ -57,7 +57,7 @@ class KedroRunTranslator:
         hook_manager = self._hook_manager
 
         class RunParamsModel(dg.Config):
-            if _kedro_version()[0] >= 1:  # pragma: no branch
+            if _kedro_version()[0] >= 1:
                 run_id: str
             else:
                 session_id: str
@@ -66,9 +66,9 @@ class KedroRunTranslator:
             kedro_version: str
             pipeline_name: str
             load_versions: list[str] | None = None
-            if _kedro_version()[0] >= 1:  # pragma: no branch
+            if _kedro_version()[0] >= 1:
                 runtime_params: dict[str, Any] | None = None
-            else:
+            else:  # pragma: no branch
                 extra_params: dict[str, Any] | None = None
             runner: str | None = None
             node_names: list[str] | None = None
@@ -79,9 +79,9 @@ class KedroRunTranslator:
             # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
             # Expose the appropriate field name based on the installed Kedro version while
             # keeping the rest of the configuration stable.
-            if _kedro_version()[0] >= 1:  # pragma: no branch
+            if _kedro_version()[0] >= 1:
                 node_namespaces: list[str] | None = None
-            else:
+            else:  # pragma: no branch
                 node_namespace: str | None = None
             tags: list[str] | None = None
 

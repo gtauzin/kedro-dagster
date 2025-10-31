@@ -62,7 +62,7 @@ def find_kedro_project(current_dir: Path) -> Path | None:
         Path | None: Project root path if found, else ``None``.
     """
     _KEDRO_VER = _kedro_version()
-    if _KEDRO_VER >= (1, 0, 0):  # pragma: no branch
+    if _KEDRO_VER >= (1, 0, 0):
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "find_kedro_project", None)
     elif _KEDRO_VER >= (0, 19, 12):  # pragma: no branch
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "_find_kedro_project", None)
@@ -472,10 +472,10 @@ def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
 
     # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
     # Maintain backward compatibility by switching the key based on the Kedro major version.
-    if _kedro_version()[0] >= 1:  # pragma: no branch
+    if _kedro_version()[0] >= 1:
         # Prefer explicit `node_namespaces` from config if present; otherwise map from `node_namespace`.
         filter_params["node_namespaces"] = pipeline_config.get("node_namespaces")
-    else:
+    else:  # pragma: no branch
         filter_params["node_namespace"] = pipeline_config.get("node_namespace")
 
     return filter_params
