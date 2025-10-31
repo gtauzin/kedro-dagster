@@ -9,7 +9,7 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
 [![License](https://img.shields.io/github/license/gtauzin/kedro-dagster)](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE.md)
 [![PyPI Version](https://img.shields.io/pypi/v/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
-[![Run tests and checks](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml/badge.svg)](https://github.com/gtauzin/kedro-dagster/actions/workflows/check.yml)
+[![Run tests and checks](https://github.com/gtauzin/kedro-dagster/actions/workflows/checks-coverage.yml/badge.svg)](https://github.com/gtauzin/kedro-dagster/actions/workflows/checks-coverage.yml)
 [![CodeCov](https://codecov.io/gh/gtauzin/kedro-dagster/branch/main/graph/badge.svg)](https://codecov.io/gh/gtauzin/kedro-dagster/branch/main)
 [![Slack Organisation](https://img.shields.io/badge/slack-chat-blueviolet.svg?label=Kedro%20Slack&logo=slack)](https://slack.kedro.org)
 
