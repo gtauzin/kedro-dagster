@@ -74,9 +74,13 @@ def find_kedro_project(current_dir: Path) -> Path | None:
     if _KEDRO_VER >= (1, 0, 0):
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "find_kedro_project", None)
     elif _KEDRO_VER >= (0, 19, 12):
-        FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "_find_kedro_project", None)
+        FIND_KEDRO_PROJECT = getattr(
+            importlib.import_module("kedro.utils"), "_find_kedro_project", None
+        )  # pragma: no cover
     elif _KEDRO_VER > (0, 0, 0):
-        FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.framework.startup"), "_find_kedro_project", None)
+        FIND_KEDRO_PROJECT = getattr(
+            importlib.import_module("kedro.framework.startup"), "_find_kedro_project", None
+        )  # pragma: no cover
 
     return FIND_KEDRO_PROJECT(current_dir)  # type: ignore[no-any-return]
 
