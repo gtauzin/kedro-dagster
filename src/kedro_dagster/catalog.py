@@ -7,6 +7,7 @@ partitioning information for partitioned datasets.
 
 from logging import getLogger
 from os import PathLike
+from os import sep as OS_SEP
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
@@ -204,11 +205,21 @@ class CatalogTranslator:
         try:
             fp = getattr(io_manager_instance, "filepath", None)
             if isinstance(fp, str):
-                p = Path(fp)
                 # Treat drive-letter posix strings like C:/... as absolute as well
                 DRIVE_PATTERN_INDEX_SLICE = (1, 3)
+                p = Path(fp)
                 if p.is_absolute() or (len(fp) >= DRIVE_PATTERN_INDEX_SLICE[1] and fp[1:3] == ":/"):
-                    setattr(io_manager_instance, "filepath", str(p))
+                    normalized = str(p)
+                    if normalized == fp:
+                        # Fallback: manual forward-slash to native replacement
+                        normalized = fp.replace("/", OS_SEP)
+                    try:
+                        object.__setattr__(io_manager_instance, "filepath", normalized)
+                    except Exception:
+                        try:
+                            setattr(io_manager_instance, "filepath", normalized)
+                        except Exception:
+                            pass
         except Exception:
             pass
 
