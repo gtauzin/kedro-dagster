@@ -18,6 +18,7 @@ from kedro_dagster.utils import (
     format_node_name,
     format_partition_key,
     get_asset_key_from_dataset_name,
+    get_dataset_from_catalog,
     get_filter_params_dict,
     get_mlflow_resource_from_config,
     get_partition_mapping,
@@ -236,3 +237,19 @@ def test_format_node_name_hashes_invalid_chars():
     name = "node-with-hyphen"
     formatted = format_node_name(name)
     assert formatted.startswith("unnamed_node_")
+
+
+def test_get_dataset_from_catalog_index_access_exception(caplog):
+    """When the catalog provides only index access and it raises, return None and log info."""
+
+    class BadCatalog:
+        # no _get_dataset and no get()
+        def __getitem__(self, key):
+            raise Exception("unexpected failure in __getitem__")
+
+    bad_catalog = BadCatalog()
+
+    with caplog.at_level("INFO"):
+        result = get_dataset_from_catalog(bad_catalog, "missing_ds")
+        assert result is None
+        assert "Dataset 'missing_ds' not found in catalog." in caplog.text

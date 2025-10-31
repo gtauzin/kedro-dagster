@@ -376,7 +376,7 @@ class NodeTranslator:
                         is_async=False,
                         run_id=self._run_id,
                     )
-                else:
+                else:  # pragma: no cover
                     self._hook_manager.hook.on_node_error(
                         error=exc,
                         node=node,

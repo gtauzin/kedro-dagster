@@ -66,12 +66,11 @@ def find_kedro_project(current_dir: Path) -> Path | None:
         Path | None: Project root path if found, else ``None``.
     """
     # Use the module-level constant to avoid repeated imports/parsing.
-    _KEDRO_VER = KEDRO_VERSION
-    if _KEDRO_VER >= (1, 0, 0):
+    if KEDRO_VERSION >= (1, 0, 0):
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "find_kedro_project", None)
-    elif _KEDRO_VER >= (0, 19, 12):  # pragma: no cover
+    elif KEDRO_VERSION >= (0, 19, 12):  # pragma: no cover
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "_find_kedro_project", None)
-    elif _KEDRO_VER > (0, 0, 0):  # pragma: no cover
+    elif KEDRO_VERSION > (0, 0, 0):  # pragma: no cover
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.framework.startup"), "_find_kedro_project", None)
 
     return FIND_KEDRO_PROJECT(current_dir)  # type: ignore[no-any-return]
@@ -169,7 +168,7 @@ def get_dataset_from_catalog(catalog: "CatalogProtocol", dataset_name: str) -> A
     """
     result = None
     get_method = getattr(catalog, "_get_dataset", None)
-    if callable(get_method):
+    if callable(get_method):  # pragma: no cover
         try:
             result = get_method(dataset_name)
         except Exception:
@@ -177,16 +176,16 @@ def get_dataset_from_catalog(catalog: "CatalogProtocol", dataset_name: str) -> A
     else:
         # Mapping-like .get(name[, default])
         get_method = getattr(catalog, "get", None)
-        if callable(get_method):  # pragma: no cover
+        if callable(get_method):
             try:
                 result = get_method(dataset_name)
-            except TypeError:
+            except TypeError:  # pragma: no cover
                 # Some get() signatures require a default
                 try:
                     result = get_method(dataset_name, None)
                 except Exception:
                     result = None
-            except Exception:
+            except Exception:  # pragma: no cover
                 result = None
         else:
             # Index access fallback
