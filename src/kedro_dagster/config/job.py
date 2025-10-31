@@ -41,7 +41,7 @@ class PipelineOptions(BaseModel):
     if _kedro_version()[0] >= 1:
         node_namespaces: list[str] | None = None
     else:
-        node_namespace: str | None = None
+        node_namespace: str | None = None  # pragma: no cover
     tags: list[str] | None = None
 
     class Config:

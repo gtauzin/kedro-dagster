@@ -35,7 +35,7 @@ class KedroRunTranslator:
         if _kedro_version()[0] >= 1:
             self._kedro_params["run_id"] = run_id
         else:
-            self._kedro_params["session_id"] = run_id
+            self._kedro_params["session_id"] = run_id  # pragma: no cover
 
     def to_dagster(
         self,
@@ -60,7 +60,7 @@ class KedroRunTranslator:
             if _kedro_version()[0] >= 1:
                 run_id: str
             else:
-                session_id: str
+                session_id: str  # pragma: no cover
             project_path: str
             env: str
             kedro_version: str
@@ -69,7 +69,7 @@ class KedroRunTranslator:
             if _kedro_version()[0] >= 1:
                 runtime_params: dict[str, Any] | None = None
             else:
-                extra_params: dict[str, Any] | None = None
+                extra_params: dict[str, Any] | None = None  # pragma: no cover
             runner: str | None = None
             node_names: list[str] | None = None
             from_nodes: list[str] | None = None
@@ -82,7 +82,7 @@ class KedroRunTranslator:
             if _kedro_version()[0] >= 1:
                 node_namespaces: list[str] | None = None
             else:
-                node_namespace: str | None = None
+                node_namespace: str | None = None  # pragma: no cover
             tags: list[str] | None = None
 
             class Config:
@@ -105,7 +105,10 @@ class KedroRunTranslator:
                 if _kedro_version()[0] >= 1:
                     node_namespace_key, node_namespace_val = "node_namespaces", getattr(self, "node_namespaces")
                 else:
-                    node_namespace_key, node_namespace_val = "node_namespace", getattr(self, "node_namespace")
+                    node_namespace_key, node_namespace_val = (
+                        "node_namespace",
+                        getattr(self, "node_namespace"),
+                    )  # pragma: no cover
 
                 pipeline_config: dict[str, Any] = {
                     "tags": self.tags,

@@ -496,7 +496,7 @@ def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
         # Prefer explicit `node_namespaces` from config if present; otherwise map from `node_namespace`.
         filter_params["node_namespaces"] = pipeline_config.get("node_namespaces")
     else:
-        filter_params["node_namespace"] = pipeline_config.get("node_namespace")
+        filter_params["node_namespace"] = pipeline_config.get("node_namespace")  # pragma: no cover
 
     return filter_params
 

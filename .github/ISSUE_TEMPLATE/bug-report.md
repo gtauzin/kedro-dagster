@@ -36,6 +36,7 @@ Tell us what happens instead.
 Include as many relevant details about the environment in which you experienced the bug:
 
 * Kedro version used (`pip show kedro` or `kedro -V`):
+* Dagster version used (`pip show dagster` or `dagster -V`):
 * Kedro-Dagster version used (`pip show kedro-dagster`):
 * Other Kedro plugin and kedro plugin version used (`pip show <KEDRO_PLUGIN_NAME>`):
 * Python version used (`python -V`):
