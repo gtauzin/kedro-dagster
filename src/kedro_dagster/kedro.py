@@ -6,6 +6,8 @@ import dagster as dg
 from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
 
+from kedro_dagster.utils import KEDRO_VERSION, get_filter_params_dict
+
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
 
@@ -17,20 +19,23 @@ class KedroRunTranslator:
         context (KedroContext): Kedro context.
         project_path (str): Path to the Kedro project.
         env (str): Kedro environment.
-        session_id (str): Kedro session ID.
+        run_id (str): Kedro run ID. In Kedro < 1.0, this is called `session_id`.
 
     """
 
-    def __init__(self, context: "KedroContext", project_path: str, env: str, session_id: str):
+    def __init__(self, context: "KedroContext", project_path: str, env: str, run_id: str):
         self._context = context
         self._catalog = context.catalog
         self._hook_manager = context._hook_manager
         self._kedro_params = dict(
             project_path=project_path,
             env=env,
-            session_id=session_id,
             kedro_version=kedro_version,
         )
+        if KEDRO_VERSION[0] >= 1:
+            self._kedro_params["run_id"] = run_id
+        else:  # pragma: no cover
+            self._kedro_params["session_id"] = run_id
 
     def to_dagster(
         self,
@@ -52,20 +57,32 @@ class KedroRunTranslator:
         hook_manager = self._hook_manager
 
         class RunParamsModel(dg.Config):
-            session_id: str
+            if KEDRO_VERSION[0] >= 1:
+                run_id: str
+            else:
+                session_id: str
             project_path: str
             env: str
             kedro_version: str
             pipeline_name: str
             load_versions: list[str] | None = None
-            extra_params: dict[str, Any] | None = None
+            if KEDRO_VERSION[0] >= 1:
+                runtime_params: dict[str, Any] | None = None
+            else:  # pragma: no cover
+                extra_params: dict[str, Any] | None = None
             runner: str | None = None
             node_names: list[str] | None = None
             from_nodes: list[str] | None = None
             to_nodes: list[str] | None = None
             from_inputs: list[str] | None = None
             to_outputs: list[str] | None = None
-            node_namespace: str | None = None
+            # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
+            # Expose the appropriate field name based on the installed Kedro version while
+            # keeping the rest of the configuration stable.
+            if KEDRO_VERSION[0] >= 1:
+                node_namespaces: list[str] | None = None
+            else:  # pragma: no cover
+                node_namespace: str | None = None
             tags: list[str] | None = None
 
             class Config:
@@ -83,15 +100,30 @@ class KedroRunTranslator:
 
             @property
             def pipeline(self) -> dict[str, Any]:
-                return pipelines.get(self.pipeline_name).filter(  # type: ignore[no-any-return]
-                    tags=self.tags,
-                    from_nodes=self.from_nodes,
-                    to_nodes=self.to_nodes,
-                    node_names=self.node_names,
-                    from_inputs=self.from_inputs,
-                    to_outputs=self.to_outputs,
-                    node_namespace=self.node_namespace,
-                )
+                node_namespace_key: str | None = None
+                node_namespace_val: Any | None = None
+                if KEDRO_VERSION[0] >= 1:
+                    node_namespace_key, node_namespace_val = "node_namespaces", getattr(self, "node_namespaces")
+                else:  # pragma: no cover
+                    node_namespace_key, node_namespace_val = (
+                        "node_namespace",
+                        getattr(self, "node_namespace"),
+                    )
+
+                pipeline_config: dict[str, Any] = {
+                    "tags": self.tags,
+                    "from_nodes": self.from_nodes,
+                    "to_nodes": self.to_nodes,
+                    "node_names": self.node_names,
+                    "from_inputs": self.from_inputs,
+                    "to_outputs": self.to_outputs,
+                    node_namespace_key: node_namespace_val,
+                }
+
+                filter_kwargs = get_filter_params_dict(pipeline_config)
+
+                pipeline_obj = pipelines.get(self.pipeline_name)
+                return pipeline_obj.filter(**filter_kwargs)  # type: ignore[no-any-return]
 
             def after_context_created_hook(self) -> None:
                 hook_manager.hook.after_context_created(context=context)
@@ -102,7 +134,6 @@ class KedroRunTranslator:
             | dict(
                 pipeline_name=pipeline_name,
                 load_versions=None,
-                extra_params=None,
                 runner=None,
             )
         )

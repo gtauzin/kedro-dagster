@@ -38,7 +38,7 @@ class PipelineTranslator:
         context (KedroContext): Active Kedro context (provides catalog and hooks).
         project_path (str): Path to the Kedro project.
         env (str): Kedro environment used for namespacing.
-        session_id (str): Kedro session ID.
+        run_id (str): Kedro run ID. In Kedro < 1.0, this is called `session_id`.
         named_assets (dict[str, dg.AssetsDefinition]): Mapping of asset name -> asset.
         asset_partitions (dict[str, Any]): Mapping of asset name -> partition definitions/mappings.
         named_op_factories (dict[str, dg.OpDefinition]): Mapping of graph-op name -> op factory.
@@ -53,7 +53,7 @@ class PipelineTranslator:
         context: "KedroContext",
         project_path: str,
         env: str,
-        session_id: str,
+        run_id: str,
         named_assets: dict[str, dg.AssetsDefinition],
         asset_partitions: dict[str, Any],
         named_op_factories: dict[str, dg.OpDefinition],
@@ -65,7 +65,7 @@ class PipelineTranslator:
         self._context = context
         self._project_path = project_path
         self._env = env
-        self._session_id = session_id
+        self._run_id = run_id
         self._catalog = context.catalog
         self._hook_manager = context._hook_manager
         self._named_assets = named_assets
@@ -413,13 +413,13 @@ class PipelineTranslator:
             )
             after_pipeline_run_hook_op(**after_pipeline_run_hook_inputs)
 
-        # Overrides the kedro_run resource with the one created for the job
         kedro_run_translator = KedroRunTranslator(
             context=self._context,
             project_path=self._project_path,
             env=self._env,
-            session_id=self._session_id,
+            run_id=self._run_id,
         )
+
         kedro_run_resource = kedro_run_translator.to_dagster(
             pipeline_name=pipeline_name,
             filter_params=filter_params,

@@ -1,6 +1,5 @@
 # mypy: ignore-errors
 
-from pathlib import Path
 from types import SimpleNamespace
 
 import dagster as dg
@@ -11,6 +10,7 @@ from pydantic import BaseModel
 
 from kedro_dagster.datasets import DagsterNothingDataset
 from kedro_dagster.utils import (
+    KEDRO_VERSION,
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
     _is_param_name,
@@ -18,6 +18,7 @@ from kedro_dagster.utils import (
     format_node_name,
     format_partition_key,
     get_asset_key_from_dataset_name,
+    get_dataset_from_catalog,
     get_filter_params_dict,
     get_mlflow_resource_from_config,
     get_partition_mapping,
@@ -29,10 +30,10 @@ from kedro_dagster.utils import (
 )
 
 
-def test_render_jinja_template():
+def test_render_jinja_template(tmp_path):
     """Render a Jinja template file with provided context variables."""
     template_content = "Hello, {{ name }}!"
-    template_path = Path("/tmp/test_template.jinja")
+    template_path = tmp_path / "test_template.jinja"
     template_path.write_text(template_content)
 
     result = render_jinja_template(template_path, name="World")
@@ -126,7 +127,16 @@ def test_get_node_pipeline_name_default(monkeypatch, caplog):
 
 
 def test_get_filter_params_dict():
-    """Pass through pipeline filtering config unchanged as a dictionary."""
+    """Map node namespace key depending on Kedro major version; pass others unchanged."""
+    # Build a config using singular form as the source of truth in this project
+    kedro_major = KEDRO_VERSION[0]
+    if kedro_major >= 1:
+        node_namespace_key = "node_namespaces"
+        node_namespace_val = ["namespace"]
+    else:
+        node_namespace_key = "node_namespace"
+        node_namespace_val = "namespace"
+
     pipeline_config = {
         "tags": ["tag1"],
         "from_nodes": ["node1"],
@@ -134,10 +144,12 @@ def test_get_filter_params_dict():
         "node_names": ["node3"],
         "from_inputs": ["input1"],
         "to_outputs": ["output1_ds"],
-        "node_namespace": "namespace",
+        node_namespace_key: node_namespace_val,
     }
     filter_params = get_filter_params_dict(pipeline_config)
-    assert filter_params == pipeline_config
+
+    expected = dict(pipeline_config)
+    assert filter_params == expected
 
 
 @pytest.mark.mlflow
@@ -225,3 +237,19 @@ def test_format_node_name_hashes_invalid_chars():
     name = "node-with-hyphen"
     formatted = format_node_name(name)
     assert formatted.startswith("unnamed_node_")
+
+
+def test_get_dataset_from_catalog_index_access_exception(caplog):
+    """When the catalog provides only index access and it raises, return None and log info."""
+
+    class BadCatalog:
+        # no _get_dataset and no get()
+        def __getitem__(self, key):
+            raise Exception("unexpected failure in __getitem__")
+
+    bad_catalog = BadCatalog()
+
+    with caplog.at_level("INFO"):
+        result = get_dataset_from_catalog(bad_catalog, "missing_ds")
+        assert result is None
+        assert "Dataset 'missing_ds' not found in catalog." in caplog.text

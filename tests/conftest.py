@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import importlib.metadata as _ilmd
 from collections.abc import Callable
 from pathlib import Path
 
+import kedro.framework.session.session as _kedro_session_mod
+from kedro.framework import project as _kedro_project
 from pytest import fixture
 
 from .scenarios.kedro_projects import (
@@ -29,6 +32,66 @@ from .scenarios.project_factory import KedroProjectOptions, build_kedro_project_
 def temp_directory(tmpdir_factory):
     # Use tmpdir_factory to create a temporary directory with session scope
     return tmpdir_factory.mktemp("session_temp_dir")
+
+
+# Avoid loading third-party Kedro plugin hooks via entry points during tests.
+@fixture(autouse=True)
+def _disable_kedro_plugin_entrypoints(monkeypatch):
+    # Replace Kedro's entry-point-based hook registration with a filtered
+    # version for tests so that system-installed plugins don't interfere.
+    def _wrapped_register(*args, **kwargs):
+        hook_manager = args[0] if args else kwargs.get("hook_manager")
+
+        # Read the project setting that explicitly lists allowed plugin
+        # distribution names. Treat missing/empty as "no plugins allowed".
+        proj_allowed = getattr(_kedro_project.settings, "ALLOWED_HOOK_PLUGINS", ())
+        allowed_set = {str(p).strip() for p in proj_allowed if str(p).strip()}
+
+        if not allowed_set:
+            return hook_manager
+
+        # A loader that only loads entry points coming from allowed
+        # distributions. This mirrors the shape of the loader Kedro expects
+        # but filters by distribution name.
+        def _filtered_loader(group: str):
+            # Obtain entry points in a way compatible with both old and new
+            # importlib.metadata APIs. We catch exceptions to avoid failing
+            # the test suite if metadata introspection fails.
+            try:
+                all_entry_points = _ilmd.entry_points()
+                if hasattr(all_entry_points, "select"):
+                    # Newer API: select by group
+                    entry_points = list(all_entry_points.select(group=group))
+                else:
+                    # Older API: mapping-like access
+                    entry_points = list(all_entry_points.get(group, []))
+            except Exception:
+                # On any error, treat as if there are no entry points.
+                entry_points = []
+
+            # Iterate entry points and load/register only those whose
+            # distribution name is explicitly allowed. Each entry point is
+            # guarded so one bad plugin doesn't break test setup.
+            for entry_point in entry_points:
+                try:
+                    dist_name = getattr(getattr(entry_point, "dist", None), "name", None)
+                    if dist_name and dist_name in allowed_set:
+                        plugin = entry_point.load()
+                        hook_manager.register(plugin, name=getattr(entry_point, "name", None))
+                except Exception:
+                    # Ignore failures for individual entry points.
+                    continue
+
+            return hook_manager
+
+        hook_manager.load_setuptools_entrypoints = _filtered_loader
+
+    monkeypatch.setattr(
+        _kedro_session_mod,
+        "_register_hooks_entry_points",
+        _wrapped_register,
+        raising=False,
+    )
 
 
 @fixture(scope="session")

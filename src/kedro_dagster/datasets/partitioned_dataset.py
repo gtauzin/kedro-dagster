@@ -1,7 +1,9 @@
 import copy
 import operator
+import os
 from collections.abc import Callable
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, cast
 
 import dagster as dg
@@ -224,13 +226,16 @@ class DagsterPartitionedDataset(PartitionedDataset):
         available_partitions: list[str] = self._list_partitions()
 
         partition_keys: list[str] = []
+        base_path = Path(self._normalized_path)
         for partition in available_partitions:
-            base_path: str = self._normalized_path.rstrip("/") + "/"
-            if partition.startswith(base_path):
-                key = partition[len(base_path) :]
-                if self._filename_suffix and key.endswith(self._filename_suffix):
-                    key = key[: -len(self._filename_suffix)]
-                partition_keys.append(key)
+            try:
+                key = os.path.relpath(str(partition), start=str(base_path))
+            except Exception:
+                key = Path(partition).name
+
+            if self._filename_suffix and key.endswith(self._filename_suffix):
+                key = key[: -len(self._filename_suffix)]
+            partition_keys.append(key)
 
         return partition_keys
 
@@ -247,20 +252,21 @@ class DagsterPartitionedDataset(PartitionedDataset):
         partitions_def = self._get_partitions_definition()
         partition_keys = partitions_def.get_partition_keys()
 
-        base_path = self._normalized_path.rstrip("/") + "/"
+        base_path = Path(self._normalized_path)
         partitions: list[str] = []
 
         for key in partition_keys:
             # Check candidate paths: prefer key + filename_suffix if suffix is provided
-            candidates: list[str] = []
+            candidates: list[Path] = []
             if self._filename_suffix:
-                candidates.append(base_path + key + self._filename_suffix)
-            candidates.append(base_path + key)
+                candidates.append(base_path / f"{key}{self._filename_suffix}")
+            candidates.append(base_path / key)
 
             for candidate in candidates:
                 try:
-                    if self._filesystem.exists(candidate):
-                        partitions.append(candidate)
+                    candidate_str = str(candidate)
+                    if self._filesystem.exists(candidate_str):
+                        partitions.append(candidate_str)
                         break
                 except Exception:
                     # Ignore errors for individual candidates and continue checking others
@@ -284,8 +290,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
         if partition not in partition_def.get_partition_keys():
             raise ValueError(f"Partition '{partition}' not found in partition definition.")
 
-        file_path: str = self._normalized_path.rstrip("/") + "/" + partition
-        return file_path
+        return str(Path(self._normalized_path) / partition)
 
     def load(self) -> dict[str, Callable[[], Any]]:
         """Load partitioned data lazily as callables per partition key.
@@ -297,7 +302,28 @@ class DagsterPartitionedDataset(PartitionedDataset):
             instance = dg.DagsterInstance.get()
             instance.add_dynamic_partitions(self._partition_config["name"], self._list_available_partition_keys())
 
-        return cast(dict[str, Callable[[], Any]], super().load())
+        loaded_data = cast(dict[str, Callable[[], Any]], super().load())
+
+        # Normalize keys to logical partition keys (e.g., "p1") instead of full paths.
+        base = Path(self._normalized_path)
+        normalized: dict[str, Callable[[], Any]] = {}
+        for raw_key, value in loaded_data.items():
+            key_str = str(raw_key)
+            # Only attempt to relativize if key looks like a path pointing under base
+            if os.path.isabs(key_str) or key_str.startswith(str(base)):
+                try:
+                    key_rel = os.path.relpath(key_str, start=str(base))
+                except Exception:
+                    key_rel = Path(key_str).name
+            else:
+                key_rel = key_str
+
+            if self._filename_suffix and key_rel.endswith(self._filename_suffix):
+                key_rel = key_rel[: -len(self._filename_suffix)]
+
+            normalized[key_rel] = value
+
+        return normalized
 
     def save(self, data: dict[str, Any]) -> None:
         """Save partitioned data.

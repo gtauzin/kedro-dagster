@@ -1,6 +1,6 @@
 # Example
 
-This section introduces an advanced Kedro project with Dagster, inspired by the [Kedro-Dagster Example Repository](https://github.com/gtauzin/kedro-dagster-example).
+This section introduces an advanced Kedro project with Dagster hosted on the [Kedro-Dagster Example Repository](https://github.com/gtauzin/kedro-dagster-example).
 
 !!! danger
     This documentation section is a work in progress. Please check back later for a more complete guide!
@@ -40,6 +40,21 @@ Additionally, the project features:
    ```bash
    export KEDRO_ENV=local
    kedro dagster dev
+   ```
+
+   The `dev` environments require a Postgres database. You can run one locally using Docker:
+
+   ```bash
+   docker compose -f docker/pipelines-dev.docker-compose.yml up -d
+   ```
+
+   Then, set the appropriate environment variables so that the Kedro catalog can connect to the database:
+
+   ```bash
+   export POSTGRES_USER=dev_db
+   export POSTGRES_PASSWORD=dev_password
+   export POSTGRES_HOST=localhost
+   export POSTGRES_PORT=5432
    ```
 
    Your Kedro datasets appear as Dagster assets and pipelines as Dagster jobs.

@@ -16,7 +16,6 @@ import dagster as dg
 from kedro.framework.project import find_pipelines, pipelines, settings
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
-from kedro.utils import _find_kedro_project
 
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
@@ -28,7 +27,12 @@ from kedro_dagster.dagster import (
 from kedro_dagster.kedro import KedroRunTranslator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
-from kedro_dagster.utils import get_filter_params_dict, get_mlflow_resource_from_config, is_mlflow_enabled
+from kedro_dagster.utils import (
+    find_kedro_project,
+    get_filter_params_dict,
+    get_mlflow_resource_from_config,
+    is_mlflow_enabled,
+)
 
 if TYPE_CHECKING:
     from kedro.pipeline import Pipeline
@@ -77,7 +81,7 @@ class KedroProjectTranslator:
     ) -> None:
         self._project_path: Path
         if project_path is None:
-            self._project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
+            self._project_path = find_kedro_project(Path.cwd()) or Path.cwd()
         else:
             self._project_path = project_path
 
@@ -166,7 +170,7 @@ class KedroProjectTranslator:
             context=self._context,
             project_path=str(self._project_path),
             env=self._env,
-            session_id=self._session_id,
+            run_id=self._session_id,
         )
         kedro_run_resource = kedro_run_translator.to_dagster(
             pipeline_name="__default__",
@@ -204,7 +208,7 @@ class KedroProjectTranslator:
             pipelines=defined_pipelines,
             catalog=self._context.catalog,
             hook_manager=self._context._hook_manager,
-            session_id=self._session_id,
+            run_id=self._session_id,
             asset_partitions=asset_partitions,
             named_resources=named_resources,
             env=self._env,
@@ -220,7 +224,7 @@ class KedroProjectTranslator:
             context=self._context,
             project_path=str(self._project_path),
             env=self._env,
-            session_id=self._session_id,
+            run_id=self._session_id,
             named_assets=named_assets,
             asset_partitions=asset_partitions,
             named_op_factories=named_op_factories,

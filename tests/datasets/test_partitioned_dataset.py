@@ -8,6 +8,7 @@ import dagster as dg
 import pytest
 from kedro.io.core import DatasetError
 
+import kedro_dagster.datasets.partitioned_dataset as _pdmod  # used for monkeypatching os.path.relpath
 from kedro_dagster.datasets.partitioned_dataset import (
     DagsterPartitionedDataset,
     parse_dagster_definition,
@@ -96,7 +97,7 @@ class TestDagsterPartitionedDataset:
         """Resolve filepath for a valid partition key and raise for unknown keys."""
         dataset = _make_static_dataset(tmp_path)
         ok = dataset._get_filepath("p1")
-        assert ok.endswith("/p1")
+        assert ok.endswith("p1")
         with pytest.raises(ValueError) as exc:
             dataset._get_filepath("missing")
         assert str(exc.value) == "Partition 'missing' not found in partition definition."
@@ -268,3 +269,39 @@ class TestDagsterPartitionedDataset:
         # load should not raise; it returns lazy loaders, but must call instance with existing keys
         dataset.load()
         assert calls and calls[0][0] == "dyn2" and set(calls[0][1]) == {"k1", "k2"}
+
+    def test_load_relpath_exception_falls_back_to_basename(self, monkeypatch, tmp_path: Path):
+        """If os.path.relpath raises, load() should fall back to basename and strip suffix."""
+        base = tmp_path / "data" / "03_primary" / "intermediate"
+        base.mkdir(parents=True, exist_ok=True)
+        (base / "p1.csv").write_text("one")
+
+        dataset = DagsterPartitionedDataset(
+            path=str(base),
+            dataset={"type": "pandas.CSVDataset"},
+            partition={"type": "StaticPartitionsDefinition", "partition_keys": ["p1"]},
+            filename_suffix=".csv",
+        )
+
+        # Ensure super().load() returns an absolute path key so the code path
+        # that calls os.path.relpath is taken. We monkeypatch the parent
+        # PartitionedDataset.load to return a mapping with an absolute key.
+        abs_key = str(base / "p1.csv")
+        monkeypatch.setattr(
+            _pdmod.PartitionedDataset,
+            "load",
+            lambda self: {abs_key: (lambda: None)},
+            raising=True,
+        )
+
+        # Force relpath to raise to exercise the except branch in load()
+        monkeypatch.setattr(
+            _pdmod.os.path,
+            "relpath",
+            lambda *a, **k: (_ for _ in ()).throw(OSError("boom")),
+            raising=True,
+        )
+
+        loaded = dataset.load()
+        # Expect the logical key 'p1' after basename fallback and suffix stripping
+        assert "p1" in loaded

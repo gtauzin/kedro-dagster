@@ -62,10 +62,10 @@ def test_schedule_creator_uses_named_schedule(env, request):
         pipelines=[default_pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         env=env,
+        run_id=session.session_id,
     )
     named_op_factories, named_assets = node_translator.to_dagster()
     pipeline_translator = PipelineTranslator(
@@ -73,13 +73,13 @@ def test_schedule_creator_uses_named_schedule(env, request):
         context=context,
         project_path=str(project_path),
         env=env,
-        session_id=session.session_id,
         named_assets=named_assets,
         asset_partitions=asset_partitions,
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors={"seq": dg.in_process_executor},
         enable_mlflow=False,
+        run_id=session.session_id,
     )
     named_jobs = pipeline_translator.to_dagster()
 

@@ -1,6 +1,7 @@
 """Utility functions."""
 
 import hashlib
+import importlib
 import re
 from logging import getLogger
 from pathlib import Path
@@ -30,6 +31,51 @@ DAGSTER_ALLOWED_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
 KEDRO_DAGSTER_SEPARATOR = "__"
 
 
+def _kedro_version() -> tuple[int, int, int]:
+    """Return Kedro version as a tuple: (major, minor, patch).
+
+    Falls back to (0, 0, 0) when Kedro cannot be imported or the
+    version string cannot be parsed. This avoids importing heavy
+    Kedro internals and relies on the ``__version__`` attribute
+    being present on the top-level package across versions.
+    """
+    kedro = importlib.import_module("kedro")
+    version_str = str(getattr(kedro, "__version__", "0.0.0"))
+    # Kedro uses strict SemVer: X.Y.Z[...]
+    m = re.match(r"^(\d+)\.(\d+)\.(\d+)", version_str)
+    if m:
+        return int(m.group(1)), int(m.group(2)), int(m.group(3))
+
+    return 0, 0, 0  # pragma: no cover
+
+
+# Call the helper once and expose a module-level constant for importers.
+KEDRO_VERSION = _kedro_version()
+
+
+def find_kedro_project(current_dir: Path) -> Path | None:
+    """Locate the Kedro project root starting from ``current_dir``.
+
+    This wraps Kedro's ``_find_kedro_project`` with a version-compatible
+    import that works across Kedro releases where the function moved modules.
+
+    Args:
+        current_dir: Directory to start searching from.
+
+    Returns:
+        Path | None: Project root path if found, else ``None``.
+    """
+    # Use the module-level constant to avoid repeated imports/parsing.
+    if KEDRO_VERSION >= (1, 0, 0):
+        FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "find_kedro_project", None)
+    elif KEDRO_VERSION >= (0, 19, 12):  # pragma: no cover
+        FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "_find_kedro_project", None)
+    elif KEDRO_VERSION > (0, 0, 0):  # pragma: no cover
+        FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.framework.startup"), "_find_kedro_project", None)
+
+    return FIND_KEDRO_PROJECT(current_dir)  # type: ignore[no-any-return]
+
+
 def render_jinja_template(src: str | Path, is_cookiecutter: bool = False, **kwargs: Any) -> str:
     """Render a Jinja template from a file or string.
 
@@ -41,9 +87,11 @@ def render_jinja_template(src: str | Path, is_cookiecutter: bool = False, **kwar
     Returns:
         str: Rendered template as a string.
     """
-    src = Path(src)
+    # Resolve to an absolute filesystem path to avoid platform-specific quirks
+    # with drive-less absolute paths on Windows (e.g., "/tmp").
+    src = Path(src).resolve()
 
-    template_loader = FileSystemLoader(searchpath=src.parent.as_posix())
+    template_loader = FileSystemLoader(searchpath=str(src.parent))
     # the keep_trailing_new_line option is mandatory to
     # make sure that black formatting will be preserved
     template_env = Environment(loader=template_loader, keep_trailing_newline=True)
@@ -100,19 +148,82 @@ def is_nothing_asset_name(catalog: "CatalogProtocol", dataset_name: str) -> bool
     Returns:
         bool: True if the dataset is a DagsterNothingDataset, False otherwise.
     """
-    dataset = None
-    # Prefer Kedro DataCatalog private accessor if available
-    get_dataset = getattr(catalog, "_get_dataset", None)
-    if callable(get_dataset):
-        try:
-            dataset = get_dataset(dataset_name)
-        except Exception:
-            dataset = None
-    elif hasattr(catalog, "get"):
-        # Mapping-like
-        dataset = catalog.get(dataset_name)
-
+    dataset = get_dataset_from_catalog(catalog, dataset_name)
     return isinstance(dataset, DagsterNothingDataset)
+
+
+def get_dataset_from_catalog(catalog: "CatalogProtocol", dataset_name: str) -> Any | None:
+    """Retrieve a dataset instance from a Kedro catalog across versions.
+
+    This helper avoids relying on the private ``_get_dataset`` when it's not
+    available (as in some Kedro 1.x catalog wrappers) and falls back to
+    mapping-like access when possible.
+
+    Args:
+        catalog (CatalogProtocol): Kedro catalog or mapping-like object.
+        dataset_name (str): Name of the dataset to retrieve.
+
+    Returns:
+        Any | None: Dataset instance if found, else ``None``.
+    """
+    result = None
+    get_method = getattr(catalog, "_get_dataset", None)
+    if callable(get_method):  # pragma: no cover
+        try:
+            result = get_method(dataset_name)
+        except Exception:
+            result = None
+    else:
+        # Mapping-like .get(name[, default])
+        get_method = getattr(catalog, "get", None)
+        if callable(get_method):
+            try:
+                result = get_method(dataset_name)
+            except TypeError:  # pragma: no cover
+                # Some get() signatures require a default
+                try:
+                    result = get_method(dataset_name, None)
+                except Exception:
+                    result = None
+            except Exception:  # pragma: no cover
+                result = None
+        else:
+            # Index access fallback
+            try:
+                result = catalog[dataset_name]
+            except Exception:
+                result = None
+
+    if result is None:
+        LOGGER.info(f"Dataset '{dataset_name}' not found in catalog.")
+
+    return result
+
+
+def get_match_pattern_from_catalog_resolver(config_resolver: "CatalogConfigResolver", ds_name: str) -> Any:
+    """Return the matching dataset pattern from a CatalogConfigResolver.
+
+    Kedro 1.x exposes ``match_dataset_pattern`` while older Kedro versions
+    exposed ``match_pattern``. This helper abstracts over that difference and
+    returns the first matching pattern string or ``None`` when no match is found
+    or when the API is unavailable.
+
+    Args:
+        config_resolver: An instance of Kedro's CatalogConfigResolver.
+        ds_name: Dataset name to match against resolver patterns.
+
+    Returns:
+        str | None: The first matching pattern or ``None``.
+    """
+    # Try both method names regardless of Kedro version, preferring the newer name
+    for method_name in ("match_dataset_pattern", "match_pattern"):
+        match_method = getattr(config_resolver, method_name, None)
+        if callable(match_method):  # pragma: no cover
+            try:
+                return match_method(ds_name)
+            except Exception:
+                LOGGER.debug("Resolver.%s failed for dataset '%s'\n", method_name, ds_name, exc_info=True)
+    return None
 
 
 def get_partition_mapping(
@@ -140,7 +251,7 @@ def get_partition_mapping(
                 mapped_downstream_dataset_name = downstream_dataset_name
                 break
             else:
-                match_pattern = config_resolver.match_pattern(downstream_dataset_name)
+                match_pattern = get_match_pattern_from_catalog_resolver(config_resolver, downstream_dataset_name)
                 if match_pattern is not None:
                     mapped_downstream_dataset_name = match_pattern
                     break
@@ -354,15 +465,22 @@ def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
     Returns:
         dict[str, Any]: Filter parameters.
     """
-    filter_params = dict(
+    filter_params: dict[str, Any] = dict(
         tags=pipeline_config.get("tags"),
         from_nodes=pipeline_config.get("from_nodes"),
         to_nodes=pipeline_config.get("to_nodes"),
         node_names=pipeline_config.get("node_names"),
         from_inputs=pipeline_config.get("from_inputs"),
         to_outputs=pipeline_config.get("to_outputs"),
-        node_namespace=pipeline_config.get("node_namespace"),
     )
+
+    # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
+    # Maintain backward compatibility by switching the key based on the Kedro major version.
+    if KEDRO_VERSION[0] >= 1:
+        # Prefer explicit `node_namespaces` from config if present; otherwise map from `node_namespace`.
+        filter_params["node_namespaces"] = pipeline_config.get("node_namespaces")
+    else:  # pragma: no cover
+        filter_params["node_namespace"] = pipeline_config.get("node_namespace")
 
     return filter_params
 

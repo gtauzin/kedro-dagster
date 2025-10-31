@@ -53,10 +53,10 @@ def test_create_op_wires_resources(env, request):
         pipelines=[pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
+        run_id=session.session_id,
     )
 
     node = _get_node_producing_output(pipeline, "output2_ds")
@@ -88,10 +88,10 @@ def test_create_op_partition_tags_and_name_suffix(env, request):
         pipelines=[pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions={},
         named_resources={},
         env=env,
+        run_id=session.session_id,
     )
 
     node = _get_node_producing_output(pipeline, "output2_ds")
@@ -144,10 +144,10 @@ def test_node_translator_handles_multiple_inputs_and_outputs(kedro_project_multi
         pipelines=[pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
+        run_id=session.session_id,
     )
 
     # Pick the node that exercises the scenario and assert ins/outs are as expected
@@ -206,10 +206,10 @@ def test_node_translator_handles_nothing_datasets(env, request):
         pipelines=[pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
+        run_id=session.session_id,
     )
 
     # Debug print removed to avoid noisy test output
@@ -229,7 +229,12 @@ def test_node_translator_handles_nothing_datasets(env, request):
 
     # The catalog must recognize the Nothing dataset type
     # At least one Nothing dataset must exist in the catalog
-    assert any(is_nothing_asset_name(context.catalog, name) for name in context.catalog.list())
+    try:
+        datasets_from_catalog = context.catalog.list()
+    except AttributeError:
+        # kedro > 1.0
+        datasets_from_catalog = context.catalog.filter()
+    assert any(is_nothing_asset_name(context.catalog, name) for name in datasets_from_catalog)
 
     # Ensure the op exposes the start_signal output and input respectively
     # Ensure op outs/ins include Nothing-typed assets by name presence
@@ -278,10 +283,10 @@ def test_node_translator_handles_no_output_node(env, request):
         pipelines=[pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
+        run_id=session.session_id,
     )
 
     # Select the known no-output node from the scenario

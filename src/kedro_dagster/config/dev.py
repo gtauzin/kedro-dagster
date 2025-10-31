@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import Literal
 
 from kedro.framework.startup import bootstrap_project
-from kedro.utils import _find_kedro_project
 from pydantic import BaseModel
+
+from kedro_dagster.utils import find_kedro_project
 
 
 class DevOptions(BaseModel):
@@ -30,7 +31,7 @@ class DevOptions(BaseModel):
 
     @property
     def python_file(self) -> Path:
-        project_path = _find_kedro_project(Path.cwd()) or Path.cwd()
+        project_path = find_kedro_project(Path.cwd()) or Path.cwd()
         project_metadata = bootstrap_project(project_path)
         package_name = project_metadata.package_name
         definitions_py = "definitions.py"

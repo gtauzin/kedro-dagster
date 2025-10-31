@@ -1,4 +1,4 @@
-name: Tests
+name: Run linter, tests, and generate coverage
 on:
   workflow_dispatch:
   push:
@@ -15,19 +15,17 @@ concurrency:
 
 jobs:
   ckeck:
-    name: Checks for ${{ matrix.python-version }} on ${{ matrix.os }}
+    name: Coverage tests for ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         python-version:
-          - "3.12"
-          - "3.11"
-          - "3.10"
+          - "3.13"
         os:
           - ubuntu-latest
-          # - macos-latest TODO: Activate when package ready
-          # - windows-latest see https://github.com/actions/runner-images/issues/10858
+          - macos-latest
+          - windows-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -46,41 +44,30 @@ jobs:
         run: echo "$USERPROFILE/.local/bin" >> $GITHUB_PATH
 
       - name: Install nox
-        run: uv tool install --python-preference only-managed --python 3.12 nox
+        run: uv tool install --python-preference only-managed --python 3.13 nox
 
       - name: Install Python
-        if: matrix.python-version != '3.12'
         run: uv python install --python-preference only-managed ${{ matrix.python-version }}
 
       - name: Run checks
         run: nox -s fix
 
       - name: Run tests
-        run: nox -s tests --python ${{ matrix.python-version }}
+        run: nox -s tests_coverage --python ${{ matrix.python-version }}
         env:
           DIFF_AGAINST: HEAD
           PYTEST_XDIST_AUTO_NUM_WORKERS: 0
 
-      - name: Generate coverage summary
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        uses: clearlyip/code-coverage-report-action@v5.1.0
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }} && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        uses: codecov/test-results-action@v1
         with:
-          filename: '${{ github.workspace }}/coverage.${{ matrix.python-version }}.xml'
-          overall_coverage_fail_threshold: 90
-          fail_on_negative_difference: false
-          file_coverage_error_min: 60
-          file_coverage_warning_max: 85
-
-      - name: Post coverage comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && github.event_name == 'pull_request'
-        with:
-          recreate: true
-          path: code-coverage-results.md
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: '${{ github.workspace }}/junit.${{ matrix.python-version }}.xml'
 
       - name: Upload coverage report to Codecov
         uses: codecov/codecov-action@v4
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: '${{ github.workspace }}/coverage.${{ matrix.python-version }}.xml'

@@ -48,11 +48,11 @@ class RecordingHooks:
         self.after_dataset_saved_calls.append(dataset_name)
 
     @hook_impl
-    def before_node_run(self, node, catalog, inputs, is_async, session_id):
+    def before_node_run(self, node, catalog, inputs, is_async):
         self.before_node_run_calls.append(node.name)
 
     @hook_impl
-    def after_node_run(self, node, catalog, inputs, outputs, is_async, session_id):
+    def after_node_run(self, node, catalog, inputs, outputs, is_async):
         self.after_node_run_calls.append(node.name)
 
     @hook_impl
@@ -96,10 +96,10 @@ def test_hooks_are_invoked_end_to_end(env, request):
         pipelines=[default_pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         env=env,
+        run_id=session.session_id,
     )
     named_op_factories, named_assets = node_translator.to_dagster()
 
@@ -111,13 +111,13 @@ def test_hooks_are_invoked_end_to_end(env, request):
         context=context,
         project_path=str(project_path),
         env=env,
-        session_id=session.session_id,
         named_assets=named_assets,
         asset_partitions=asset_partitions,
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
         enable_mlflow=False,
+        run_id=session.session_id,
     )
     jobs = pipeline_translator.to_dagster()
 
@@ -163,12 +163,13 @@ class DummyContext:
 
 def _make_pipeline_translator(named_resources: dict | None = None) -> PipelineTranslator:
     catalog = DataCatalog()
+
     return PipelineTranslator(
         dagster_config={},
         context=DummyContext(catalog),
         project_path="/tmp/project",
         env="base",
-        session_id="sess",
+        run_id="sess",
         named_assets={},
         asset_partitions={},
         named_op_factories={},
@@ -212,7 +213,7 @@ def test_node_op_declares_after_hook_output_and_mlflow_requirement():
         pipelines=[Pipeline([])],
         catalog=catalog,
         hook_manager=DummyContext(catalog)._hook_manager,
-        session_id="sess",
+        run_id="sess",
         asset_partitions={},
         named_resources={},
         env="base",
@@ -222,7 +223,7 @@ def test_node_op_declares_after_hook_output_and_mlflow_requirement():
         pipelines=[Pipeline([])],
         catalog=catalog,
         hook_manager=DummyContext(catalog)._hook_manager,
-        session_id="sess",
+        run_id="sess",
         asset_partitions={},
         named_resources={"mlflow": object()},
         env="base",

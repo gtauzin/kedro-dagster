@@ -42,10 +42,10 @@ def test_pipeline_translator_to_dagster_with_executor(env, request):
         pipelines=[default_pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources=named_io_managers,
         env=env,
+        run_id=session.session_id,
     )
     # Obtain op factories and assets via the NodeTranslator API
     named_op_factories, named_assets = node_translator.to_dagster()
@@ -61,13 +61,13 @@ def test_pipeline_translator_to_dagster_with_executor(env, request):
         context=context,
         project_path=str(project_path),
         env=env,
-        session_id=session.session_id,
         named_assets=named_assets,
         asset_partitions=asset_partitions,
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
         enable_mlflow=False,
+        run_id=session.session_id,
     )
     jobs = pipeline_translator.to_dagster()
     assert "default" in jobs
@@ -90,6 +90,7 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
     context = session.load_context()
 
     dagster_config = get_dagster_config(context)
+
     default_pipeline = pipelines.get("__default__")
 
     catalog_translator = CatalogTranslator(
@@ -104,10 +105,10 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
         pipelines=[default_pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         env=env,
+        run_id=session.session_id,
     )
     named_op_factories, named_assets = node_translator.to_dagster()
 
@@ -119,13 +120,13 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
         context=context,
         project_path=str(project_path),
         env=env,
-        session_id=session.session_id,
         named_assets=named_assets,
         asset_partitions=asset_partitions,
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
         enable_mlflow=False,
+        run_id=session.session_id,
     )
     jobs = pipeline_translator.to_dagster()
     job = jobs["default"]
@@ -185,6 +186,7 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
     context = session.load_context()
 
     dagster_config = get_dagster_config(context)
+
     default_pipeline = pipelines.get("__default__")
 
     # Catalog -> IO managers and partition metadata
@@ -201,10 +203,10 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
         pipelines=[default_pipeline],
         catalog=context.catalog,
         hook_manager=context._hook_manager,
-        session_id=session.session_id,
         asset_partitions=asset_partitions,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         env=env,
+        run_id=session.session_id,
     )
 
     named_op_factories, named_assets = node_translator.to_dagster()
@@ -219,13 +221,13 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
         context=context,
         project_path=str(project_path),
         env=env,
-        session_id=session.session_id,
         named_assets=named_assets,
         asset_partitions=asset_partitions,
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
         enable_mlflow=False,
+        run_id=session.session_id,
     )
     jobs = pipeline_translator.to_dagster()
     assert "default" in jobs

@@ -13,6 +13,7 @@ from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.kedro import KedroRunTranslator
+from kedro_dagster.utils import KEDRO_VERSION
 
 
 class _FakeHook:
@@ -57,7 +58,7 @@ def test_to_dagster_creates_resource_and_merges_params(
         context=kedro_context_base,
         project_path=str(options.project_path),
         env=options.env,
-        session_id="sid-123",
+        run_id="sid-123",
     )
 
     resource = translator.to_dagster(
@@ -72,13 +73,20 @@ def test_to_dagster_creates_resource_and_merges_params(
 
     # run_params include kedro params + pipeline name + defaults
     params = resource.run_params
+    if KEDRO_VERSION[0] >= 1:
+        run_id_key = "run_id"
+    else:
+        run_id_key = "session_id"
     assert params["project_path"] == str(options.project_path)
     assert params["env"] == options.env
-    assert params["session_id"] == "sid-123"
+    assert params[run_id_key] == "sid-123"
     assert params["pipeline_name"] == "__default__"
     # defaults set in to_dagster
     assert params["load_versions"] is None
-    assert params["extra_params"] is None
+    if KEDRO_VERSION[0] >= 1:
+        assert params["runtime_params"] is None
+    else:
+        assert params["extra_params"] is None
     assert params["runner"] is None
     # filter values carried through
     assert params["tags"] == ["a", "b"]
@@ -95,36 +103,69 @@ def test_resource_pipeline_filters_via_registry(
         context=kedro_context_base,
         project_path=str(options.project_path),
         env=options.env,
-        session_id="sid-xyz",
+        run_id="sid-xyz",
     )
 
     # Capture filter arguments received by the dummy pipeline
     captured: dict[str, Any] = {}
 
-    class _DummyPipeline:
-        def filter(
-            self,
-            *,
-            tags=None,
-            from_nodes=None,
-            to_nodes=None,
-            node_names=None,
-            from_inputs=None,
-            to_outputs=None,
-            node_namespace=None,
-        ) -> dict[str, Any]:
-            captured.update(
-                dict(
-                    tags=tags,
-                    from_nodes=from_nodes,
-                    to_nodes=to_nodes,
-                    node_names=node_names,
-                    from_inputs=from_inputs,
-                    to_outputs=to_outputs,
-                    node_namespace=node_namespace,
+    if KEDRO_VERSION[0] >= 1:
+        node_namespace_key = "node_namespaces"
+        node_namespace_val = ["ns"]
+
+        class _DummyPipeline:
+            def filter(
+                self,
+                *,
+                tags=None,
+                from_nodes=None,
+                to_nodes=None,
+                node_names=None,
+                from_inputs=None,
+                to_outputs=None,
+                node_namespaces=None,
+            ) -> dict[str, Any]:
+                captured.update(
+                    dict(
+                        tags=tags,
+                        from_nodes=from_nodes,
+                        to_nodes=to_nodes,
+                        node_names=node_names,
+                        from_inputs=from_inputs,
+                        to_outputs=to_outputs,
+                        node_namespaces=node_namespaces,
+                    )
                 )
-            )
-            return {"ok": True}
+                return {"ok": True}
+
+    else:
+        node_namespace_key = "node_namespace"
+        node_namespace_val = "ns"
+
+        class _DummyPipeline:
+            def filter(
+                self,
+                *,
+                tags=None,
+                from_nodes=None,
+                to_nodes=None,
+                node_names=None,
+                from_inputs=None,
+                to_outputs=None,
+                node_namespace=None,
+            ) -> dict[str, Any]:
+                captured.update(
+                    dict(
+                        tags=tags,
+                        from_nodes=from_nodes,
+                        to_nodes=to_nodes,
+                        node_names=node_names,
+                        from_inputs=from_inputs,
+                        to_outputs=to_outputs,
+                        node_namespace=node_namespace,
+                    )
+                )
+                return {"ok": True}
 
     # Monkeypatch the Kedro pipelines registry getter used in kedro.py
     monkeypatch.setattr(pipelines, "get", lambda name: _DummyPipeline())
@@ -135,7 +176,7 @@ def test_resource_pipeline_filters_via_registry(
             "tags": ["x"],
             "from_nodes": ["A"],
             "to_outputs": ["out"],
-            "node_namespace": "ns",
+            node_namespace_key: node_namespace_val,
         },
     )
 
@@ -149,7 +190,7 @@ def test_resource_pipeline_filters_via_registry(
         "node_names": None,
         "from_inputs": None,
         "to_outputs": ["out"],
-        "node_namespace": "ns",
+        node_namespace_key: node_namespace_val,
     }
 
 
@@ -162,7 +203,7 @@ def test_after_context_created_hook_invokes_hook_manager(
         context=kedro_context_base,
         project_path=str(options.project_path),
         env=options.env,
-        session_id="sid-123",
+        run_id="sid-123",
     )
     # Install fake hook manager BEFORE resource creation so the closure captures it
     fake_hook_mgr = _FakeHookManager()
@@ -186,7 +227,7 @@ def test_translate_on_pipeline_error_hook_returns_sensor(
         context=kedro_context_base,
         project_path=str(options.project_path),
         env=options.env,
-        session_id="sid-123",
+        run_id="sid-123",
     )
 
     # Provide a minimal job dict; we don't rely on real Dagster types

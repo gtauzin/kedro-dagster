@@ -18,6 +18,7 @@ from kedro_dagster.config.execution import (
 )
 from kedro_dagster.config.job import JobOptions, PipelineOptions
 from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
+from kedro_dagster.utils import KEDRO_VERSION
 
 
 def test_dev_options_defaults_and_forbid_extra():
@@ -50,7 +51,7 @@ def test_dev_options_python_file_property(monkeypatch, tmp_path: Path):
         return DummyMeta
 
     # Patch kedro helpers used by DevOptions.python_file
-    monkeypatch.setattr("kedro_dagster.config.dev._find_kedro_project", fake_find_project)
+    monkeypatch.setattr("kedro_dagster.config.dev.find_kedro_project", fake_find_project)
     monkeypatch.setattr("kedro_dagster.config.dev.bootstrap_project", fake_bootstrap)
 
     dev = DevOptions()
@@ -74,11 +75,24 @@ def test_pipeline_options_forbid_extra_and_defaults():
     assert p.node_names is None
     assert p.from_inputs is None
     assert p.to_outputs is None
-    assert p.node_namespace is None
     assert p.tags is None
+    if KEDRO_VERSION[0] >= 1:
+        assert p.node_namespaces is None
+    else:
+        assert p.node_namespace is None
 
     with pytest.raises(ValidationError):
         PipelineOptions(unknown="x")
+
+
+def test_pipeline_options_node_namespaces_list_shape():
+    """For Kedro >= 1.0, node_namespaces accepts and exposes list[str]; alias property matches."""
+    if KEDRO_VERSION[0] < 1:
+        pytest.skip("Only relevant for Kedro >= 1.0")
+
+    p = PipelineOptions(node_namespaces=["ns1", "ns2"])
+    assert p.node_namespaces == ["ns1", "ns2"]
+    assert not hasattr(p, "node_namespace")
 
 
 def test_job_options_requires_pipeline_and_forbid_extra():

@@ -6,11 +6,12 @@ partitioning information for partitioned datasets.
 """
 
 from logging import getLogger
+from os import PathLike
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
-from kedro.io import DatasetNotFoundError, MemoryDataset
+from kedro.io import MemoryDataset
 from kedro.pipeline import Pipeline
 from pydantic import ConfigDict, create_model
 
@@ -20,6 +21,7 @@ from kedro_dagster.utils import (
     _is_param_name,
     format_dataset_name,
     format_node_name,
+    get_dataset_from_catalog,
     is_nothing_asset_name,
 )
 
@@ -64,7 +66,11 @@ class CatalogTranslator:
         for param, value in dataset._describe().items():
             if param == "version":
                 continue
-            params[param] = str(value) if isinstance(value, PurePosixPath) else value
+            # Convert any path-like values to strings (preserve original separators).
+            if isinstance(value, PurePosixPath | PathLike):
+                params[param] = str(value)
+            else:
+                params[param] = value
 
         DatasetModel = _create_pydantic_model_from_dict(
             name="DatasetModel",
@@ -189,7 +195,9 @@ class CatalogTranslator:
         ConfigurableDatasetIOManagerClass.__doc__ = f"IO Manager for Kedro dataset `{dataset_name}`."
 
         # Instantiate without args; defaults are embedded in the DatasetModel
-        return ConfigurableDatasetIOManagerClass(), partitions_def, partition_mappings
+        io_manager_instance = ConfigurableDatasetIOManagerClass()
+
+        return io_manager_instance, partitions_def, partition_mappings
 
     def to_dagster(self) -> tuple[dict[str, dg.IOManagerDefinition], dict[str, dict[str, Any]]]:
         """Generate IO managers and partitions for all Kedro datasets referenced by pipelines."""
@@ -201,9 +209,8 @@ class CatalogTranslator:
                 continue
 
             asset_name = format_dataset_name(dataset_name)
-            try:
-                dataset = self._catalog._get_dataset(dataset_name)
-            except DatasetNotFoundError:
+            dataset = get_dataset_from_catalog(self._catalog, dataset_name)
+            if dataset is None:
                 LOGGER.debug(
                     f"Dataset `{dataset_name}` not in catalog. It will be handled by default IO manager `io_manager`."
                 )

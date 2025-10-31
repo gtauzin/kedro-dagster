@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 
 import dagster as dg
 import pandas as pd
@@ -13,7 +14,7 @@ from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.catalog import CatalogTranslator
-from kedro_dagster.utils import format_dataset_name
+from kedro_dagster.utils import format_dataset_name, get_dataset_from_catalog
 
 
 @pytest.mark.parametrize(
@@ -133,7 +134,8 @@ def test_catalog_translator_builds_configurable_io_managers(kedro_project_scenar
             io_fp = getattr(io_manager, "filepath", None)
             rel_fp = ds_cfg["filepath"]
             abs_fp = str((project_path / rel_fp).resolve())
-            assert io_fp in {rel_fp, abs_fp}
+            # Replace forward slashes with backward slashes for Windows compatibility
+            assert io_fp.replace("\\", "/") in {rel_fp.replace("\\", "/"), abs_fp.replace("\\", "/")}
 
         # Docstring carries the dataset name for clarity
         assert ds_name in (getattr(io_manager.__class__, "__doc__", "") or "")
@@ -173,7 +175,7 @@ def test_io_manager_roundtrip_matches_dataset(kedro_project_scenario_env):
 
     # Minimal Dagster op definition to build IO manager contexts
     @dg.op(name="dummy_node")
-    def _noop():  # pragma: no cover - execution not needed
+    def _noop():
         return None
 
     op_def = _noop
@@ -195,7 +197,8 @@ def test_io_manager_roundtrip_matches_dataset(kedro_project_scenario_env):
         io_manager.handle_output(out_ctx, df_to_write)
 
         # Load via dataset
-        dataset = context.catalog._get_dataset(ds_name)
+        dataset = get_dataset_from_catalog(context.catalog, ds_name)
+        assert dataset is not None, "Expected dataset to be present in catalog"
         df_via_dataset = dataset.load()
 
         # Load via IO manager
@@ -244,7 +247,8 @@ def test_create_dataset_config_contains_parameters(kedro_project_scenario_env):
     for ds_name, ds_cfg in options_catalog.items():
         if ds_cfg.get("type") != "pandas.CSVDataset":
             continue
-        dataset = context.catalog._get_dataset(ds_name)
+        dataset = get_dataset_from_catalog(context.catalog, ds_name)
+        assert dataset is not None, "Expected dataset to be present in catalog"
 
         cfg_model = translator._create_dataset_config(dataset)
         cfg = cfg_model()
@@ -262,7 +266,13 @@ def test_create_dataset_config_contains_parameters(kedro_project_scenario_env):
             actual = getattr(cfg, key)
             if hasattr(actual, "model_dump"):
                 actual = actual.model_dump()
-            assert actual == expected
+            # Path-like strings may use different separators on different OSes
+            # (e.g., C:/... vs C:\...). Compare using Path equality when both
+            # sides look like paths, otherwise compare directly.
+            if isinstance(actual, str) and isinstance(expected, str) and ("/" in expected or "\\" in expected):
+                assert Path(actual) == Path(expected)
+            else:
+                assert actual == expected
 
 
 @pytest.mark.parametrize("env", ["base", "local"])
@@ -301,7 +311,8 @@ def test_partitioned_io_manager_respects_partition_keys_via_tags_and_context(env
         None,
     )
     assert part_ds_name is not None, "No DagsterPartitionedDataset configured in this scenario"
-    dataset = context.catalog._get_dataset(part_ds_name)
+    dataset = get_dataset_from_catalog(context.catalog, part_ds_name)
+    assert dataset is not None, "Expected partitioned dataset to be present in catalog"
     asset_name = format_dataset_name(part_ds_name)
     io_key = f"{env}__{asset_name}_io_manager"
     assert io_key in named_io_managers

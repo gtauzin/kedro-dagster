@@ -7,6 +7,8 @@ executor/schedule selection.
 
 from pydantic import BaseModel
 
+from kedro_dagster.utils import KEDRO_VERSION
+
 from .automation import ScheduleOptions
 from .execution import ExecutorOptions
 
@@ -21,7 +23,9 @@ class PipelineOptions(BaseModel):
         node_names (list[str] | None): List of specific node names to include in the pipeline.
         from_inputs (list[str] | None): List of dataset names to use as entry points.
         to_outputs (list[str] | None): List of dataset names to use as exit points.
-        node_namespace (str | None): Namespace to filter nodes by.
+        node_namespace(s) (list[str] | None): Namespace(s) to filter nodes by. For Kedro >= 1.0, the
+            filter key is "node_namespaces" (plural) and must be a list of strings; for older
+            versions, it is "node_namespace" (singular string).
         tags (list[str] | None): List of tags to filter nodes by.
     """
 
@@ -31,7 +35,13 @@ class PipelineOptions(BaseModel):
     node_names: list[str] | None = None
     from_inputs: list[str] | None = None
     to_outputs: list[str] | None = None
-    node_namespace: str | None = None
+    # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
+    # Expose the appropriate field name based on the installed Kedro version while
+    # keeping the rest of the configuration stable.
+    if KEDRO_VERSION[0] >= 1:
+        node_namespaces: list[str] | None = None
+    else:  # pragma: no cover
+        node_namespace: str | None = None
     tags: list[str] | None = None
 
     class Config:
