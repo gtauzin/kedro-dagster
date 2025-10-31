@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  kedro-main-test:
+  kedro-dagster-main-test:
     uses: ./.github/workflows/tests-versions.yml
     with:
       branch: main
@@ -18,8 +18,8 @@ jobs:
   notify-main:
     permissions:
       issues: write
-    name: Notify failed build for kedro-main
-    needs: kedro-main-test
+    name: Notify failed build for kedro-dagster-main
+    needs: kedro-dagster-main-test
     if: ${{ !success() }}
     runs-on: ubuntu-latest
     steps:

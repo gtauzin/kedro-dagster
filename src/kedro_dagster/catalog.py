@@ -67,9 +67,7 @@ class CatalogTranslator:
             if param == "version":
                 continue
             # Convert any path-like values to strings (preserve original separators).
-            if isinstance(value, PurePosixPath):
-                params[param] = str(value)
-            elif isinstance(value, PathLike):  # pragma: no cover
+            if isinstance(value, PurePosixPath | PathLike):
                 params[param] = str(value)
             else:
                 params[param] = value

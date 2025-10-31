@@ -50,11 +50,7 @@ def test_kedro_project_translator_end_to_end(env, request):
 
 
 def test_translator_uses_cwd_when_find_kedro_project_returns_none(monkeypatch, tmp_path):
-    """When find_kedro_project returns None, the translator should fall back to Path.cwd().
-
-    We patch `initialize_kedro` to avoid bootstrapping a real Kedro project during the test.
-    """
-
+    """When find_kedro_project returns None, the translator should fall back to Path.cwd()."""
     # Ensure current working directory is a temporary folder for isolation
     monkeypatch.chdir(tmp_path)
 

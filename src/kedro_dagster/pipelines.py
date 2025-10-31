@@ -413,15 +413,12 @@ class PipelineTranslator:
             )
             after_pipeline_run_hook_op(**after_pipeline_run_hook_inputs)
 
-        # Overrides the kedro_run resource with the one created for the job
-        kedro_run_params = dict(
+        kedro_run_translator = KedroRunTranslator(
             context=self._context,
             project_path=self._project_path,
             env=self._env,
             run_id=self._run_id,
         )
-
-        kedro_run_translator = KedroRunTranslator(**kedro_run_params)
 
         kedro_run_resource = kedro_run_translator.to_dagster(
             pipeline_name=pipeline_name,
