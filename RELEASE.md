@@ -6,6 +6,7 @@
 * Add `DagsterNothingDataset`, a Kedro dataset that performs no I/O but enforces node dependency.
 * Add `DagsterPartitionedDataset`, a Kedro dataset for partitioned data compatible with Dagster's asset partitions.
 * Enable fanning out Kedro nodes when creating the Dagster graph when using `DagsterPartitionedDataset` with multiple partition keys.
+* Add support for Kedro >= 1.0.0 and Dagster >= 1.12.0.
 
 ## Bug fixes and other changes
 
