@@ -206,15 +206,7 @@ class CatalogTranslator:
             if isinstance(fp, str):
                 p = Path(fp)
                 if p.is_absolute():
-                    normalized = str(p)
-                    if normalized != fp:
-                        try:
-                            setattr(io_manager_instance, "filepath", normalized)
-                        except Exception:
-                            try:
-                                object.__setattr__(io_manager_instance, "filepath", normalized)
-                            except Exception:
-                                pass
+                    setattr(io_manager_instance, "filepath", str(p))
         except Exception:
             pass
 

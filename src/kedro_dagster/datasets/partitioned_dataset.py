@@ -226,10 +226,10 @@ class DagsterPartitionedDataset(PartitionedDataset):
         available_partitions: list[str] = self._list_partitions()
 
         partition_keys: list[str] = []
-        base = Path(self._normalized_path)
+        base_path = Path(self._normalized_path)
         for partition in available_partitions:
             try:
-                key = os.path.relpath(str(partition), start=str(base))
+                key = os.path.relpath(str(partition), start=str(base_path))
             except Exception:
                 key = Path(partition).name
 
@@ -252,21 +252,20 @@ class DagsterPartitionedDataset(PartitionedDataset):
         partitions_def = self._get_partitions_definition()
         partition_keys = partitions_def.get_partition_keys()
 
-        base = Path(self._normalized_path)
+        base_path = Path(self._normalized_path)
         partitions: list[str] = []
 
         for key in partition_keys:
             # Check candidate paths: prefer key + filename_suffix if suffix is provided
             candidates: list[Path] = []
             if self._filename_suffix:
-                candidates.append(base / f"{key}{self._filename_suffix}")
-            candidates.append(base / key)
+                candidates.append(base_path / f"{key}{self._filename_suffix}")
+            candidates.append(base_path / key)
 
             for candidate in candidates:
                 try:
-                    cand_str = str(candidate)
-                    if self._filesystem.exists(cand_str):
-                        partitions.append(cand_str)
+                    if self._filesystem.exists(candidate):
+                        partitions.append(str(candidate))
                         break
                 except Exception:
                     # Ignore errors for individual candidates and continue checking others
@@ -302,12 +301,12 @@ class DagsterPartitionedDataset(PartitionedDataset):
             instance = dg.DagsterInstance.get()
             instance.add_dynamic_partitions(self._partition_config["name"], self._list_available_partition_keys())
 
-        loaded = cast(dict[str, Callable[[], Any]], super().load())
+        loaded_data = cast(dict[str, Callable[[], Any]], super().load())
 
         # Normalize keys to logical partition keys (e.g., "p1") instead of full paths.
         base = Path(self._normalized_path)
         normalized: dict[str, Callable[[], Any]] = {}
-        for raw_key, value in loaded.items():
+        for raw_key, value in loaded_data.items():
             key_str = str(raw_key)
             # Only attempt to relativize if key looks like a path pointing under base
             if os.path.isabs(key_str) or key_str.startswith(str(base)):
