@@ -1,0 +1,34 @@
+name: Run nightly tests on Kedro-Dagster
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run every day at midnight (UTC time)
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  kedro-main-test:
+    uses: ./.github/workflows/tests-versions.yml
+    with:
+      branch: main
+
+  notify-main:
+    permissions:
+      issues: write
+    name: Notify failed build for kedro-main
+    needs: kedro-main-test
+    if: ${{ !success() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jayqi/failed-build-issue-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          label-name: "main nightly build"
+          title-template: "ci: Nightly build failure on `main`"
+          body-template: |
+            GitHub Actions workflow [{{workflow}} #{{runNumber}}](https://github.com/{{repo.owner}}/{{repo.repo}}/actions/runs/{{runId}}) failed.
+          create-label: true
+          always-create-new-issue: false
