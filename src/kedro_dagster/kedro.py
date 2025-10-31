@@ -104,7 +104,7 @@ class KedroRunTranslator:
                 node_namespace_val: Any | None = None
                 if KEDRO_VERSION[0] >= 1:
                     node_namespace_key, node_namespace_val = "node_namespaces", getattr(self, "node_namespaces")
-                else:
+                else:  # pragma: no cover
                     node_namespace_key, node_namespace_val = (
                         "node_namespace",
                         getattr(self, "node_namespace"),

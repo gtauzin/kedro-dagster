@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from types import SimpleNamespace
+
 import dagster as dg
 import pytest
 from kedro.framework.session import KedroSession
@@ -44,3 +47,32 @@ def test_kedro_project_translator_end_to_end(env, request):
     # Resources include dataset-specific IO manager for file-backed output2
     expected_io_manager_key = f"{env}__output2_ds_io_manager"
     assert expected_io_manager_key in location.named_resources
+
+
+def test_translator_uses_cwd_when_find_kedro_project_returns_none(monkeypatch, tmp_path):
+    """When find_kedro_project returns None, the translator should fall back to Path.cwd().
+
+    We patch `initialize_kedro` to avoid bootstrapping a real Kedro project during the test.
+    """
+
+    # Ensure current working directory is a temporary folder for isolation
+    monkeypatch.chdir(tmp_path)
+
+    # Patch the project discovery to return None
+    monkeypatch.setattr("kedro_dagster.translator.find_kedro_project", lambda cwd: None)
+
+    # Patch initialize_kedro to a no-op to avoid heavy Kedro bootstrapping
+    monkeypatch.setattr(
+        "kedro_dagster.translator.KedroProjectTranslator.initialize_kedro",
+        lambda self, conf_source=None: None,
+    )
+
+    # Provide a minimal settings object with dict-like _CONFIG_LOADER_ARGS to avoid import-time errors
+    monkeypatch.setattr(
+        "kedro_dagster.translator.settings",
+        SimpleNamespace(_CONFIG_LOADER_ARGS={"default_run_env": ""}),
+    )
+
+    translator = KedroProjectTranslator(project_path=None)
+
+    assert translator._project_path == Path.cwd()

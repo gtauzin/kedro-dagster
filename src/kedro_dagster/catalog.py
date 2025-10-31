@@ -69,7 +69,7 @@ class CatalogTranslator:
             # Convert any path-like values to strings (preserve original separators).
             if isinstance(value, PurePosixPath):
                 params[param] = str(value)
-            elif isinstance(value, PathLike):
+            elif isinstance(value, PathLike):  # pragma: no cover
                 params[param] = str(value)
             else:
                 params[param] = value
