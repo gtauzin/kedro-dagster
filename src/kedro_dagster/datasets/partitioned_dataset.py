@@ -264,8 +264,9 @@ class DagsterPartitionedDataset(PartitionedDataset):
 
             for candidate in candidates:
                 try:
-                    if self._filesystem.exists(candidate):
-                        partitions.append(str(candidate))
+                    candidate_str = str(candidate)
+                    if self._filesystem.exists(candidate_str):
+                        partitions.append(candidate_str)
                         break
                 except Exception:
                     # Ignore errors for individual candidates and continue checking others
