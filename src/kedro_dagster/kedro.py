@@ -34,7 +34,7 @@ class KedroRunTranslator:
         )
         if _kedro_version()[0] >= 1:
             self._kedro_params["run_id"] = run_id
-        else:  # pragma: no branch
+        else:  # pragma: no cover
             self._kedro_params["session_id"] = run_id
 
     def to_dagster(
@@ -68,7 +68,7 @@ class KedroRunTranslator:
             load_versions: list[str] | None = None
             if _kedro_version()[0] >= 1:
                 runtime_params: dict[str, Any] | None = None
-            else:  # pragma: no branch
+            else:  # pragma: no cover
                 extra_params: dict[str, Any] | None = None
             runner: str | None = None
             node_names: list[str] | None = None
@@ -81,7 +81,7 @@ class KedroRunTranslator:
             # keeping the rest of the configuration stable.
             if _kedro_version()[0] >= 1:
                 node_namespaces: list[str] | None = None
-            else:  # pragma: no branch
+            else:  # pragma: no cover
                 node_namespace: str | None = None
             tags: list[str] | None = None
 

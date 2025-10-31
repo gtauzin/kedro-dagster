@@ -40,7 +40,7 @@ class PipelineOptions(BaseModel):
     # keeping the rest of the configuration stable.
     if _kedro_version()[0] >= 1:
         node_namespaces: list[str] | None = None
-    else:  # pragma: no branch
+    else:  # pragma: no cover
         node_namespace: str | None = None
     tags: list[str] | None = None
 
