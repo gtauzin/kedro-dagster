@@ -58,6 +58,13 @@ jobs:
           DIFF_AGAINST: HEAD
           PYTEST_XDIST_AUTO_NUM_WORKERS: 0
 
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }} && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: '${{ github.workspace }}/junit.${{ matrix.python-version }}.xml'
+
       - name: Upload coverage report to Codecov
         uses: codecov/codecov-action@v4
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'

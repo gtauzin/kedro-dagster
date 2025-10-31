@@ -64,6 +64,7 @@ def tests_coverage(session: nox.Session) -> None:
         "-m",
         "pytest",
         "tests",
+        f"--junitxml=junit.{session.python}.xml",
         *session.posargs,
     )
 
