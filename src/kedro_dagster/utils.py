@@ -92,11 +92,9 @@ def render_jinja_template(src: str | Path, is_cookiecutter: bool = False, **kwar
     Returns:
         str: Rendered template as a string.
     """
-    # Resolve to an absolute filesystem path to avoid platform-specific quirks
-    # with drive-less absolute paths on Windows (e.g., "/tmp").
-    src = Path(src).resolve()
+    src = Path(src)
 
-    template_loader = FileSystemLoader(searchpath=str(src.parent))
+    template_loader = FileSystemLoader(searchpath=src.parent.as_posix())
     # the keep_trailing_new_line option is mandatory to
     # make sure that black formatting will be preserved
     template_env = Environment(loader=template_loader, keep_trailing_newline=True)
