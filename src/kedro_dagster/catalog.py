@@ -7,7 +7,7 @@ partitioning information for partitioned datasets.
 
 from logging import getLogger
 from os import PathLike
-from pathlib import Path, PurePosixPath
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
@@ -198,22 +198,6 @@ class CatalogTranslator:
 
         # Instantiate without args; defaults are embedded in the DatasetModel
         io_manager_instance = ConfigurableDatasetIOManagerClass()
-
-        # Normalize absolute filepaths to native separators only at IO manager instance level
-        # to satisfy round-trip tests on Windows while preserving raw config values.
-        # try:
-        filepath = getattr(io_manager_instance, "filepath", None)
-        if isinstance(filepath, str):
-            casted_filepath = Path(filepath)
-            if casted_filepath.is_absolute():
-                normalized_filepath = str(casted_filepath)
-                if normalized_filepath != filepath:
-                    try:
-                        io_manager_instance.filepath = normalized_filepath
-                    except Exception:
-                        object.__setattr__(io_manager_instance, "filepath", normalized_filepath)
-        # except Exception:
-        #     pass
 
         return io_manager_instance, partitions_def, partition_mappings
 

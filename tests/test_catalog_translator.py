@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 
 import dagster as dg
 import pandas as pd
@@ -264,7 +265,13 @@ def test_create_dataset_config_contains_parameters(kedro_project_scenario_env):
             actual = getattr(cfg, key)
             if hasattr(actual, "model_dump"):
                 actual = actual.model_dump()
-            assert actual == expected
+            # Path-like strings may use different separators on different OSes
+            # (e.g., C:/... vs C:\...). Compare using Path equality when both
+            # sides look like paths, otherwise compare directly.
+            if isinstance(actual, str) and isinstance(expected, str) and ("/" in expected or "\\" in expected):
+                assert Path(actual) == Path(expected)
+            else:
+                assert actual == expected
 
 
 @pytest.mark.parametrize("env", ["base", "local"])
