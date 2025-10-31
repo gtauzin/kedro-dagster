@@ -18,7 +18,7 @@ from kedro_dagster.config.execution import (
 )
 from kedro_dagster.config.job import JobOptions, PipelineOptions
 from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
-from kedro_dagster.utils import _kedro_version
+from kedro_dagster.utils import KEDRO_VERSION
 
 
 def test_dev_options_defaults_and_forbid_extra():
@@ -76,7 +76,7 @@ def test_pipeline_options_forbid_extra_and_defaults():
     assert p.from_inputs is None
     assert p.to_outputs is None
     assert p.tags is None
-    if _kedro_version()[0] >= 1:
+    if KEDRO_VERSION[0] >= 1:
         assert p.node_namespaces is None
     else:
         assert p.node_namespace is None
@@ -87,7 +87,7 @@ def test_pipeline_options_forbid_extra_and_defaults():
 
 def test_pipeline_options_node_namespaces_list_shape():
     """For Kedro >= 1.0, node_namespaces accepts and exposes list[str]; alias property matches."""
-    if _kedro_version()[0] < 1:
+    if KEDRO_VERSION[0] < 1:
         pytest.skip("Only relevant for Kedro >= 1.0")
 
     p = PipelineOptions(node_namespaces=["ns1", "ns2"])

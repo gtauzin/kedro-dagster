@@ -10,10 +10,10 @@ from pydantic import BaseModel
 
 from kedro_dagster.datasets import DagsterNothingDataset
 from kedro_dagster.utils import (
+    KEDRO_VERSION,
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
     _is_param_name,
-    _kedro_version,
     format_dataset_name,
     format_node_name,
     format_partition_key,
@@ -128,7 +128,7 @@ def test_get_node_pipeline_name_default(monkeypatch, caplog):
 def test_get_filter_params_dict():
     """Map node namespace key depending on Kedro major version; pass others unchanged."""
     # Build a config using singular form as the source of truth in this project
-    kedro_major = _kedro_version()[0]
+    kedro_major = KEDRO_VERSION[0]
     if kedro_major >= 1:
         node_namespace_key = "node_namespaces"
         node_namespace_val = ["namespace"]

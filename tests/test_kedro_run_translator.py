@@ -13,7 +13,7 @@ from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.kedro import KedroRunTranslator
-from kedro_dagster.utils import _kedro_version
+from kedro_dagster.utils import KEDRO_VERSION
 
 
 class _FakeHook:
@@ -73,7 +73,7 @@ def test_to_dagster_creates_resource_and_merges_params(
 
     # run_params include kedro params + pipeline name + defaults
     params = resource.run_params
-    if _kedro_version()[0] >= 1:
+    if KEDRO_VERSION[0] >= 1:
         run_id_key = "run_id"
     else:
         run_id_key = "session_id"
@@ -83,7 +83,7 @@ def test_to_dagster_creates_resource_and_merges_params(
     assert params["pipeline_name"] == "__default__"
     # defaults set in to_dagster
     assert params["load_versions"] is None
-    if _kedro_version()[0] >= 1:
+    if KEDRO_VERSION[0] >= 1:
         assert params["runtime_params"] is None
     else:
         assert params["extra_params"] is None
@@ -109,7 +109,7 @@ def test_resource_pipeline_filters_via_registry(
     # Capture filter arguments received by the dummy pipeline
     captured: dict[str, Any] = {}
 
-    if _kedro_version()[0] >= 1:
+    if KEDRO_VERSION[0] >= 1:
         node_namespace_key = "node_namespaces"
         node_namespace_val = ["ns"]
 

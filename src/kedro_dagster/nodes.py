@@ -22,10 +22,10 @@ from pydantic import ConfigDict
 
 from kedro_dagster.datasets.nothing_dataset import NOTHING_OUTPUT
 from kedro_dagster.utils import (
+    KEDRO_VERSION,
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
     _is_param_name,
-    _kedro_version,
     format_dataset_name,
     format_node_name,
     get_asset_key_from_dataset_name,
@@ -356,7 +356,7 @@ class NodeTranslator:
                 is_async=False,
             )
             # Kedro 1.x hooks renamed session_id to run_id
-            if _kedro_version()[0] >= 1:
+            if KEDRO_VERSION[0] >= 1:
                 before_node_run_params["run_id"] = self._run_id
             else:  # pragma: no cover
                 before_node_run_params["session_id"] = self._run_id
@@ -367,7 +367,7 @@ class NodeTranslator:
                 outputs = node.run(inputs)
 
             except Exception as exc:
-                if _kedro_version()[0] >= 1:
+                if KEDRO_VERSION[0] >= 1:
                     self._hook_manager.hook.on_node_error(
                         error=exc,
                         node=node,
@@ -395,7 +395,7 @@ class NodeTranslator:
                 is_async=False,
             )
             # Kedro 1.x hooks renamed session_id to run_id
-            if _kedro_version()[0] >= 1:
+            if KEDRO_VERSION[0] >= 1:
                 after_node_run_params["run_id"] = self._run_id
             else:  # pragma: no cover
                 after_node_run_params["session_id"] = self._run_id

@@ -6,7 +6,7 @@ import dagster as dg
 from kedro import __version__ as kedro_version
 from kedro.framework.project import pipelines
 
-from kedro_dagster.utils import _kedro_version, get_filter_params_dict
+from kedro_dagster.utils import KEDRO_VERSION, get_filter_params_dict
 
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
@@ -32,7 +32,7 @@ class KedroRunTranslator:
             env=env,
             kedro_version=kedro_version,
         )
-        if _kedro_version()[0] >= 1:
+        if KEDRO_VERSION[0] >= 1:
             self._kedro_params["run_id"] = run_id
         else:  # pragma: no cover
             self._kedro_params["session_id"] = run_id
@@ -57,7 +57,7 @@ class KedroRunTranslator:
         hook_manager = self._hook_manager
 
         class RunParamsModel(dg.Config):
-            if _kedro_version()[0] >= 1:
+            if KEDRO_VERSION[0] >= 1:
                 run_id: str
             else:
                 session_id: str
@@ -66,7 +66,7 @@ class KedroRunTranslator:
             kedro_version: str
             pipeline_name: str
             load_versions: list[str] | None = None
-            if _kedro_version()[0] >= 1:
+            if KEDRO_VERSION[0] >= 1:
                 runtime_params: dict[str, Any] | None = None
             else:  # pragma: no cover
                 extra_params: dict[str, Any] | None = None
@@ -79,7 +79,7 @@ class KedroRunTranslator:
             # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
             # Expose the appropriate field name based on the installed Kedro version while
             # keeping the rest of the configuration stable.
-            if _kedro_version()[0] >= 1:
+            if KEDRO_VERSION[0] >= 1:
                 node_namespaces: list[str] | None = None
             else:  # pragma: no cover
                 node_namespace: str | None = None
@@ -102,7 +102,7 @@ class KedroRunTranslator:
             def pipeline(self) -> dict[str, Any]:
                 node_namespace_key: str | None = None
                 node_namespace_val: Any | None = None
-                if _kedro_version()[0] >= 1:
+                if KEDRO_VERSION[0] >= 1:
                     node_namespace_key, node_namespace_val = "node_namespaces", getattr(self, "node_namespaces")
                 else:
                     node_namespace_key, node_namespace_val = (

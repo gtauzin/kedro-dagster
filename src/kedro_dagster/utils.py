@@ -49,6 +49,10 @@ def _kedro_version() -> tuple[int, int, int]:
     return 0, 0, 0  # pragma: no cover
 
 
+# Call the helper once and expose a module-level constant for importers.
+KEDRO_VERSION = _kedro_version()
+
+
 def find_kedro_project(current_dir: Path) -> Path | None:
     """Locate the Kedro project root starting from ``current_dir``.
 
@@ -61,7 +65,8 @@ def find_kedro_project(current_dir: Path) -> Path | None:
     Returns:
         Path | None: Project root path if found, else ``None``.
     """
-    _KEDRO_VER = _kedro_version()
+    # Use the module-level constant to avoid repeated imports/parsing.
+    _KEDRO_VER = KEDRO_VERSION
     if _KEDRO_VER >= (1, 0, 0):
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "find_kedro_project", None)
     elif _KEDRO_VER >= (0, 19, 12):  # pragma: no cover
@@ -472,7 +477,7 @@ def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
 
     # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
     # Maintain backward compatibility by switching the key based on the Kedro major version.
-    if _kedro_version()[0] >= 1:
+    if KEDRO_VERSION[0] >= 1:
         # Prefer explicit `node_namespaces` from config if present; otherwise map from `node_namespace`.
         filter_params["node_namespaces"] = pipeline_config.get("node_namespaces")
     else:  # pragma: no cover

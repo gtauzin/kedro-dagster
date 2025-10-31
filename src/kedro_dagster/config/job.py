@@ -7,7 +7,7 @@ executor/schedule selection.
 
 from pydantic import BaseModel
 
-from kedro_dagster.utils import _kedro_version
+from kedro_dagster.utils import KEDRO_VERSION
 
 from .automation import ScheduleOptions
 from .execution import ExecutorOptions
@@ -38,7 +38,7 @@ class PipelineOptions(BaseModel):
     # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
     # Expose the appropriate field name based on the installed Kedro version while
     # keeping the rest of the configuration stable.
-    if _kedro_version()[0] >= 1:
+    if KEDRO_VERSION[0] >= 1:
         node_namespaces: list[str] | None = None
     else:  # pragma: no cover
         node_namespace: str | None = None
