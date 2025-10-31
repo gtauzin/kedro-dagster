@@ -39,17 +39,14 @@ def _kedro_version() -> tuple[int, int, int]:
     Kedro internals and relies on the ``__version__`` attribute
     being present on the top-level package across versions.
     """
-    try:
-        kedro = importlib.import_module("kedro")
-        version_str = str(getattr(kedro, "__version__", "0.0.0"))
-        # Kedro uses strict SemVer: X.Y.Z[...]
-        m = re.match(r"^(\d+)\.(\d+)\.(\d+)", version_str)
-        if m:
-            return int(m.group(1)), int(m.group(2)), int(m.group(3))
-        return (0, 0, 0)
+    kedro = importlib.import_module("kedro")
+    version_str = str(getattr(kedro, "__version__", "0.0.0"))
+    # Kedro uses strict SemVer: X.Y.Z[...]
+    m = re.match(r"^(\d+)\.(\d+)\.(\d+)", version_str)
+    if m:
+        return int(m.group(1)), int(m.group(2)), int(m.group(3))
 
-    except Exception:
-        return (0, 0, 0)
+    return 0, 0, 0  # pragma: no cover
 
 
 def find_kedro_project(current_dir: Path) -> Path | None:
@@ -67,9 +64,9 @@ def find_kedro_project(current_dir: Path) -> Path | None:
     _KEDRO_VER = _kedro_version()
     if _KEDRO_VER >= (1, 0, 0):  # pragma: no branch
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "find_kedro_project", None)
-    elif _KEDRO_VER >= (0, 19, 12):
+    elif _KEDRO_VER >= (0, 19, 12):  # pragma: no branch
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.utils"), "_find_kedro_project", None)
-    elif _KEDRO_VER > (0, 0, 0):
+    elif _KEDRO_VER > (0, 0, 0):  # pragma: no branch
         FIND_KEDRO_PROJECT = getattr(importlib.import_module("kedro.framework.startup"), "_find_kedro_project", None)
 
     return FIND_KEDRO_PROJECT(current_dir)  # type: ignore[no-any-return]
@@ -175,7 +172,7 @@ def get_dataset_from_catalog(catalog: "CatalogProtocol", dataset_name: str) -> A
     else:
         # Mapping-like .get(name[, default])
         get_method = getattr(catalog, "get", None)
-        if callable(get_method):
+        if callable(get_method):  # pragma: no branch
             try:
                 result = get_method(dataset_name)
             except TypeError:
@@ -217,7 +214,7 @@ def get_match_pattern_from_catalog_resolver(config_resolver: "CatalogConfigResol
     # Try both method names regardless of Kedro version, preferring the newer name
     for method_name in ("match_dataset_pattern", "match_pattern"):
         match_method = getattr(config_resolver, method_name, None)
-        if callable(match_method):
+        if callable(match_method):  # pragma: no branch
             try:
                 return match_method(ds_name)
             except Exception:
@@ -265,17 +262,6 @@ def get_partition_mapping(
                     "The default partition mapping (i.e., `AllPartitionMapping`) will be used."
                 )
         else:
-            # # Version-safe fallback: Kedro 1.x CatalogConfigResolver may not expose `match_pattern`.
-            # # If only a single mapping exists, assume it applies; otherwise default to None.
-            # if len(partition_mappings) == 1:
-            #     sole_key = next(iter(partition_mappings.keys()))
-            #     LOGGER.debug(
-            #         "No explicit downstream match for `%s` among %s; using sole mapping key `%s`.",
-            #         upstream_asset_name,
-            #         list(partition_mappings.keys()),
-            #         sole_key,
-            #     )
-            #     return partition_mappings[sole_key]
             LOGGER.warning(
                 f"None of the downstream datasets `{downstream_dataset_names}` of `{upstream_asset_name}` "
                 "is found in the partition mappings. "
@@ -486,7 +472,7 @@ def get_filter_params_dict(pipeline_config: dict[str, Any]) -> dict[str, Any]:
 
     # Kedro 1.x renamed the namespace filter kwarg to `node_namespaces` (plural).
     # Maintain backward compatibility by switching the key based on the Kedro major version.
-    if _kedro_version()[0] >= 1:
+    if _kedro_version()[0] >= 1:  # pragma: no branch
         # Prefer explicit `node_namespaces` from config if present; otherwise map from `node_namespace`.
         filter_params["node_namespaces"] = pipeline_config.get("node_namespaces")
     else:
