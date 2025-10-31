@@ -135,7 +135,7 @@ def test_catalog_translator_builds_configurable_io_managers(kedro_project_scenar
             rel_fp = ds_cfg["filepath"]
             abs_fp = str((project_path / rel_fp).resolve())
             # Replace forward slashes with backward slashes for Windows compatibility
-            assert io_fp in {rel_fp.replace("/", "\\"), abs_fp.replace("/", "\\")}
+            assert io_fp.replace("\\", "/") in {rel_fp.replace("\\", "/"), abs_fp.replace("\\", "/")}
 
         # Docstring carries the dataset name for clarity
         assert ds_name in (getattr(io_manager.__class__, "__doc__", "") or "")
