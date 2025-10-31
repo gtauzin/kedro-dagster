@@ -1,7 +1,35 @@
+# mypy: ignore-errors
+
 from __future__ import annotations
 
 import ast
+import importlib
+import sys
 from importlib.resources import files
+
+import dagster as dg
+
+
+def test_import_definitions_from_template_exec_filebacked_local(kedro_project_exec_filebacked_local, monkeypatch):
+    """Import the `kedro_dagster.templates.definitions` template while inside a real
+    Kedro project scenario and assert it exposes `default_executor` and `defs`.
+    """
+
+    project_opts = kedro_project_exec_filebacked_local
+    project_path = project_opts.project_path
+
+    # Ensure the template's runtime discovery picks up the test project
+    monkeypatch.chdir(project_path)
+
+    # Force re-import so the module executes in the context of the test project
+    sys.modules.pop("kedro_dagster.templates.definitions", None)
+    module = importlib.import_module("kedro_dagster.templates.definitions")
+
+    assert hasattr(module, "default_executor"), "Template should define `default_executor`"
+    assert hasattr(module, "defs"), "Template should define `defs` (Dagster Definitions)"
+
+    assert isinstance(module.default_executor, dg.ExecutorDefinition)
+    assert isinstance(module.defs, dg.Definitions)
 
 
 def _has_translator_assignment(module: ast.Module) -> bool:
