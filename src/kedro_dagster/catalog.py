@@ -201,21 +201,19 @@ class CatalogTranslator:
 
         # Normalize absolute filepaths to native separators only at IO manager instance level
         # to satisfy round-trip tests on Windows while preserving raw config values.
-        try:
-            filepath = getattr(io_manager_instance, "filepath", None)
-            if isinstance(filepath, str):
-                casted_filepath = Path(filepath)
-                if casted_filepath.is_absolute():
-                    normalized_filepath = str(casted_filepath)
-                    if normalized_filepath != filepath:
-                        try:
-                            io_manager_instance.filepath = normalized_filepath
-                        except Exception:
-                            object.__setattr__(io_manager_instance, "filepath", normalized_filepath)
-                            # except Exception:
-                            #     pass
-        except Exception:
-            pass
+        # try:
+        filepath = getattr(io_manager_instance, "filepath", None)
+        if isinstance(filepath, str):
+            casted_filepath = Path(filepath)
+            if casted_filepath.is_absolute():
+                normalized_filepath = str(casted_filepath)
+                if normalized_filepath != filepath:
+                    try:
+                        io_manager_instance.filepath = normalized_filepath
+                    except Exception:
+                        object.__setattr__(io_manager_instance, "filepath", normalized_filepath)
+        # except Exception:
+        #     pass
 
         return io_manager_instance, partitions_def, partition_mappings
 
