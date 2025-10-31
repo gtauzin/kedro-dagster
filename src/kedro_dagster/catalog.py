@@ -208,14 +208,12 @@ class CatalogTranslator:
                 if casted_filepath.is_absolute():
                     normalized_filepath = str(casted_filepath)
                     if normalized_filepath != filepath:
-                        # io_manager_instance.filepath = normalized_filepath
                         try:
-                            setattr(io_manager_instance, "filepath", normalized_filepath)
+                            io_manager_instance.filepath = normalized_filepath
                         except Exception:
-                            try:
-                                object.__setattr__(io_manager_instance, "filepath", normalized_filepath)
-                            except Exception:
-                                pass
+                            object.__setattr__(io_manager_instance, "filepath", normalized_filepath)
+                            # except Exception:
+                            #     pass
         except Exception:
             pass
 
