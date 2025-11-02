@@ -120,7 +120,7 @@ For a concrete use-case, see the [Kedro-Dagster example repository](https://gith
 
 ## How do I use Kedro-Dagster?
 
-Full documentation is available at [https://gtauzin.github.io/kedro-dagster/](https://gtauzin.github.io/kedro-dagster/).
+Full documentation is available at [https://kedro-dagster.readthedocs.io/en/latest/](https://kedro-dagster.readthedocs.io/en/latest/).
 
 ## Can I contribute?
 
