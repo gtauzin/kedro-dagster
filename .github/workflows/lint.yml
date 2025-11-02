@@ -1,0 +1,44 @@
+name: Run linter, tests, and generate coverage
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    tags-ignore: ["**"]
+  pull_request:
+
+permissions:
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ckeck:
+    name: Run linter
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.13"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Install nox
+        run: uv tool install --python-preference only-managed --python 3.13 nox
+
+      - name: Install Python
+        run: uv python install --python-preference only-managed ${{ matrix.python-version }}
+
+      - name: Run checks
+        run: nox -s fix

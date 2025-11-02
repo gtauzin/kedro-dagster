@@ -1,5 +1,6 @@
 name: Run tests for different versions of Kedro and Dagster
 on:
+  workflow_call:
   # Allow manual triggering when needed
   workflow_dispatch:
   # Always run on pushes to main

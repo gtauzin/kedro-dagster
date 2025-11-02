@@ -12,8 +12,6 @@ permissions:
 jobs:
   kedro-dagster-main-test:
     uses: ./.github/workflows/tests-versions.yml
-    with:
-      branch: main
 
   notify-main:
     permissions:
