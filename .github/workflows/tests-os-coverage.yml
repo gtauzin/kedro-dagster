@@ -1,4 +1,4 @@
-name: Run linter, tests, and generate coverage
+name: Run tests across OS, and generate coverage
 on:
   workflow_dispatch:
   push:
@@ -48,9 +48,6 @@ jobs:
 
       - name: Install Python
         run: uv python install --python-preference only-managed ${{ matrix.python-version }}
-
-      - name: Run checks
-        run: nox -s fix
 
       - name: Run tests
         run: nox -s tests_coverage --python ${{ matrix.python-version }}
