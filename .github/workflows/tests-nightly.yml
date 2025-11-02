@@ -1,4 +1,4 @@
-name: Run nightly tests on Kedro-Dagster
+name: Run nightly tests
 
 on:
   workflow_dispatch:

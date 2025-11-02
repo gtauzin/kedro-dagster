@@ -1,4 +1,4 @@
-name: Run linter, tests, and generate coverage
+name: Run linter
 on:
   workflow_dispatch:
   push:
