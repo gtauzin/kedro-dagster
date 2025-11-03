@@ -22,6 +22,7 @@
 ## Bug fixes and other changes
 
 * Fix bug involving unnamed Kedro nodes making `kedro dagster dev` crash
+* Fix defaults on K8S execution configuration
 
 ## Breaking changes to the API
 
