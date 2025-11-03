@@ -24,7 +24,7 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 - [Limitations & Considerations](pages/intro.md#limitations-and-considerations)
 - [Contributing & Community](pages/intro.md#contributing-and-community)
 
-### [Getting Started](pages/getting-started.md)
+### [Getting started](pages/getting-started.md)
 
   *Step-by-step guide to installing and setting up Kedro-Dagster in your project.*
 
@@ -38,24 +38,25 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 
   *A practical example demonstrating how to use Kedro-Dagster in a real project.*
 
-- [Project Overview](pages/example.md#project-overview)
-- [Quick Start](pages/example.md#quick-start)
+- [Project overview](pages/example.md#project-overview)
+- [Quick start](pages/example.md#quick-start)
+- [Technical guide](pages/example.md#technical-guide)
 
-### [Technical Documentation](pages/technical.md)
+### [Technical documentation](pages/technical.md)
 
   *In-depth documentation on the design, architecture, and core concepts of the plugin.*
 
-- [Project Configuration](pages/technical.md#project-configuration)
-- [Kedro-Dagster Concept Mapping](pages/technical.md#kedro-dagster-concept-mapping)
+- [Project configuration](pages/technical.md#project-configuration)
+- [Kedro-Dagster concept mapping](pages/technical.md#kedro-dagster-concept-mapping)
 - [Compatibility issues between Kedro and Dagster](pages/technical.md#compatibility-issues-between-kedro-and-dagster)
 
-### [API Reference](pages/api.md)
+### [API reference](pages/api.md)
 
   *Detailed reference for the Kedro-Dagster API, including classes, functions, and configuration options.*
 
 - [Command Line Interface](pages/api.md#command-line-interface)
 - [Configuration](pages/api.md#configuration)
-- [Translation Modules](pages/api.md#translation-modules)
+- [Translation modules](pages/api.md#translation-modules)
 - [Datasets](pages/api.md#datasets)
 - [Utilities](pages/api.md#utilities)
 
