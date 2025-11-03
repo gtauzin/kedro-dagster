@@ -2,7 +2,7 @@
 
 This guide walks you through setting up and deploying a Kedro project with Dagster using the Kedro‑Dagster plugin. The example below uses the Kedro `spaceflights-pandas` starter project, but you can use your own Kedro project. If you wish to do so, skip step 1.
 
-## 1. Create a Kedro Project (Optional)
+## 1. Create a Kedro project (optional)
 
 *Skip this step if you already have a Kedro project you want to deploy with Dagster.*
 
@@ -39,7 +39,7 @@ alternatively, you can install it from GitHub:
 pip install --upgrade git+https://github.com/gtauzin/kedro-dagster.git
 ```
 
-## 3. Initialize Dagster Integration
+## 3. Initialize the Dagster integration
 
 Use [`kedro dagster init`](api.md#kedro-dagster-init) to initialize Kedro‑Dagster:
 
@@ -63,7 +63,7 @@ This creates:
 
 There's no need to modify the Dagster `definitions.py` file to get started, so here we'll have a deeper look on the `dagster.yml` file.
 
-## 4. Configure Jobs, Executors, and Schedules
+## 4. Configure jobs, executors, and schedules
 
 The Kedro‑Dagster configuration file `dagster.yml` includes the following sections:
 
@@ -110,7 +110,7 @@ jobs:
 
 Here, we have added a "parallel_data_processing" and a "data_science" job to the jobs configuration. The first one makes use of the `node_names` Kedro pipeline filter argument to create a sub-pipeline of the Kedro "data_processing" pipeline from a list of two Kedro nodes: "preprocess_companies_node" and "preprocess_shuttles_node". Both jobs are to run daily using the "daily" schedule based on the `cron_schedule` "0 0 * * *". "parallel_data_processing" is to run using a "multiprocess" executor with 2 `max_concurrent` and "data_science" will run sequentially.
 
-See the [Technical Documentation](technical.md) for more on customizing the Dagster configuration file.
+See the [Technical documentation](technical.md) for more on customizing the Dagster configuration file.
 
 ## 5. Browse the Dagster UI
 
@@ -205,8 +205,8 @@ The job can be run by clicking on the "Launchpad" sub-tab. The Kedro pipeline, i
 
 ---
 
-## Next Steps
+## Next steps
 
-- Visit the [Example](example.md) section for a more advanced example.
-- Explore the [Technical Documentation](technical.md) for advanced configuration and customization.
-- See the [API Reference](api.md) for details on available classes and functions.
+- **Advanced example:** Visit the [example](example.md) section for a more advanced example.
+- **Technical documentation:** Explore the [technical documentation](technical.md) for advanced configuration and customization.
+- **API reference:** See the [API reference](api.md) for details on available classes and functions.

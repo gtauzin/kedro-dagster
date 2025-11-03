@@ -31,34 +31,32 @@ Currently, Kedro-Dagster supports Kedro versions 0.19.x and 1.x, and Dagster ver
 
 ## What are the features of Kedro-Dagster?
 
-- **Configuration‑Driven Workflows:** Centralize orchestration settings in a `dagster.yml` file for each Kedro environment. Define jobs from filtered Kedro pipelines, assign executors, schedules.
+- **Configuration‑driven workflows:** Centralize orchestration settings in a `dagster.yml` file for each Kedro environment. Define jobs from filtered Kedro pipelines, assign executors, schedules.
 - **Customization:** The core integration lives in the auto‑generated Dagster `definitions.py`. For advanced use cases, you can extend or override these definitions.
-- **Kedro Hooks Preservation:** Kedro hooks are preserved and called at the appropriate time during pipeline execution, so custom logic (e.g., data validation, logging) continues to work seamlessly.
-- **MLflow Compatibility:** Use [Kedro-MLflow](https://github.com/Galileo-Galilei/kedro-mlflow) with Dagster’s [MLflow integration](https://dagster.io/integrations/dagster-mlflow) to track experiments, log models, and register artifacts.
-- **(Experimental) Dagster Partition Support:** Make use of Dagster's partitions to fan-out Kedro nodes acting on partitioned data.
-- **(Experimental) Logger Integration:** Unifies Kedro and Dagster logging so logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug.
+- **Kedro hooks preservation:** Kedro hooks are preserved and called at the appropriate time during pipeline execution, so custom logic (e.g., data validation, logging) continues to work seamlessly.
+- **MLflow compatibility:** Use [Kedro-MLflow](https://github.com/Galileo-Galilei/kedro-mlflow) with Dagster’s [MLflow integration](https://dagster.io/integrations/dagster-mlflow) to track experiments, log models, and register artifacts.
+- **(Experimental) Dagster partition support:** Make use of Dagster's partitions to fan-out Kedro nodes acting on partitioned data.
+- **(Experimental) Logger integration:** Unifies Kedro and Dagster logging so logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug.
 
 ## How to install Kedro-Dagster?
 
-Install the Kedro-Dagster plugin using pip:
+Install the Kedro-Dagster plugin using `pip`:
 
 ```bash
 pip install kedro-dagster
 ```
+
+or using `uv`:
+
+```bash
+uv pip install kedro-dagster
+```
+
+or alternatively, add `kedro-dagster` to your `requirements.txt` or `pyproject.toml` file.
 
 ## How to get started with Kedro-Dagster?
 
-1. **Installation**
-
-Install the plugin with `pip`:
-
-```bash
-pip install kedro-dagster
-```
-
-or add `kedro-dagster` to your project's `requirements.txt` or `pyproject.toml`.
-
-2. **Initialize the plugin in your Kedro project**
+1. **Initialize the plugin in your Kedro project**
 
 Use the following command to generate a `definitions.py` file, where all translated Kedro objects are available as Dagster objects, and a `dagster.yml` configuration file:
 
@@ -66,7 +64,7 @@ Use the following command to generate a `definitions.py` file, where all transla
 kedro dagster init --env <ENV_NAME>
 ```
 
-3. **Configure Jobs, Executors, and Schedules**
+2. **Configure jobs, executors, and schedules**
 
 Define your job executors and schedules in the `dagster.yml` configuration file located in your Kedro project's `conf/<ENV_NAME>` directory. This file allows you to filter Kedro pipelines and assign specific executors and schedules to them.
 
@@ -106,7 +104,7 @@ jobs:
     executor: sequential
 ```
 
-4. **Launch the Dagster UI**
+3. **Launch the Dagster UI**
 
 Start the Dagster UI to monitor and manage your pipelines using the following command:
 

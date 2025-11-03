@@ -1,4 +1,4 @@
-# API Reference
+# API reference
 
 This section provides an overview and links to the Kedro-Dagster API documentation.
 
@@ -41,7 +41,18 @@ uv run kedro dagster dev --env <ENV_NAME> --log-level <LEVEL> --log-format <FORM
 - `--host`: Host address for the Dagster UI.
 - `--live-data-poll-rate`: Polling rate for live data in milliseconds.
 
-If specified, those options will override the ones specified in your `conf/<ENV_NAME>/dagster.yml`. See [`DevOptions`](#devoptions).
+If specified, these options override the values in `conf/<ENV_NAME>/dagster.yml` under the `dev` section. See [`DevOptions`](#devoptions).
+
+Example `dagster.yml` (dev section):
+
+```yaml
+dev:
+  log_level: info
+  log_format: colored
+  host: 127.0.0.1
+  port: "3000"
+  live_data_poll_rate: "2000"
+```
 
 ## Configuration
 
@@ -67,13 +78,26 @@ Options for the `kedro dagster dev` command.
 
 Configuration options for a Dagster job, including pipeline filtering, executor, and schedule.
 
+Minimal job configuration example:
+
+```yaml
+jobs:
+  my_data_processing:
+    pipeline:
+      pipeline_name: data_processing
+      node_namespaces: [price_predictor]
+      tags: [test1]
+    executor: multiprocessing
+    # schedule: my_daily_schedule
+```
+
 ::: kedro_dagster.config.job.JobOptions
 
 ---
 
 ### `PipelineOptions`
 
-Options for filtering and configuring Kedro pipelines within jobs.
+Options for filtering and configuring Kedro pipelines by name, namespaces, tags, or inputs/outputs to define jobs.
 
 ::: kedro_dagster.config.job.PipelineOptions
 
@@ -171,7 +195,7 @@ Options for defining Dagster schedules.
 
 ---
 
-## Translation Modules
+## Translation modules
 
 The following classes are responsible for translating Kedro concepts into Dagster constructs:
 
@@ -255,6 +279,19 @@ The following classes define custom Kedro-Dagster datasets for enabling Dagster 
 
 Works as a wrapper around Kedro's `PartitionedDataset` to enable Dagster partitioning capabilities.
 
+`catalog.yml` example snippet:
+
+```yaml
+my_partitioned_table:
+  type: kedro_dagster.DagsterPartitionedDataset
+  path: data/02_intermediate/<env>/tables/my_table/
+  dataset:
+    type: pandas.CSVDataset
+  partition:
+    type: dagster.StaticPartitionsDefinition
+    partition_keys: ["10.csv", "20.csv", "30.csv"]
+```
+
 ::: kedro_dagster.datasets.DagsterPartitionedDataset
 
 ---
@@ -262,6 +299,15 @@ Works as a wrapper around Kedro's `PartitionedDataset` to enable Dagster partiti
 ### `DagsterNothingDataset`
 
 A dummy dataset representing a Dagster asset of type `Nothing` without associated data used to enforce links between nodes.
+
+`catalog.yml` example snippet:
+
+```yaml
+my_barrier:
+  type: kedro_dagster.DagsterNothingDataset
+  metadata:
+    description: "Barrier to enforce execution order"
+```
 
 ::: kedro_dagster.datasets.DagsterNothingDataset
 

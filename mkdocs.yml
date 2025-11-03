@@ -8,10 +8,10 @@ edit_uri: edit/main/docs/
 nav:
   - Home: index.md
   - Introduction: pages/intro.md
-  - Getting Started: pages/getting-started.md
+  - Getting started: pages/getting-started.md
   - Example: pages/example.md
-  - Technical Documentation: pages/technical.md
-  - API Reference: pages/api.md
+  - Technical documentation: pages/technical.md
+  - API reference: pages/api.md
 
 theme:
   name: material
