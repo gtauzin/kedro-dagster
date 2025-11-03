@@ -3,6 +3,17 @@
 
 ## Major features and improvements
 
+## Bug fixes and other changes
+
+## Breaking changes to the API
+
+## Thanks for supporting contributions
+
+
+# Release 0.3.0
+
+## Major features and improvements
+
 * Add `DagsterNothingDataset`, a Kedro dataset that performs no I/O but enforces node dependency.
 * Add `DagsterPartitionedDataset`, a Kedro dataset for partitioned data compatible with Dagster's asset partitions.
 * Enable fanning out Kedro nodes when creating the Dagster graph when using `DagsterPartitionedDataset` with multiple partition keys.

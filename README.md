@@ -140,4 +140,6 @@ This project is licensed under the terms of the [Apache 2.0 License](https://git
 
 ## Acknowledgements
 
-This plugin is inspired by existing Kedro plugins such as the [official Kedro plugins](https://github.com/kedro-org/kedro-plugins), [kedro-kubeflow](https://github.com/getindata/kedro-kubeflow), [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow).
+This plugin is developed and maintained by [Guillaume Tauzin](https://github.com/gtauzin).
+
+It is inspired by existing Kedro plugins such as the [official Kedro plugins](https://github.com/kedro-org/kedro-plugins), [kedro-kubeflow](https://github.com/getindata/kedro-kubeflow), [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow).
