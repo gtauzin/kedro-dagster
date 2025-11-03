@@ -153,7 +153,7 @@ The `DYNAMIC_PIPELINES_MAPPING` is then used to build pipelines variants dynamic
 
 ### Environments configuration at a glance
 
-The example repository attempts to mimic how the development of a data science project is mimicked across environments by changing which pipelines are active and how jobs are executed/scheduled.
+The example repository demonstrates how a data science project evolves across environments by changing which pipelines are active and how jobs are executed/scheduled.
 
 The example defines four environments, `local`, `dev`, `staging`, and `prod`, each under `conf/<ENV>/` with its own `catalog.yml` and `dagster.yml`. Initialization is already performed in this repository: `src/kedro_dagster_example/definitions.py` and all per‑environment `dagster.yml` files are present.
 
