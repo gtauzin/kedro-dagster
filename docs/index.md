@@ -21,17 +21,17 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 - [What Is Dagster?](pages/intro.md#what-is-dagster)
 - [Why Kedro‑Dagster?](pages/intro.md#why-kedrodagster)
 - [Key features](pages/intro.md#key-features)
-- [Limitations & Considerations](pages/intro.md#limitations-and-considerations)
-- [Contributing & Community](pages/intro.md#contributing-and-community)
+- [Limitations & considerations](pages/intro.md#limitations-and-considerations)
+- [Contributing & community](pages/intro.md#contributing-and-community)
 
 ### [Getting started](pages/getting-started.md)
 
   *Step-by-step guide to installing and setting up Kedro-Dagster in your project.*
 
-- [1. Create a Kedro Project (Optional)](pages/getting-started.md#1-create-a-kedro-project-optional)
+- [1. Create a Kedro project (Optional)](pages/getting-started.md#1-create-a-kedro-project-optional)
 - [2. Installation](pages/getting-started.md#2-installation)
-- [3. Initialize Dagster Integration](pages/getting-started.md#3-initialize-dagster-integration)
-- [4. Configure Jobs, Executors, and Schedules](pages/getting-started.md#4-configure-jobs-executors-and-schedules)
+- [3. Initialize Dagster integration](pages/getting-started.md#3-initialize-dagster-integration)
+- [4. Configure jobs, executors, and schedules](pages/getting-started.md#4-configure-jobs-executors-and-schedules)
 - [5. Browse the Dagster UI](pages/getting-started.md#5-browse-the-dagster-ui)
 
 ### [Example](pages/example.md)

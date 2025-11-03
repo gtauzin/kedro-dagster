@@ -1,6 +1,6 @@
 # Example
 
-This section introduces an advanced Kedro project with Dagster hosted on the [Kedro-Dagster Example Repository](https://github.com/gtauzin/kedro-dagster-example).
+This section introduces an advanced Kedro project with Dagster hosted on the [Kedro-Dagster example repository](https://github.com/gtauzin/kedro-dagster-example). You can find a visualization of the pipelines defined in this project below in the [shared Kedro-Viz page](https://gtauzin.github.io/kedro-dagster-example/).
 
 ## Project overview
 
@@ -351,5 +351,5 @@ Additionally, we show how to use MLflow alongside Optuna in a Kedro project thro
 
 ## Next steps
 
-- **Technical documentation:** Explore the full [Technical documentation](technical.md) for mapping details and configuration models.
+- **Technical documentation:** Explore the full [technical documentation](technical.md) for mapping details and configuration models.
 - **API reference:** See the [API reference](api.md) for `PipelineOptions`, executor options, and datasets like `DagsterPartitionedDataset` and `DagsterNothingDataset`.

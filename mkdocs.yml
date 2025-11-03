@@ -10,7 +10,7 @@ nav:
   - Introduction: pages/intro.md
   - Getting Started: pages/getting-started.md
   - Example: pages/example.md
-  - Technical Documentation: pages/technical.md
+  - Technical documentation: pages/technical.md
   - API Reference: pages/api.md
 
 theme:

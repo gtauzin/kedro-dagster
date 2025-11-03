@@ -1,4 +1,4 @@
-# Technical Documentation
+# Technical documentation
 
 This section provides an in-depth look at the architecture, configuration, and core concepts behind Kedro-Dagster. Here you'll find details on how Kedro projects are mapped to Dagster constructs, how to configure orchestration, and how to customize the integration for advanced use cases.
 
@@ -141,7 +141,7 @@ my_upstream_partitioned_dataset:
 ```
 
 !!! note
-    The `partition` and `partition_mapping` parameters expect Dagster partition definitions and mappings. Refer to the [Dagster Partitions Documentation](https://docs.dagster.io/concepts/partitions-schedules-sensors/partitions) for more details on available partition types and mappings.
+    The `partition` and `partition_mapping` parameters expect Dagster partition definitions and mappings. Refer to the [Dagster Partitions documentation](https://docs.dagster.io/concepts/partitions-schedules-sensors/partitions) for more details on available partition types and mappings.
 
 See the API reference for [`DagsterPartitionedDataset`](api.md#dagsterpartitioneddataset) for more details.
 
