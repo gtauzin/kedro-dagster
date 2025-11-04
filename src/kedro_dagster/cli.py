@@ -11,7 +11,7 @@ from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.config import get_dagster_config
-from kedro_dagster.utils import find_kedro_project, write_jinja_template
+from kedro_dagster.utils import find_kedro_project, render_jinja_template, write_jinja_template
 
 LOGGER = getLogger(__name__)
 TEMPLATE_FOLDER_PATH = Path(__file__).parent / "templates"
@@ -121,6 +121,65 @@ def init(env: str, force: bool, silent: bool) -> None:
                     fg="green",
                 )
             )
+
+    # Append rendered Dagster [tool.dg] config to the user's pyproject.toml
+    # using the template in our package. We replace placeholders for
+    # `project_name` and `package_name` using Kedro bootstrap metadata.
+    pyproject_template = TEMPLATE_FOLDER_PATH / "pyproject.toml"
+    user_pyproject_path = project_path / "pyproject.toml"
+
+    try:
+        # Render with both placeholders; map both to the Python package name,
+        # which is a safe module identifier for references like
+        # "<project_name>.definitions" in the template.
+        rendered_pyproject = render_jinja_template(
+            src=pyproject_template,
+            project_name=package_name,
+            package_name=package_name,
+        )
+
+        if not user_pyproject_path.exists():
+            click.secho(
+                click.style(
+                    f"No 'pyproject.toml' found at '{user_pyproject_path}'. Skipping Dagster config append.",
+                    fg="yellow",
+                )
+            )
+        else:
+            existing_content = user_pyproject_path.read_text(encoding="utf-8")
+            already_configured = "[tool.dg]" in existing_content
+
+            if already_configured and not force:
+                click.secho(
+                    click.style(
+                        "A '[tool.dg]' section already exists in 'pyproject.toml'. Use --force to append anyway.",
+                        fg="red",
+                    )
+                )
+            else:
+                # Ensure there is a separating newline before appending.
+                with user_pyproject_path.open("a", encoding="utf-8") as fh:
+                    if not existing_content.endswith("\n\n"):
+                        fh.write("\n" if existing_content.endswith("\n") else "\n\n")
+                    fh.write(rendered_pyproject)
+                    if not rendered_pyproject.endswith("\n"):
+                        fh.write("\n")
+
+                if not silent:
+                    click.secho(
+                        click.style(
+                            "Appended Dagster '[tool.dg]' configuration to 'pyproject.toml'.",
+                            fg="green",
+                        )
+                    )
+    except Exception as ex:
+        # Best-effort append; do not fail init entirely on template issues.
+        click.secho(
+            click.style(
+                f"Failed to append Dagster config to 'pyproject.toml': {ex}",
+                fg="red",
+            )
+        )
 
 
 @dagster_commands.command()

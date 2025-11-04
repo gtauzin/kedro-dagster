@@ -37,6 +37,7 @@ dependencies = [
     "kedro-datasets",
     "dagster>=1.10,<2.0",
     "dagster-webserver",
+    "dagster-dg-cli",
 ]
 
 [project.optional-dependencies]
