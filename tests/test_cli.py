@@ -7,6 +7,7 @@ from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.cli import dagster_commands as cli_dagster
 from kedro_dagster.cli import dev as cli_dev
+from kedro_dagster.cli import dg as cli_dg
 from kedro_dagster.cli import init as cli_init
 
 
@@ -37,7 +38,7 @@ def test_dagster_commands_discovered(monkeypatch, kedro_project_no_dagster_confi
 
     assert result.exit_code == 0
     cmds = set(_extract_cmd_from_help(result.output))
-    assert {"init", "dev"} == cmds
+    assert {"init", "dev", "dg"} == cmds
     assert "You have not updated your template yet" not in result.output
 
 
@@ -73,6 +74,11 @@ def test_cli_init_creates_files(monkeypatch, kedro_project_no_dagster_config_bas
         "definitions.py' successfully updated." in result.output or "A 'definitions.py' already exists" in result.output
     )
 
+    # dg.toml is written at project root
+    dg_toml = project_path / "dg.toml"
+    assert dg_toml.is_file()
+    assert ("'dg.toml' successfully updated." in result.output) or ("A 'dg.toml' already exists" in result.output)
+
 
 def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project_no_dagster_config_base):
     """A second 'init' without --force warns about existing config files."""
@@ -88,6 +94,7 @@ def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project_no_da
     assert second.exit_code == 0
     assert "A 'dagster.yml' already exists" in second.output
     assert "A 'definitions.py' already exists" in second.output
+    assert "A 'dg.toml' already exists" in second.output
 
 
 def test_cli_init_force_overwrites(monkeypatch, kedro_project_no_dagster_config_base):
@@ -102,6 +109,8 @@ def test_cli_init_force_overwrites(monkeypatch, kedro_project_no_dagster_config_
     result = runner.invoke(cli_init, ["--force"])
     assert result.exit_code == 0
     assert "successfully updated" in result.output
+    # Ensure dg.toml exists after force overwrite
+    assert (kedro_project_no_dagster_config_base.project_path / "dg.toml").is_file()
 
 
 def test_cli_init_with_wrong_env_prints_message(monkeypatch, kedro_project_no_dagster_config_base):
@@ -195,3 +204,20 @@ def test_cli_plugin_shows_in_info(monkeypatch, tmp_path):
     result = runner.invoke(info)
     assert result.exit_code == 0
     assert "kedro_dagster" in result.output
+
+
+def test_cli_dg_proxies_to_dagster(monkeypatch, mocker, kedro_project_no_dagster_config_base):
+    """'kedro dagster dg' proxies all args to 'dagster dg' within a Kedro session."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    monkeypatch.chdir(project_path)
+
+    runner = CliRunner()
+    sp_call = mocker.patch("subprocess.call")
+
+    # Simulate forwarding to a hypothetical 'assets list' subcommand with an option
+    result = runner.invoke(cli_dg, ["--env", "local", "assets", "list", "--filter", "sales*"])
+    assert result.exit_code == 0
+
+    called_args = sp_call.call_args[0][0]
+    assert called_args[:2] == ["dagster", "dg"]
+    assert called_args[2:] == ["assets", "list", "--filter", "sales*"]
