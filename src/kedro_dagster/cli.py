@@ -289,7 +289,7 @@ def _register_dg_commands() -> None:
             callback=_callback_factory(cmd_name, log_level_flags, log_format_flags),
             help=help_text,
             context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
-            underlying=cmd_obj,
+            underlying_cmd=cmd_obj,
         )
         dagster_commands.add_command(cmd)
 
