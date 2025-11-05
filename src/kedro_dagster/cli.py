@@ -282,7 +282,7 @@ def _register_dg_commands() -> None:
         ]
         # Prefer the underlying command's help/description if available
         help_text = (getattr(cmd_obj, "help", None) or "").strip()
-        help_text = f" Kedro-Dagster wrapper around 'dg {cmd_name}'." + help_text
+        help_text = f" Kedro-Dagster wrapper around 'dg {cmd_name}'. " + help_text
         cmd = DgProxyCommand(
             name=cmd_name,
             params=params,
