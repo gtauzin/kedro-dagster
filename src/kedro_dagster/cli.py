@@ -4,14 +4,13 @@ import os
 import subprocess
 from logging import getLogger
 from pathlib import Path
-from typing import Literal
 
 import click
+from dagster_dg_cli.cli import create_dg_cli
 from kedro.framework.project import settings
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
-from kedro_dagster.config import get_dagster_config
 from kedro_dagster.utils import find_kedro_project, write_jinja_template
 
 LOGGER = getLogger(__name__)
@@ -154,130 +153,120 @@ def init(env: str, force: bool, silent: bool) -> None:
             )
 
 
-@dagster_commands.command()
-@click.option(
-    "--env",
-    "-e",
-    required=False,
-    default="local",
-    help="The environment within conf folder we want to retrieve",
-)
-@click.option(
-    "--log-level",
-    required=False,
-    help="The level of the event tracked by the loggers",
-)
-@click.option(
-    "--log-format",
-    required=False,
-    help="The format of the logs",
-)
-@click.option(
-    "--port",
-    "-p",
-    required=False,
-    help="The port to listen on",
-)
-@click.option(
-    "--host",
-    "-h",
-    required=False,
-    help="The network address to listen on",
-)
-@click.option(
-    "--live-data-poll-rate",
-    required=False,
-    help="The rate at which to poll for new data",
-)
-def dev(
-    env: str,
-    log_level: Literal["debug", "info", "warning", "error", "critical"],
-    log_format: Literal["color", "json", "default"],
-    port: str,
-    host: str,
-    live_data_poll_rate: str,
-) -> None:
-    """Opens the dagster dev user interface with the
-    project-specific settings of `dagster.yml`.
+def _register_dg_commands() -> None:
+    """Dynamically register all 'dg' CLI commands under 'kedro dagster'.
+
+    Each command gets an additional '--env/-e' option and forwards all other
+    args/options to the underlying 'dg' command via a subprocess. The subprocess
+    is executed within a Kedro session context to ensure project settings are
+    correctly initialized. We also set a few environment variables so the child
+    process can pick up the Kedro project and environment if needed.
     """
 
-    project_path = find_kedro_project(Path.cwd()) or Path.cwd()
-    bootstrap_project(project_path)
+    # Discover the available dg commands from the official CLI entrypoint factory
+    dg_root: click.Group = create_dg_cli()
+    dg_command_names = list(dg_root.commands.keys())
 
-    with KedroSession.create(
-        project_path=project_path,
-        env=env,
-    ) as session:
-        context = session.load_context()
-        dagster_config = get_dagster_config(context)
-        python_file = dagster_config.dev.python_file  # type: ignore[union-attr]
-        log_level = log_level or dagster_config.dev.log_level
-        log_format = log_format or dagster_config.dev.log_format
-        host = host or dagster_config.dev.host  # type: ignore[union-attr]
-        port = port or dagster_config.dev.port  # type: ignore[union-attr]
-        live_data_poll_rate = live_data_poll_rate or dagster_config.dev.live_data_poll_rate  # type: ignore[union-attr]
+    # Skip commands already defined in our group (e.g., 'init', 'dev')
+    existing_command_names = ["init"]
 
-        # call dagster dev with specific options
-        subprocess.call([
-            "dagster",
-            "dev",
-            "--python-file",
-            python_file,
-            "--log-level",
-            log_level,
-            "--log-format",
-            log_format,
-            "--host",
-            host,
-            "--port",
-            port,
-            "--live-data-poll-rate",
-            live_data_poll_rate,
-        ])
+    for cmd_name in dg_command_names:
+        if cmd_name in existing_command_names:
+            continue
+
+        # Try to introspect command options to detect presence of --log-level/--log-format
+        log_level_flags: set[str] = set()
+        log_format_flags: set[str] = set()
+        try:
+            if isinstance(dg_root, click.Group):
+                cmd_obj = dg_root.commands.get(cmd_name)
+                if cmd_obj is not None:
+                    for p in getattr(cmd_obj, "params", []):
+                        if isinstance(p, click.Option):
+                            opts = set(p.opts)
+                            if "--log-level" in opts:
+                                log_level_flags = opts
+                            if "--log-format" in opts:
+                                log_format_flags = opts
+        except Exception:  # pragma: no cover - be defensive if structure changes
+            log_level_flags = set()
+            log_format_flags = set()
+
+        def _factory(name: str, lvl_flags: set[str], fmt_flags: set[str]) -> click.Command:
+            @dagster_commands.command(
+                name=name,
+                context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+            )
+            @click.option(
+                "--env",
+                "-e",
+                required=False,
+                default="local",
+                help="The Kedro environment to use",
+            )
+            @click.argument("args", nargs=-1, type=click.UNPROCESSED)
+            def _cmd(
+                env: str,
+                args: tuple[str, ...],
+                _name: str = name,
+                _lvl_flags: set[str] = lvl_flags,
+                _fmt_flags: set[str] = fmt_flags,
+            ) -> None:
+                """Wrapper around 'dg <name>' executed within a Kedro session."""
+
+                project_path = find_kedro_project(Path.cwd()) or Path.cwd()
+                # Ensure Kedro project is bootstrapped and a session is created
+                bootstrap_project(project_path)
+                with KedroSession.create(project_path=project_path, env=env) as session:
+                    # Ensure the Kedro context is fully initialized
+                    session.load_context()
+                    default_flags = {
+                        "log-level": "info",
+                        "log-format": "colored",
+                    }
+
+                    env_vars = os.environ.copy()
+                    # Set Kedro env vars so child process can pick them up if needed
+                    env_vars["KEDRO_ENV"] = env
+                    env_vars["KEDRO_PROJECT_PATH"] = str(project_path)
+
+                    # Build forwarded args and inject defaults if needed
+                    forwarded = list(args)
+
+                    def _has_flag(flags: set[str]) -> bool:
+                        if not flags:
+                            return False
+                        for f in flags:
+                            for a in forwarded:
+                                if a == f or (f.startswith("--") and a.startswith(f + "=")):
+                                    return True
+                        return False
+
+                    # If the dg command supports --log-level and it's not provided, inject from config
+                    if _lvl_flags and not _has_flag(_lvl_flags):
+                        try:
+                            lvl_value = default_flags["log-level"]
+                        except Exception:
+                            lvl_value = None
+                        if lvl_value:
+                            forwarded.extend(["--log-level", str(lvl_value)])
+
+                    # If the dg command supports --log-format and it's not provided, inject from config
+                    if _fmt_flags and not _has_flag(_fmt_flags):
+                        try:
+                            fmt_value = default_flags["log-format"]
+                        except Exception:
+                            fmt_value = None
+                        if fmt_value:
+                            forwarded.extend(["--log-format", str(fmt_value)])
+
+                    # Execute the original 'dg' command, forwarding all extra args
+                    subprocess.call(["dg", _name, *forwarded], cwd=str(project_path), env=env_vars)
+
+            return _cmd
+
+        _factory(cmd_name, log_level_flags, log_format_flags)
 
 
-@dagster_commands.command(
-    name="dg",
-    context_settings={
-        "ignore_unknown_options": True,
-        "allow_extra_args": True,
-    },
-)
-@click.option(
-    "--env",
-    "-e",
-    required=False,
-    default="local",
-    help="The environment within conf folder to use while running 'dagster dg'",
-)
-@click.pass_context
-def dg(ctx: click.Context, env: str) -> None:
-    """Proxy to 'dagster dg' while ensuring a Kedro session is initialized.
-
-    All additional arguments are forwarded to the underlying 'dagster dg' CLI.
-    """
-
-    project_path = find_kedro_project(Path.cwd()) or Path.cwd()
-    bootstrap_project(project_path)
-
-    # Initialize a Kedro session for the requested env so project settings are loaded
-    with KedroSession.create(project_path=project_path, env=env) as session:
-        # Load the context to trigger hooks/config loading if any
-        _ = session.load_context()
-
-        # Forward all remaining args to 'dagster dg'
-        forwarded_args = list(ctx.args)
-
-        # Propagate environment variables so downstream tools can discover the Kedro env
-        child_env = os.environ.copy()
-        child_env["KEDRO_ENV"] = env
-
-        subprocess.call(
-            [
-                "dagster",
-                "dg",
-                *forwarded_args,
-            ],
-            cwd=project_path,
-            env=child_env,
-        )
+# Register dg commands at import time so they appear in 'kedro dagster --help'
+_register_dg_commands()

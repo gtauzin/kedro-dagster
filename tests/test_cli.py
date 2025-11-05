@@ -6,8 +6,6 @@ from kedro.framework.cli.cli import info
 from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.cli import dagster_commands as cli_dagster
-from kedro_dagster.cli import dev as cli_dev
-from kedro_dagster.cli import dg as cli_dg
 from kedro_dagster.cli import init as cli_init
 
 
@@ -38,7 +36,7 @@ def test_dagster_commands_discovered(monkeypatch, kedro_project_no_dagster_confi
 
     assert result.exit_code == 0
     cmds = set(_extract_cmd_from_help(result.output))
-    assert {"init", "dev", "dg"} == cmds
+    assert {"init", "dev"}.issubset(cmds)
     assert "You have not updated your template yet" not in result.output
 
 
@@ -134,45 +132,37 @@ def test_cli_init_silent_suppresses_success_logs(monkeypatch, kedro_project_no_d
 
 
 @pytest.mark.parametrize("inside_subdirectory", (True, False))
-def test_cli_dev_invokes_dagster_with_defaults(
-    monkeypatch, mocker, kedro_project_no_dagster_config_base, inside_subdirectory
-):
-    """'dagster dev' is invoked with default options derived from config."""
+def test_cli_dev_invokes_dg(monkeypatch, mocker, kedro_project_no_dagster_config_base, inside_subdirectory):
+    """'kedro dagster dev' proxies to 'dg dev' with pass-through args."""
     project_path = kedro_project_no_dagster_config_base.project_path
     cwd = project_path / "src" if inside_subdirectory else project_path
     monkeypatch.chdir(cwd)
 
     runner = CliRunner()
 
-    sp_call = mocker.patch("subprocess.call")
-    result = runner.invoke(cli_dev)
+    sp_call = mocker.patch("kedro_dagster.cli.subprocess.call")
+    result = runner.invoke(cli_dagster, ["dev"])  # no explicit flags; wrapper proxies to dg
     assert result.exit_code == 0
 
-    # Expected default arguments from DevOptions
-    # Resolve it dynamically similarly to DevOptions
-    # We don't strictly require the file to exist for the call to be made
     called_args = sp_call.call_args[0][0]
-    # Structure: ["dagster", "dev", "--python-file", file, "--log-level", lvl, "--log-format", fmt, "--host", host, "--port", port, "--live-data-poll-rate", poll]
-    assert called_args[:2] == ["dagster", "dev"]
-    args_map = {called_args[i]: called_args[i + 1] for i in range(2, len(called_args), 2)}
-    assert args_map["--log-level"] == "info"
-    assert args_map["--log-format"] in {"colored", "color"}  # accept template/config variations
-    assert args_map["--host"] == "127.0.0.1"
-    assert args_map["--port"] == "3000"
-    assert args_map["--live-data-poll-rate"] == "2000"
+    # Structure begins with ["dg", "dev", ...]
+    assert called_args[:2] == ["dg", "dev"]
 
 
-def test_cli_dev_overrides(monkeypatch, mocker, kedro_project_no_dagster_config_base):
-    """Command-line flags override default 'dagster dev' options."""
+def test_cli_dev_overrides_forwarded(monkeypatch, mocker, kedro_project_no_dagster_config_base):
+    """Explicit flags are forwarded to 'dg dev' unmodified."""
     project_path = kedro_project_no_dagster_config_base.project_path
     monkeypatch.chdir(project_path)
     bootstrap_project(project_path)
 
     runner = CliRunner()
-    sp_call = mocker.patch("subprocess.call")
+    sp_call = mocker.patch("kedro_dagster.cli.subprocess.call")
+    # Pass flags after optional separator to avoid click parsing conflicts
     result = runner.invoke(
-        cli_dev,
+        cli_dagster,
         [
+            "dev",
+            "--",
             "--log-level",
             "debug",
             "--log-format",
@@ -188,7 +178,16 @@ def test_cli_dev_overrides(monkeypatch, mocker, kedro_project_no_dagster_config_
     assert result.exit_code == 0
 
     called_args = sp_call.call_args[0][0]
-    args_map = {called_args[i]: called_args[i + 1] for i in range(2, len(called_args), 2)}
+    # Expect invocation of 'dg dev' and flags forwarded
+    assert called_args[:2] == ["dg", "dev"]
+    # Build a map for double-dash options that take values via next token
+    args_map = {
+        called_args[i]: called_args[i + 1]
+        for i in range(2, len(called_args))
+        if str(called_args[i]).startswith("--")
+        and i + 1 < len(called_args)
+        and not str(called_args[i + 1]).startswith("--")
+    }
     assert args_map["--log-level"] == "debug"
     assert args_map["--log-format"] == "json"
     assert args_map["--host"] == "0.0.0.0"
@@ -204,20 +203,3 @@ def test_cli_plugin_shows_in_info(monkeypatch, tmp_path):
     result = runner.invoke(info)
     assert result.exit_code == 0
     assert "kedro_dagster" in result.output
-
-
-def test_cli_dg_proxies_to_dagster(monkeypatch, mocker, kedro_project_no_dagster_config_base):
-    """'kedro dagster dg' proxies all args to 'dagster dg' within a Kedro session."""
-    project_path = kedro_project_no_dagster_config_base.project_path
-    monkeypatch.chdir(project_path)
-
-    runner = CliRunner()
-    sp_call = mocker.patch("subprocess.call")
-
-    # Simulate forwarding to a hypothetical 'assets list' subcommand with an option
-    result = runner.invoke(cli_dg, ["--env", "local", "assets", "list", "--filter", "sales*"])
-    assert result.exit_code == 0
-
-    called_args = sp_call.call_args[0][0]
-    assert called_args[:2] == ["dagster", "dg"]
-    assert called_args[2:] == ["assets", "list", "--filter", "sales*"]

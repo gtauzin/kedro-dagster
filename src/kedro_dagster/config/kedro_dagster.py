@@ -13,7 +13,6 @@ from kedro.framework.context import KedroContext
 from pydantic import BaseModel, model_validator
 
 from .automation import ScheduleOptions
-from .dev import DevOptions
 from .execution import EXECUTOR_MAP, ExecutorOptions
 from .job import JobOptions
 
@@ -30,7 +29,6 @@ class KedroDagsterConfig(BaseModel):
         jobs (dict[str, JobOptions] | None): Mapping of job names to job options.
     """
 
-    dev: DevOptions | None = None
     executors: dict[str, ExecutorOptions] | None = None
     schedules: dict[str, ScheduleOptions] | None = None
     jobs: dict[str, JobOptions] | None = None
@@ -40,13 +38,6 @@ class KedroDagsterConfig(BaseModel):
 
         validate_assignment = True
         extra = "forbid"
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_dev(cls, values: dict[str, Any]) -> dict[str, Any]:
-        dev = values.get("dev", DevOptions())
-        values["dev"] = dev
-        return values
 
     @model_validator(mode="before")
     @classmethod
