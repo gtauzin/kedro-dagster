@@ -157,25 +157,25 @@ def init(env: str, force: bool, silent: bool) -> None:
 class DgProxyCommand(click.Command):
     """A Click command that proxies to a `dg <name>` command while showing its options in help.
 
-    This keeps our wrapper lightweight (env + passthrough ARGS) but augments the help output
+    This keeps the wrapper lightweight (env + passthrough ARGS) but augments the help output
     to include the underlying `dg` command's options so users see the full set of flags.
     """
 
-    def __init__(self, *args: Any, underlying: click.Command | None = None, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, underlying_cmd: click.Command | None = None, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._underlying = underlying
+        self._underlying_cmd = underlying_cmd
 
     def format_options(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
         # Render our wrapper's options and the single "Options:" header
         super().format_options(ctx, formatter)
 
         # Then append the underlying dg command's options if available
-        if not isinstance(self._underlying, click.Command):
+        if not isinstance(self._underlying_cmd, click.Command):
             return
         try:
-            uctx = click.Context(self._underlying)
+            uctx = click.Context(self._underlying_cmd)
             rows: list[tuple[str, str]] = []
-            for p in getattr(self._underlying, "params", []):
+            for p in getattr(self._underlying_cmd, "params", []):
                 if isinstance(p, click.Parameter):
                     rec = p.get_help_record(uctx)
                     if rec:
@@ -281,9 +281,8 @@ def _register_dg_commands() -> None:
             click.Argument(["args"], nargs=-1, type=click.UNPROCESSED),
         ]
         # Prefer the underlying command's help/description if available
-        help_text = (
-            getattr(cmd_obj, "help", None) or ""
-        ).strip() or "Wrapper around 'dg <name>' executed within a Kedro session."
+        help_text = (getattr(cmd_obj, "help", None) or "").strip()
+        help_text += f" Kedro-Dagster wrapper around 'dg {cmd_name}'."
         cmd = DgProxyCommand(
             name=cmd_name,
             params=params,
