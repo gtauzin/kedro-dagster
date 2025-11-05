@@ -195,6 +195,79 @@ def test_cli_dev_overrides_forwarded(monkeypatch, mocker, kedro_project_no_dagst
     assert args_map["--live-data-poll-rate"] == "1500"
 
 
+def test_cli_dev_help_includes_underlying_options(monkeypatch, kedro_project_no_dagster_config_base):
+    """Help for 'kedro dagster dev' includes both wrapper and underlying dg options and uses dg description."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    monkeypatch.chdir(project_path)
+
+    runner = CliRunner()
+    result = runner.invoke(cli_dagster, ["dev", "--help"])
+
+    assert result.exit_code == 0
+    out = result.output
+    # Underlying dg description should be present (from 'dg dev --help')
+    assert "Start a local instance of Dagster" in out
+    # Wrapper option should be present
+    assert "-e, --env" in out
+    # A few known dg options should also be present inline
+    assert "--log-level" in out
+    assert "--log-format" in out
+    assert "--host" in out
+    assert "--port" in out
+    # No separate section header from our implementation
+    assert "Options from 'dg dev'" not in out
+
+
+def test_cli_dev_injects_defaults_when_missing(monkeypatch, mocker, kedro_project_no_dagster_config_base):
+    """When user does not provide logging flags, defaults are injected if supported by the dg command."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    monkeypatch.chdir(project_path)
+
+    runner = CliRunner()
+    sp_call = mocker.patch("kedro_dagster.cli.subprocess.call")
+    result = runner.invoke(cli_dagster, ["dev"])  # no flags provided
+    assert result.exit_code == 0
+
+    called_args = sp_call.call_args[0][0]
+    # Defaults should be injected
+    assert "--log-level" in called_args
+    assert "info" in called_args
+    assert "--log-format" in called_args
+    assert "colored" in called_args
+
+
+def test_cli_dev_no_duplication_when_user_flags_provided(monkeypatch, mocker, kedro_project_no_dagster_config_base):
+    """If user supplies flags, wrapper must not append defaults or duplicate them."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    monkeypatch.chdir(project_path)
+
+    runner = CliRunner()
+    sp_call = mocker.patch("kedro_dagster.cli.subprocess.call")
+    result = runner.invoke(
+        cli_dagster,
+        [
+            "dev",
+            "--log-level",
+            "debug",
+            "--log-format",
+            "json",
+        ],
+    )
+    assert result.exit_code == 0
+
+    called_args = sp_call.call_args[0][0]
+    # Ensure values come from user
+    args_map = {
+        called_args[i]: called_args[i + 1]
+        for i in range(2, len(called_args))
+        if str(called_args[i]).startswith("--")
+        and i + 1 < len(called_args)
+        and not str(called_args[i + 1]).startswith("--")
+    }
+    assert args_map.get("--log-level") == "debug"
+    assert args_map.get("--log-format") == "json"
+
+
 def test_cli_plugin_shows_in_info(monkeypatch, tmp_path):
     """The 'kedro_dagster' plugin appears in 'kedro info' output."""
     # Sanity check that the plugin is discoverable by Kedro
