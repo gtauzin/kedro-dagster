@@ -165,19 +165,23 @@ class DgProxyCommand(click.Command):
         super().__init__(*args, **kwargs)
         self._underlying = underlying
 
-    def format_help(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
-        # Render our normal help first
-        super().format_help(ctx, formatter)
+    def format_options(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        # Render our wrapper's options and the single "Options:" header
+        super().format_options(ctx, formatter)
 
         # Then append the underlying dg command's options if available
         if not isinstance(self._underlying, click.Command):
             return
         try:
             uctx = click.Context(self._underlying)
-            formatter.write_paragraph()
-            with formatter.section(f"Options from 'dg {self.name}'"):
-                # Reuse Click's own option formatting for the underlying command
-                self._underlying.format_options(uctx, formatter)
+            rows: list[tuple[str, str]] = []
+            for p in getattr(self._underlying, "params", []):
+                if isinstance(p, click.Parameter):
+                    rec = p.get_help_record(uctx)
+                    if rec:
+                        rows.append(rec)
+            if rows:
+                formatter.write_dl(rows)
         except Exception:
             # Be defensive—if the underlying command structure changes, don't break help output
             pass
@@ -276,7 +280,10 @@ def _register_dg_commands() -> None:
             click.Option(["--env", "-e"], required=False, default="local", help="The Kedro environment to use"),
             click.Argument(["args"], nargs=-1, type=click.UNPROCESSED),
         ]
-        help_text = "Wrapper around 'dg <name>' executed within a Kedro session."
+        # Prefer the underlying command's help/description if available
+        help_text = (
+            getattr(cmd_obj, "help", None) or ""
+        ).strip() or "Wrapper around 'dg <name>' executed within a Kedro session."
         cmd = DgProxyCommand(
             name=cmd_name,
             params=params,
