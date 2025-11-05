@@ -222,7 +222,7 @@ def _register_dg_commands() -> None:
             log_level_flags = set()
             log_format_flags = set()
 
-        def _callback_factory(name: str, lvl_flags: set[str], fmt_flags: set[str]) -> click.CommandCallback:
+        def _callback_factory(name: str, lvl_flags: set[str], fmt_flags: set[str]) -> Any:
             def _callback(env: str, args: tuple[str, ...]) -> None:
                 """Wrapper around 'dg <name>' executed within a Kedro session."""
 
