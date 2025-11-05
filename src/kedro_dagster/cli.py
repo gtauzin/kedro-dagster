@@ -4,6 +4,7 @@ import os
 import subprocess
 from logging import getLogger
 from pathlib import Path
+from typing import Any
 
 import click
 from dagster_dg_cli.cli import create_dg_cli
@@ -153,6 +154,35 @@ def init(env: str, force: bool, silent: bool) -> None:
             )
 
 
+class DgProxyCommand(click.Command):
+    """A Click command that proxies to a `dg <name>` command while showing its options in help.
+
+    This keeps our wrapper lightweight (env + passthrough ARGS) but augments the help output
+    to include the underlying `dg` command's options so users see the full set of flags.
+    """
+
+    def __init__(self, *args: Any, underlying: click.Command | None = None, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._underlying = underlying
+
+    def format_help(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        # Render our normal help first
+        super().format_help(ctx, formatter)
+
+        # Then append the underlying dg command's options if available
+        if not isinstance(self._underlying, click.Command):
+            return
+        try:
+            uctx = click.Context(self._underlying)
+            formatter.write_paragraph()
+            with formatter.section(f"Options from 'dg {self.name}'"):
+                # Reuse Click's own option formatting for the underlying command
+                self._underlying.format_options(uctx, formatter)
+        except Exception:
+            # Be defensive—if the underlying command structure changes, don't break help output
+            pass
+
+
 def _register_dg_commands() -> None:
     """Dynamically register all 'dg' CLI commands under 'kedro dagster'.
 
@@ -167,51 +197,33 @@ def _register_dg_commands() -> None:
     dg_root: click.Group = create_dg_cli()
     dg_command_names = list(dg_root.commands.keys())
 
-    # Skip commands already defined in our group (e.g., 'init', 'dev')
-    existing_command_names = ["init"]
+    # Skip commands we already expose explicitly in this group
+    existing = set(getattr(dagster_commands, "commands", {}).keys())
 
     for cmd_name in dg_command_names:
-        if cmd_name in existing_command_names:
+        if cmd_name in existing:
             continue
 
         # Try to introspect command options to detect presence of --log-level/--log-format
         log_level_flags: set[str] = set()
         log_format_flags: set[str] = set()
+        cmd_obj = None
         try:
-            if isinstance(dg_root, click.Group):
-                cmd_obj = dg_root.commands.get(cmd_name)
-                if cmd_obj is not None:
-                    for p in getattr(cmd_obj, "params", []):
-                        if isinstance(p, click.Option):
-                            opts = set(p.opts)
-                            if "--log-level" in opts:
-                                log_level_flags = opts
-                            if "--log-format" in opts:
-                                log_format_flags = opts
+            cmd_obj = dg_root.commands.get(cmd_name)
+            if cmd_obj is not None:
+                for p in getattr(cmd_obj, "params", []):
+                    if isinstance(p, click.Option):
+                        opts = set(p.opts)
+                        if "--log-level" in opts:
+                            log_level_flags = opts
+                        if "--log-format" in opts:
+                            log_format_flags = opts
         except Exception:  # pragma: no cover - be defensive if structure changes
             log_level_flags = set()
             log_format_flags = set()
 
-        def _factory(name: str, lvl_flags: set[str], fmt_flags: set[str]) -> click.Command:
-            @dagster_commands.command(
-                name=name,
-                context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
-            )
-            @click.option(
-                "--env",
-                "-e",
-                required=False,
-                default="local",
-                help="The Kedro environment to use",
-            )
-            @click.argument("args", nargs=-1, type=click.UNPROCESSED)
-            def _cmd(
-                env: str,
-                args: tuple[str, ...],
-                _name: str = name,
-                _lvl_flags: set[str] = lvl_flags,
-                _fmt_flags: set[str] = fmt_flags,
-            ) -> None:
+        def _callback_factory(name: str, lvl_flags: set[str], fmt_flags: set[str]) -> click.CommandCallback:
+            def _callback(env: str, args: tuple[str, ...]) -> None:
                 """Wrapper around 'dg <name>' executed within a Kedro session."""
 
                 project_path = find_kedro_project(Path.cwd()) or Path.cwd()
@@ -243,29 +255,37 @@ def _register_dg_commands() -> None:
                         return False
 
                     # If the dg command supports --log-level and it's not provided, inject from config
-                    if _lvl_flags and not _has_flag(_lvl_flags):
-                        try:
-                            lvl_value = default_flags["log-level"]
-                        except Exception:
-                            lvl_value = None
+                    if lvl_flags and not _has_flag(lvl_flags):
+                        lvl_value = default_flags.get("log-level")
                         if lvl_value:
                             forwarded.extend(["--log-level", str(lvl_value)])
 
                     # If the dg command supports --log-format and it's not provided, inject from config
-                    if _fmt_flags and not _has_flag(_fmt_flags):
-                        try:
-                            fmt_value = default_flags["log-format"]
-                        except Exception:
-                            fmt_value = None
+                    if fmt_flags and not _has_flag(fmt_flags):
+                        fmt_value = default_flags.get("log-format")
                         if fmt_value:
                             forwarded.extend(["--log-format", str(fmt_value)])
 
                     # Execute the original 'dg' command, forwarding all extra args
-                    subprocess.call(["dg", _name, *forwarded], cwd=str(project_path), env=env_vars)
+                    subprocess.call(["dg", name, *forwarded], cwd=str(project_path), env=env_vars)
 
-            return _cmd
+            return _callback
 
-        _factory(cmd_name, log_level_flags, log_format_flags)
+        # Build a lightweight wrapper with env option and passthrough args
+        params: list[click.Parameter] = [
+            click.Option(["--env", "-e"], required=False, default="local", help="The Kedro environment to use"),
+            click.Argument(["args"], nargs=-1, type=click.UNPROCESSED),
+        ]
+        help_text = "Wrapper around 'dg <name>' executed within a Kedro session."
+        cmd = DgProxyCommand(
+            name=cmd_name,
+            params=params,
+            callback=_callback_factory(cmd_name, log_level_flags, log_format_flags),
+            help=help_text,
+            context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+            underlying=cmd_obj,
+        )
+        dagster_commands.add_command(cmd)
 
 
 # Register dg commands at import time so they appear in 'kedro dagster --help'
