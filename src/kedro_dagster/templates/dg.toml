@@ -2,6 +2,7 @@
 directory_type = "project"
 
 [project]
+
 root_module = {{ project_name }}
 code_location_target_module = "{{ project_name }}.definitions"
 
@@ -38,31 +39,5 @@ suppress_warnings = [
     "project_and_activated_venv_mismatch",
 ]
 
-# Telemetry-related settings.
-[cli.telemetry]
-
-# (bool, optional) Specifies whether to enable telemetry.
-#
-# Defaults to `true`.
-# Commented out as it will make config validation crash: https://github.com/dagster-io/dagster/issues/32728
-# enabled = true
-
-# The `cli.plus` section is a replacement for `.dagster_cloud_cli.yaml`. The
-# settings here are required to run `dg plus` commands.
-[cli.plus]
-
-# (string, optional) Your Dagster Plus organization, to run dg plus commands against.
-#
-# Defaults to None.
-# organization = "kedro"
-
-# (string, optional) The default deployment to run commands against, if another
-# deployment is not explicitly specified
-#
-# Defaults to None.
-# default_deployment = "prod"
-
-# (optional, str) A Dagster Plus user token to authenticate to your organization
-#
-# Defaults to None.
-# user_token = "user:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# For a list of other valid config parameters
+# See https://docs.dagster.io/api/clis/dg-cli/dg-cli-configuration

@@ -31,17 +31,21 @@ DAGSTER_ALLOWED_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
 KEDRO_DAGSTER_SEPARATOR = "__"
 
 
-def _kedro_version() -> tuple[int, int, int]:
-    """Return Kedro version as a tuple: (major, minor, patch).
+def _get_version(package: str) -> tuple[int, int, int]:
+    """Return a package version as a tuple: (major, minor, patch).
 
-    Falls back to (0, 0, 0) when Kedro cannot be imported or the
-    version string cannot be parsed. This avoids importing heavy
-    Kedro internals and relies on the ``__version__`` attribute
-    being present on the top-level package across versions.
+    Falls back to (0, 0, 0) when the package cannot be imported or the
+    version string cannot be parsed. This avoids importing heavy internals
+    and relies on the ``__version__`` attribute being present on the
+    top-level package across versions.
     """
-    kedro = importlib.import_module("kedro")
-    version_str = str(getattr(kedro, "__version__", "0.0.0"))
-    # Kedro uses strict SemVer: X.Y.Z[...]
+    try:
+        module = importlib.import_module(package)
+    except Exception:
+        return 0, 0, 0  # pragma: no cover
+
+    version_str = str(getattr(module, "__version__", "0.0.0"))
+    # Most libraries (including Kedro and Dagster) use SemVer: X.Y.Z[...]
     m = re.match(r"^(\d+)\.(\d+)\.(\d+)", version_str)
     if m:
         return int(m.group(1)), int(m.group(2)), int(m.group(3))
@@ -49,8 +53,9 @@ def _kedro_version() -> tuple[int, int, int]:
     return 0, 0, 0  # pragma: no cover
 
 
-# Call the helper once and expose a module-level constant for importers.
-KEDRO_VERSION = _kedro_version()
+# Compute and expose module-level constants for importers.
+KEDRO_VERSION = _get_version("kedro")
+DAGSTER_VERSION = _get_version("dagster")
 
 
 def find_kedro_project(current_dir: Path) -> Path | None:
