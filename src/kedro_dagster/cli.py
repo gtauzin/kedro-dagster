@@ -254,7 +254,7 @@ if DAGSTER_VERSION >= (1, 10, 6):
     # Register dg commands at import time so they appear in 'kedro dagster --help'
     _register_dg_commands()
 
-else:
+else:  # pragma: no cover
 
     @dagster_commands.command()
     @click.option(
