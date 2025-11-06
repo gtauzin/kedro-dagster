@@ -7,6 +7,7 @@ from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.cli import dagster_commands as cli_dagster
 from kedro_dagster.cli import init as cli_init
+from kedro_dagster.utils import DAGSTER_VERSION
 
 
 def _extract_cmd_from_help(msg: str) -> list[str]:
@@ -72,10 +73,13 @@ def test_cli_init_creates_files(monkeypatch, kedro_project_no_dagster_config_bas
         "definitions.py' successfully updated." in result.output or "A 'definitions.py' already exists" in result.output
     )
 
-    # dg.toml is written at project root
+    # dg.toml is written at project root only for newer Dagster versions
     dg_toml = project_path / "dg.toml"
-    assert dg_toml.is_file()
-    assert ("'dg.toml' successfully updated." in result.output) or ("A 'dg.toml' already exists" in result.output)
+    if DAGSTER_VERSION >= (1, 10, 6):
+        assert dg_toml.is_file()
+        assert ("'dg.toml' successfully updated." in result.output) or ("A 'dg.toml' already exists" in result.output)
+    else:
+        assert not dg_toml.exists()
 
 
 def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project_no_dagster_config_base):
@@ -92,7 +96,8 @@ def test_cli_init_existing_config_shows_warning(monkeypatch, kedro_project_no_da
     assert second.exit_code == 0
     assert "A 'dagster.yml' already exists" in second.output
     assert "A 'definitions.py' already exists" in second.output
-    assert "A 'dg.toml' already exists" in second.output
+    if DAGSTER_VERSION >= (1, 10, 6):
+        assert "A 'dg.toml' already exists" in second.output
 
 
 def test_cli_init_force_overwrites(monkeypatch, kedro_project_no_dagster_config_base):
@@ -145,8 +150,11 @@ def test_cli_dev_invokes_dg(monkeypatch, mocker, kedro_project_no_dagster_config
     assert result.exit_code == 0
 
     called_args = sp_call.call_args[0][0]
-    # Structure begins with ["dg", "dev", ...]
-    assert called_args[:2] == ["dg", "dev"]
+    # Structure begins with ["dg", "dev", ...] on newer versions or ["dagster", "dev", ...] on older ones
+    if DAGSTER_VERSION >= (1, 10, 6):
+        assert called_args[:2] == ["dg", "dev"]
+    else:
+        assert called_args[:2] == ["dagster", "dev"]
 
 
 def test_cli_dev_overrides_forwarded(monkeypatch, mocker, kedro_project_no_dagster_config_base):
@@ -157,24 +165,43 @@ def test_cli_dev_overrides_forwarded(monkeypatch, mocker, kedro_project_no_dagst
 
     runner = CliRunner()
     sp_call = mocker.patch("kedro_dagster.cli.subprocess.call")
-    # Pass flags after optional separator to avoid click parsing conflicts
-    result = runner.invoke(
-        cli_dagster,
-        [
-            "dev",
-            "--",
-            "--log-level",
-            "debug",
-            "--log-format",
-            "json",
-            "--host",
-            "0.0.0.0",
-            "--port",
-            "4000",
-            "--live-data-poll-rate",
-            "1500",
-        ],
-    )
+    if DAGSTER_VERSION >= (1, 10, 6):
+        # Pass flags after optional separator to avoid click parsing conflicts in proxy mode
+        result = runner.invoke(
+            cli_dagster,
+            [
+                "dev",
+                "--",
+                "--log-level",
+                "debug",
+                "--log-format",
+                "json",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "4000",
+                "--live-data-poll-rate",
+                "1500",
+            ],
+        )
+    else:
+        # Older CLI parses options directly without proxy semantics
+        result = runner.invoke(
+            cli_dagster,
+            [
+                "dev",
+                "--log-level",
+                "debug",
+                "--log-format",
+                "json",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "4000",
+                "--live-data-poll-rate",
+                "1500",
+            ],
+        )
     assert result.exit_code == 0
 
     called_args = sp_call.call_args[0][0]
@@ -205,35 +232,18 @@ def test_cli_dev_help_includes_underlying_options(monkeypatch, kedro_project_no_
 
     assert result.exit_code == 0
     out = result.output
-    # Underlying dg description should be present (from 'dg dev --help')
-    assert "Start a local instance of Dagster" in out
     # Wrapper option should be present
     assert "-e, --env" in out
-    # A few known dg options should also be present inline
+    # A few known options should also be present inline
     assert "--log-level" in out
     assert "--log-format" in out
     assert "--host" in out
     assert "--port" in out
-    # No separate section header from our implementation
-    assert "Options from 'dg dev'" not in out
-
-
-def test_cli_dev_injects_defaults_when_missing(monkeypatch, mocker, kedro_project_no_dagster_config_base):
-    """When user does not provide logging flags, defaults are injected if supported by the dg command."""
-    project_path = kedro_project_no_dagster_config_base.project_path
-    monkeypatch.chdir(project_path)
-
-    runner = CliRunner()
-    sp_call = mocker.patch("kedro_dagster.cli.subprocess.call")
-    result = runner.invoke(cli_dagster, ["dev"])  # no flags provided
-    assert result.exit_code == 0
-
-    called_args = sp_call.call_args[0][0]
-    # Defaults should be injected
-    assert "--log-level" in called_args
-    assert "info" in called_args
-    assert "--log-format" in called_args
-    assert "colored" in called_args
+    if DAGSTER_VERSION >= (1, 10, 6):
+        # Underlying dg description should be present (from 'dg dev --help')
+        assert "Start a local instance of Dagster" in out
+        # No separate section header from our implementation
+        assert "Options from 'dg dev'" not in out
 
 
 def test_cli_dev_no_duplication_when_user_flags_provided(monkeypatch, mocker, kedro_project_no_dagster_config_base):

@@ -228,20 +228,8 @@ if DAGSTER_VERSION >= (1, 10, 6):
                         env_vars["KEDRO_ENV"] = env
                         env_vars["KEDRO_PROJECT_PATH"] = str(project_path)
 
-                        # Build forwarded args and inject defaults if needed
-                        forwarded = list(args)
-
-                        def _has_flag(flags: set[str]) -> bool:
-                            if not flags:
-                                return False
-                            for f in flags:
-                                for a in forwarded:
-                                    if a == f or (f.startswith("--") and a.startswith(f + "=")):
-                                        return True
-                            return False
-
                         # Execute the original 'dg' command, forwarding all extra args
-                        subprocess.call(["dg", name, *forwarded], cwd=str(project_path), env=env_vars)
+                        subprocess.call(["dg", name, *args], cwd=str(project_path), env=env_vars)
 
                 return _callback
 
