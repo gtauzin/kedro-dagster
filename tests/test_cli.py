@@ -471,10 +471,8 @@ def test_cli_dev_old_branch_invokes_dagster(monkeypatch, mocker, kedro_project_n
         assert kwargs["cwd"] == str(project_path)
         assert kwargs["env"]["KEDRO_ENV"] == kedro_project_no_dagster_config_base.env
     finally:
-        try:
-            setattr(utils, "DAGSTER_VERSION", original_version)
-        except Exception:
-            pass
+        setattr(utils, "DAGSTER_VERSION", original_version)
+
         sys.modules.pop("kedro_dagster.cli", None)
         cli_mod = importlib.import_module("kedro_dagster.cli")
         importlib.reload(cli_mod)
@@ -522,10 +520,8 @@ def test_cli_dev_old_branch_from_subdir(monkeypatch, mocker, kedro_project_no_da
         assert kwargs["cwd"] == str(project_path)
         assert kwargs["env"]["KEDRO_ENV"] == kedro_project_no_dagster_config_base.env
     finally:
-        try:
-            setattr(utils, "DAGSTER_VERSION", original_version)
-        except Exception:
-            pass
+        setattr(utils, "DAGSTER_VERSION", original_version)
+
         sys.modules.pop("kedro_dagster.cli", None)
         cli_mod = importlib.import_module("kedro_dagster.cli")
         importlib.reload(cli_mod)
