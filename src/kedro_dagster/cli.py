@@ -203,8 +203,8 @@ if DAGSTER_VERSION >= (1, 10, 6):
                             rows.append(rec)
                 if rows:
                     formatter.write_dl(rows)
-            except Exception:
-                # Be defensive—if the underlying command structure changes, don't break help output
+            except Exception:  # pragma: no cover
+                # If the underlying command structure changes, don't break help output
                 pass
 
     def _register_dg_commands() -> None:
@@ -223,11 +223,9 @@ if DAGSTER_VERSION >= (1, 10, 6):
 
         # Skip commands we already expose explicitly in this group
         existing = set(getattr(dagster_commands, "commands", {}).keys())
+        wrapped_command_names = [cmf for cmf in dg_command_names if cmf not in existing]
 
-        for cmd_name in dg_command_names:
-            if cmd_name in existing:
-                continue
-
+        for cmd_name in wrapped_command_names:
             cmd_obj = dg_root.commands[cmd_name]
 
             def _callback_factory(name: str) -> Any:

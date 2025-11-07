@@ -1,5 +1,6 @@
 import re
 
+import click
 import pytest
 from click.testing import CliRunner
 from kedro.framework.cli.cli import info
@@ -8,6 +9,9 @@ from kedro.framework.startup import bootstrap_project
 from kedro_dagster.cli import dagster_commands as cli_dagster
 from kedro_dagster.cli import init as cli_init
 from kedro_dagster.utils import DAGSTER_VERSION
+
+if DAGSTER_VERSION >= (1, 10, 6):
+    from kedro_dagster.cli import DgProxyCommand
 
 
 def _extract_cmd_from_help(msg: str) -> list[str]:
@@ -286,3 +290,33 @@ def test_cli_plugin_shows_in_info(monkeypatch, tmp_path):
     result = runner.invoke(info)
     assert result.exit_code == 0
     assert "kedro_dagster" in result.output
+
+
+def test_dg_proxy_help_handles_missing_underlying_command(monkeypatch):
+    """Help rendering should not fail when the proxy has no underlying click.Command."""
+    if DAGSTER_VERSION < (1, 10, 6):
+        pytest.skip("DgProxyCommand is only defined for Dagster >= 1.10.6")
+
+    # Build a minimal proxy command with an invalid underlying_cmd (None)
+    proxy_cmd = DgProxyCommand(
+        name="dummy",
+        params=[
+            click.Option(["--env", "-e"], required=False, default="local", help="The Kedro environment to use"),
+            click.Argument(["args"], nargs=-1, type=click.UNPROCESSED),
+        ],
+        callback=lambda env, args: None,
+        help="Dummy proxy",
+        context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+        underlying_cmd=None,  # triggers the isinstance(self._underlying_cmd, click.Command) == False branch
+    )
+
+    # Mount the command under a temporary group and request help
+    grp = click.Group()
+    grp.add_command(proxy_cmd)
+
+    runner = CliRunner()
+    result = runner.invoke(grp, ["dummy", "--help"])
+
+    # Should succeed and include our wrapper option; importantly, it should not crash
+    assert result.exit_code == 0
+    assert "-e, --env" in result.output
