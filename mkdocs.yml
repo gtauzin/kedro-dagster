@@ -108,8 +108,6 @@ plugins:
               ignore_init_summary: true
               warn_unknown_params: false
               returns_named_value: false
-            extra:
-              show_source_code: false
           paths: [src]
 
 extra:

@@ -39,9 +39,9 @@ alternatively, you can install it from GitHub:
 pip install --upgrade git+https://github.com/gtauzin/kedro-dagster.git
 ```
 
-## 3. Initialize the Dagster integration
+## 3. Initialize the Kedro-Dagster plugin
 
-Use [`kedro dagster init`](api.md#kedro-dagster-init) to initialize Kedro‑Dagster:
+Use [`kedro dagster init`](reference.md#kedro-dagster-init) to initialize Kedro‑Dagster:
 
 ```bash
 kedro dagster init --env local
@@ -114,7 +114,7 @@ See the [Technical documentation](technical.md) for more on customizing the Dags
 
 ## 5. Browse the Dagster UI
 
-Use [`kedro dagster dev`](api.md#kedro-dagster-dev) to start the Dagster development server:
+Use [`kedro dagster dev`](reference.md#kedro-dagster-dev) to start the Dagster development server:
 
 ```bash
 kedro dagster dev --env local
@@ -134,7 +134,7 @@ Moving to the "Assets" tab leads to the list of assets generated from the Kedro 
 <figcaption>Asset List.</figcaption>
 </figure>
 
-Each asset is prefixed by the Kedro environment that was passed to the [`KedroProjectTranslator`](api.md#kedroprojecttranslator) in [`definitions.py`](technical.md#definitionspy). If the Kedro dataset was generated from a [dataset factory](https://docs.kedro.org/en/stable/data/kedro_dataset_factories.html), the namespace that prefixed its name will also appear as a prefix, allowing easy browsing of assets per environment and per namespace.
+Each asset is prefixed by the Kedro environment that was passed to the [`KedroProjectTranslator`](reference.md#kedroprojecttranslator) in [`definitions.py`](technical.md#definitionspy). If the Kedro dataset was generated from a [dataset factory](https://docs.kedro.org/en/stable/data/kedro_dataset_factories.html), the namespace that prefixed its name will also appear as a prefix, allowing easy browsing of assets per environment and per namespace.
 
 Clicking on the "Asset lineage" link at the top right of the window leads to the Dagster asset lineage graph, where you can observe the dependencies between assets and check their status and description.
 
