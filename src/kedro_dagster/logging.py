@@ -35,17 +35,17 @@ def getLogger(name: str | None = None) -> _logging.Logger:
         logging.Logger: A standard logger instance. When a Dagster run is
         active, this is backed by Dagster's logging machinery.
     """
-    logger: _logging.Logger
     try:
         # If there's an active Dagster context, this will succeed
         context = dg.OpExecutionContext.get()
         if context:
-            logger = dg.get_dagster_logger(name)
+            logger: _logging.Logger = dg.get_dagster_logger(name)
+            return logger
     except Exception:
-        # Otherwise, fall back to Python logging
-        logger = _logging.getLogger(name)
+        pass
 
-    return logger
+    # Otherwise, fall back to Python logging
+    return _logging.getLogger(name)
 
 
 # Re-export the standard logging API for convenience so users can
