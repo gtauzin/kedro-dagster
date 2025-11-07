@@ -1,4 +1,6 @@
+import importlib
 import re
+import sys
 
 import click
 import pytest
@@ -6,6 +8,7 @@ from click.testing import CliRunner
 from kedro.framework.cli.cli import info
 from kedro.framework.startup import bootstrap_project
 
+from kedro_dagster import utils
 from kedro_dagster.cli import dagster_commands as cli_dagster
 from kedro_dagster.cli import init as cli_init
 from kedro_dagster.utils import DAGSTER_VERSION
@@ -362,3 +365,40 @@ def test_dg_proxy_help_skips_non_parameter_entries(monkeypatch):
     assert "--alpha" in result.output
     # Nothing from the bogus object (can't really assert absence of random strings, but ensure no traceback)
     assert "Traceback" not in result.output
+
+
+def test_cli_version_gate_old_branch_with_reload(monkeypatch):
+    """Monkeypatch DAGSTER_VERSION to older than 1.10.6 and reload cli to cover the else branch.
+
+    This ensures the top-level version gate is exercised for the False outcome and that
+    the legacy 'dev' command (direct dagster CLI) is available with its options.
+    """
+    original_version = utils.DAGSTER_VERSION
+    try:
+        # Force older version and reload CLI module
+        monkeypatch.setattr(utils, "DAGSTER_VERSION", (1, 10, 5), raising=False)
+        sys.modules.pop("kedro_dagster.cli", None)
+        cli_mod = importlib.import_module("kedro_dagster.cli")
+        importlib.reload(cli_mod)
+
+        runner = CliRunner()
+        result = runner.invoke(cli_mod.dagster_commands, ["dev", "--help"])  # legacy dev is defined in else-branch
+        assert result.exit_code == 0
+        out = result.output
+        # Wrapper option
+        assert "-e, --env" in out
+        # Legacy options should be present
+        assert "--log-level" in out
+        assert "--log-format" in out
+        assert "--host" in out
+        assert "--port" in out
+        assert "--live-data-poll-rate" in out
+    finally:
+        # Restore original version and reload CLI to avoid side effects on other tests
+        try:
+            setattr(utils, "DAGSTER_VERSION", original_version)
+        except Exception:
+            pass
+        sys.modules.pop("kedro_dagster.cli", None)
+        cli_mod = importlib.import_module("kedro_dagster.cli")
+        importlib.reload(cli_mod)
