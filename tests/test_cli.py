@@ -402,3 +402,130 @@ def test_cli_version_gate_old_branch_with_reload(monkeypatch):
         sys.modules.pop("kedro_dagster.cli", None)
         cli_mod = importlib.import_module("kedro_dagster.cli")
         importlib.reload(cli_mod)
+
+
+def _assert_args_map(called_args: list[str]) -> dict[str, str]:
+    return {
+        called_args[i]: called_args[i + 1]
+        for i in range(2, len(called_args))
+        if str(called_args[i]).startswith("--")
+        and i + 1 < len(called_args)
+        and not str(called_args[i + 1]).startswith("--")
+    }
+
+
+def test_cli_dev_old_branch_invokes_dagster(monkeypatch, mocker, kedro_project_no_dagster_config_base):
+    """Under old CLI branch, 'kedro dagster dev' should call 'dagster dev' with provided flags and env."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    monkeypatch.chdir(project_path)
+
+    original_version = utils.DAGSTER_VERSION
+    try:
+        monkeypatch.setattr(utils, "DAGSTER_VERSION", (1, 10, 5), raising=False)
+        importlib.import_module("kedro_dagster.cli")  # ensure present to pop
+        sys.modules.pop("kedro_dagster.cli", None)
+        cli_mod = importlib.import_module("kedro_dagster.cli")
+        importlib.reload(cli_mod)
+
+        sp_call = mocker.patch("kedro_dagster.cli.subprocess.call")
+        runner = CliRunner()
+        result = runner.invoke(
+            cli_mod.dagster_commands,
+            [
+                "dev",
+                "-e",
+                kedro_project_no_dagster_config_base.env,
+                "--log-level",
+                "info",
+                "--log-format",
+                "json",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "1234",
+                "--live-data-poll-rate",
+                "10",
+            ],
+        )
+        assert result.exit_code == 0
+
+        # Verify subprocess call
+        called_args = sp_call.call_args[0][0]
+        assert called_args[:2] == ["dagster", "dev"]
+        # Ensure python-file path points to the definitions file in project src
+        assert "--python-file" in called_args
+        py_idx = called_args.index("--python-file") + 1
+        defs_path = called_args[py_idx]
+        assert str(defs_path).startswith(str(project_path / "src"))
+        assert str(defs_path).endswith("definitions.py")
+
+        args_map = _assert_args_map(called_args)
+        assert args_map["--log-level"] == "info"
+        assert args_map["--log-format"] == "json"
+        assert args_map["--host"] == "0.0.0.0"
+        assert args_map["--port"] == "1234"
+        assert args_map["--live-data-poll-rate"] == "10"
+
+        # Verify env and cwd passed to subprocess
+        kwargs = sp_call.call_args[1]
+        assert kwargs["cwd"] == str(project_path)
+        assert kwargs["env"]["KEDRO_ENV"] == kedro_project_no_dagster_config_base.env
+    finally:
+        try:
+            setattr(utils, "DAGSTER_VERSION", original_version)
+        except Exception:
+            pass
+        sys.modules.pop("kedro_dagster.cli", None)
+        cli_mod = importlib.import_module("kedro_dagster.cli")
+        importlib.reload(cli_mod)
+
+
+@pytest.mark.parametrize("inside_subdirectory", (True, False))
+def test_cli_dev_old_branch_from_subdir(monkeypatch, mocker, kedro_project_no_dagster_config_base, inside_subdirectory):
+    """Old branch must work regardless of being run from project root or src/ subdir."""
+    project_path = kedro_project_no_dagster_config_base.project_path
+    cwd = project_path / "src" if inside_subdirectory else project_path
+    monkeypatch.chdir(cwd)
+
+    original_version = utils.DAGSTER_VERSION
+    try:
+        monkeypatch.setattr(utils, "DAGSTER_VERSION", (1, 10, 5), raising=False)
+        sys.modules.pop("kedro_dagster.cli", None)
+        cli_mod = importlib.import_module("kedro_dagster.cli")
+        importlib.reload(cli_mod)
+
+        sp_call = mocker.patch("kedro_dagster.cli.subprocess.call")
+        runner = CliRunner()
+        result = runner.invoke(
+            cli_mod.dagster_commands,
+            [
+                "dev",
+                "-e",
+                kedro_project_no_dagster_config_base.env,
+                "--log-level",
+                "debug",
+                "--log-format",
+                "color",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "5678",
+                "--live-data-poll-rate",
+                "5",
+            ],
+        )
+        assert result.exit_code == 0
+
+        called_args = sp_call.call_args[0][0]
+        assert called_args[:2] == ["dagster", "dev"]
+        kwargs = sp_call.call_args[1]
+        assert kwargs["cwd"] == str(project_path)
+        assert kwargs["env"]["KEDRO_ENV"] == kedro_project_no_dagster_config_base.env
+    finally:
+        try:
+            setattr(utils, "DAGSTER_VERSION", original_version)
+        except Exception:
+            pass
+        sys.modules.pop("kedro_dagster.cli", None)
+        cli_mod = importlib.import_module("kedro_dagster.cli")
+        importlib.reload(cli_mod)
