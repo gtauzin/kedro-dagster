@@ -48,7 +48,7 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 
 - [Project configuration](pages/technical.md#project-configuration)
 - [Kedro-Dagster concept mapping](pages/technical.md#kedro-dagster-concept-mapping)
-- [Compatibility issues between Kedro and Dagster](pages/technical.md#compatibility-issues-between-kedro-and-dagster)
+- [Compatibility notes between Kedro and Dagster](pages/technical.md#compatibility-notes-between-kedro-and-dagster)
 
 ### [Reference](pages/reference.md)
 

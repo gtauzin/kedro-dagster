@@ -320,3 +320,45 @@ def test_dg_proxy_help_handles_missing_underlying_command(monkeypatch):
     # Should succeed and include our wrapper option; importantly, it should not crash
     assert result.exit_code == 0
     assert "-e, --env" in result.output
+
+
+def test_dg_proxy_help_skips_non_parameter_entries(monkeypatch):
+    """Ensure format_options silently skips objects in underlying_cmd.params that aren't click.Parameter."""
+    if DAGSTER_VERSION < (1, 10, 6):
+        pytest.skip("DgProxyCommand only defined for Dagster >= 1.10.6")
+
+    class DummyUnderlying(click.Command):
+        def __init__(self) -> None:
+            super().__init__(name="dummy_underlying")
+            # Inject mixed params: one real option + one bogus object
+            self.params = [
+                click.Option(["--alpha"], help="Alpha option"),  # valid
+                object(),  # invalid (will be skipped by isinstance check)
+            ]
+
+    underlying = DummyUnderlying()
+
+    proxy_cmd = DgProxyCommand(
+        name="dummy2",
+        params=[
+            click.Option(["--env", "-e"], required=False, default="local", help="The Kedro environment to use"),
+            click.Argument(["args"], nargs=-1, type=click.UNPROCESSED),
+        ],
+        callback=lambda env, args: None,
+        help="Dummy proxy 2",
+        context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+        underlying_cmd=underlying,
+    )
+
+    grp = click.Group()
+    grp.add_command(proxy_cmd)
+    runner = CliRunner()
+    result = runner.invoke(grp, ["dummy2", "--help"])
+
+    assert result.exit_code == 0
+    # Wrapper option present
+    assert "-e, --env" in result.output
+    # Real underlying option appears
+    assert "--alpha" in result.output
+    # Nothing from the bogus object (can't really assert absence of random strings, but ensure no traceback)
+    assert "Traceback" not in result.output
