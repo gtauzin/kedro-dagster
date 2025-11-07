@@ -17,7 +17,7 @@ class ScheduleOptions(BaseModel):
         description (str | None): Optional description of the schedule.
         metadata (dict[str, Any] | None): Additional metadata for the schedule.
 
-    Example YAML snippet:
+    Example:
 
         ```yaml
         schedules:

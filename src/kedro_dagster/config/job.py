@@ -28,7 +28,7 @@ class PipelineOptions(BaseModel):
             versions, it is "node_namespace" (singular string).
         tags (list[str] | None): List of tags to filter nodes by.
 
-    Example YAML snippet:
+    Example:
 
     ```yaml
     jobs:
@@ -73,7 +73,7 @@ class JobOptions(BaseModel):
         executor (ExecutorOptions | str | None): ExecutorOptions instance or string key referencing an executor.
         schedule (ScheduleOptions | str | None): ScheduleOptions instance or string key referencing a schedule.
 
-    Example YAML snippet:
+    Example:
 
     ```yaml
     jobs:

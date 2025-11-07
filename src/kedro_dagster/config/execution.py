@@ -18,7 +18,7 @@ class InProcessExecutorOptions(BaseModel):
     Attributes:
         retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
 
-    Example YAML snippet:
+    Example:
 
         ```yaml
         executors:
@@ -55,7 +55,7 @@ class MultiprocessExecutorOptions(InProcessExecutorOptions):
         retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
         max_concurrent (int): Maximum number of concurrent processes.
 
-    Example YAML snippet:
+    Example:
 
         ```yaml
         executors:
@@ -115,7 +115,7 @@ class DaskExecutorOptions(BaseModel):
     Attributes:
         cluster (DaskClusterConfig): Configuration for the Dask cluster.
 
-    Example YAML snippet:
+    Example:
 
         ```yaml
         executors:
@@ -149,7 +149,7 @@ class DockerExecutorOptions(MultiprocessExecutorOptions):
         container_kwargs (dict[str, Any] | None): Key-value pairs for containers.create.
         networks (list[str]): Names of the networks to connect the container at creation time.
 
-    Example YAML snippet:
+    Example:
 
         ```yaml
         executors:
@@ -206,7 +206,7 @@ class CeleryExecutorOptions(BaseModel):
         config_source (dict[str, Any] | None): Additional settings for the Celery app.
         retries (int | None): Number of retries for the Celery tasks.
 
-    Example YAML snippet:
+    Example:
 
         ```yaml
         executors:
@@ -262,7 +262,7 @@ class CeleryDockerExecutorOptions(CeleryExecutorOptions, DockerExecutorOptions):
         max_concurrent (int | None): Maximum number of concurrent processes.
         retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
 
-    Example YAML snippet:
+    Example:
 
         ```yaml
         executors:
@@ -365,7 +365,7 @@ class K8sJobExecutorOptions(MultiprocessExecutorOptions):
         scheduler_name (str | None): Custom Kubernetes scheduler for Pods.
         security_context (dict[str, str]): Security settings for the container.
 
-    Example YAML snippet:
+    Example:
 
         ```yaml
         executors:
@@ -494,7 +494,7 @@ class CeleryK8sJobExecutorOptions(CeleryExecutorOptions, K8sJobExecutorOptions):
         security_context (dict[str, str]): Security settings for the container.
         job_wait_timeout (float): Wait time in seconds for a job to complete before marking as failed.
 
-    Example YAML snippet:
+    Example:
 
         ```yaml
         executors:
