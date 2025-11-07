@@ -43,7 +43,15 @@ Additionally, the project features:
 
    You do not need to run `kedro dagster init` for this repo; `definitions.py` and per‑environment `conf/<ENV>/dagster.yml` are already present.
 
-5. **Explore pipelines in Dagster UI**:
+5. **List generated Dagster definitions** for each Kedro environment.
+
+   For the `local` environment:
+
+   ```bash
+   kedro dagster list defs --env "local"
+   ```
+
+6. **Explore pipelines in Dagster UI**:
 
    ```bash
    kedro dagster dev -e "local"

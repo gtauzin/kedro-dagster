@@ -26,7 +26,21 @@ if Dagster version >= 1.10.6, the command maps to the more recente `dg dev` Dags
 
 ### CLI wrappers for Dagster `dg` commands
 
-Kedro-Dagster also provides wrappers around several Dagster CLI commands to facilitate working within a Kedro project context. These commands automatically load the Kedro project and its configuration.
+Kedro-Dagster also provides wrappers around all [Dagster `dg`](https://docs.dagster.io/api/clis/dg-cli/dg-cli-reference) CLI commands to facilitate working within a Kedro project context. These commands are extended to include an `--env, -e` option to automatically load the Kedro project and the configuration associated with the specified Kedro environment.
+
+**Examples:**
+
+This command lists all Dagster assets, jobs, sensors, and resources generated from the Kedro pipelines in the project, using the `local` Kedro environment for configuration:
+
+```bash
+kedro dagster list defs --env=local
+```
+
+This command launches an asset jobs to materialized the specified assets defined in the 'local' Kedro environment:
+
+```bash
+kedro dagster launch --assets local/price_predictor/preprocessed_shuttles --env=local
+```
 
 ## Kedro-Dagster API
 
