@@ -25,7 +25,7 @@ from typing import Any
 import dagster as dg
 
 
-def getLogger(name: str | None = None) -> _logging.Logger:  # noqa: N802 (match stdlib name)
+def getLogger(name: str | None = None) -> _logging.Logger:
     """Return a logger, preferring Dagster's logger when a run is active.
 
     Args:
