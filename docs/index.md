@@ -30,7 +30,7 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 
 - [1. Create a Kedro project (Optional)](pages/getting-started.md#1-create-a-kedro-project-optional)
 - [2. Installation](pages/getting-started.md#2-installation)
-- [3. Initialize Dagster integration](pages/getting-started.md#3-initialize-dagster-integration)
+- [3. Initialize the Kedro-Dagster plugin](pages/getting-started.md#3-initialize-the-kedro-dagster-plugin)
 - [4. Configure jobs, executors, and schedules](pages/getting-started.md#4-configure-jobs-executors-and-schedules)
 - [5. Browse the Dagster UI](pages/getting-started.md#5-browse-the-dagster-ui)
 
@@ -48,17 +48,14 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 
 - [Project configuration](pages/technical.md#project-configuration)
 - [Kedro-Dagster concept mapping](pages/technical.md#kedro-dagster-concept-mapping)
-- [Compatibility issues between Kedro and Dagster](pages/technical.md#compatibility-issues-between-kedro-and-dagster)
+- [Compatibility notes between Kedro and Dagster](pages/technical.md#compatibility-notes-between-kedro-and-dagster)
 
-### [API reference](pages/api.md)
+### [Reference](pages/reference.md)
 
-  *Detailed reference for the Kedro-Dagster API, including classes, functions, and configuration options.*
+  *Detailed reference for the Kedro-Dagster CLI and API, including classes, functions, and configuration options.*
 
-- [Command Line Interface](pages/api.md#command-line-interface)
-- [Configuration](pages/api.md#configuration)
-- [Translation modules](pages/api.md#translation-modules)
-- [Datasets](pages/api.md#datasets)
-- [Utilities](pages/api.md#utilities)
+- [Kedro-Dagster CLI](pages/reference.md#kedro-dagster-cli)
+- [Kedro-Dagster API](pages/reference.md#kedro-dagster-api)
 
 ## License
 

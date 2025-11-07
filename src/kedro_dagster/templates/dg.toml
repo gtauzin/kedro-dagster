@@ -1,0 +1,25 @@
+# ("project", required) Marks this as a Dagster project.
+directory_type = "project"
+
+[project]
+
+root_module = {{ project_name }}
+code_location_target_module = "{{ project_name }}.definitions"
+
+# (string, optional) Specifies the project submodule where new components and
+# definitions are scaffolded.
+#
+# Defaults to `<root_module>.defs`.
+# dg expects it but kedro-dagster just generate a simple definitions.py so we
+# use instead the root_module
+defs_module = "kedro_dagster_example"
+
+# (string, optional) Specifies the name used for the code location when the project is
+# loaded as a code location.
+#
+# Defaults to the project name (which is usually the # hyphenated variant of
+# the root module name).
+code_location_name = "{{ package_name }}"
+
+# For a list of other valid config parameters
+# See https://docs.dagster.io/api/clis/dg-cli/dg-cli-configuration

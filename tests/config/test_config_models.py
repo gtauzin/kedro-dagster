@@ -1,12 +1,9 @@
 # mypy: ignore-errors
 
-from pathlib import Path
-
 import pytest
 from pydantic import ValidationError
 
 from kedro_dagster.config.automation import ScheduleOptions
-from kedro_dagster.config.dev import DevOptions
 from kedro_dagster.config.execution import (
     CeleryDockerExecutorOptions,
     CeleryExecutorOptions,
@@ -19,43 +16,6 @@ from kedro_dagster.config.execution import (
 from kedro_dagster.config.job import JobOptions, PipelineOptions
 from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
 from kedro_dagster.utils import KEDRO_VERSION
-
-
-def test_dev_options_defaults_and_forbid_extra():
-    """DevOptions exposes sensible defaults and forbids unexpected fields."""
-    dev = DevOptions()
-    assert dev.log_level == "info"
-    assert dev.log_format == "colored"
-    assert dev.port == "3000"
-    assert dev.host == "127.0.0.1"
-    assert dev.live_data_poll_rate == "2000"
-
-    with pytest.raises(ValidationError):
-        DevOptions(extra_field=True)
-
-
-def test_dev_options_python_file_property(monkeypatch, tmp_path: Path):
-    """DevOptions.python_file resolves to src/<package>/definitions.py for the project."""
-    # Stub a kedro project layout and metadata so python_file resolves deterministically
-    project_root = tmp_path / "myproj"
-    (project_root / "src" / "my_pkg").mkdir(parents=True)
-    (project_root / "src" / "my_pkg" / "definitions.py").write_text("# defs")
-
-    class DummyMeta:
-        package_name = "my_pkg"
-
-    def fake_find_project(_cwd: Path):
-        return project_root
-
-    def fake_bootstrap(_project_path: Path):
-        return DummyMeta
-
-    # Patch kedro helpers used by DevOptions.python_file
-    monkeypatch.setattr("kedro_dagster.config.dev.find_kedro_project", fake_find_project)
-    monkeypatch.setattr("kedro_dagster.config.dev.bootstrap_project", fake_bootstrap)
-
-    dev = DevOptions()
-    assert dev.python_file == project_root / "src" / "my_pkg" / "definitions.py"
 
 
 def test_schedule_options_happy_path():

@@ -2,6 +2,8 @@
 # Unreleased
 
 ## Major features and improvements
+- Wrap all Dagster `dg` CLI commands to be run from within a Kedro project with `kedro dagster <dg command>`.
+- Remove `dev` config in `dagster.yml`.
 
 ## Bug fixes and other changes
 
@@ -9,6 +11,9 @@
 
 ## Thanks for supporting contributions
 
+[Guillaume Tauzin](https://github.com/gtauzin).
+
+We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
 
 # Release 0.3.0
 

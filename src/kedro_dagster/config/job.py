@@ -27,6 +27,21 @@ class PipelineOptions(BaseModel):
             filter key is "node_namespaces" (plural) and must be a list of strings; for older
             versions, it is "node_namespace" (singular string).
         tags (list[str] | None): List of tags to filter nodes by.
+
+    Example:
+
+    ```yaml
+    jobs:
+      sales_etl:
+        pipeline:
+          pipeline_name: etl
+          node_namespaces: ["sales", "shared"]  # or node_namespace: "sales" for Kedro < 1.0
+          tags: ["daily", "priority"]
+          from_nodes: ["extract_raw_sales"]
+          to_nodes: ["publish_clean_sales"]
+          from_inputs: ["raw_sales"]
+          to_outputs: ["clean_sales"]
+    ```
     """
 
     pipeline_name: str | None = None
@@ -57,6 +72,19 @@ class JobOptions(BaseModel):
         pipeline (PipelineOptions): PipelineOptions specifying which pipeline and nodes to run.
         executor (ExecutorOptions | str | None): ExecutorOptions instance or string key referencing an executor.
         schedule (ScheduleOptions | str | None): ScheduleOptions instance or string key referencing a schedule.
+
+    Example:
+
+    ```yaml
+    jobs:
+      my_data_processing:
+        pipeline:
+          pipeline_name: data_processing
+          node_namespaces: [price_predictor]
+          tags: [test1]
+        executor: multiprocessing   # references an executor name defined under executors:
+        schedule: daily_schedule    # optional, references a schedule name defined under schedules:
+    ```
     """
 
     pipeline: PipelineOptions

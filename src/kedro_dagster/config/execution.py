@@ -17,6 +17,19 @@ class InProcessExecutorOptions(BaseModel):
 
     Attributes:
         retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
+
+    Example:
+
+        ```yaml
+        executors:
+            local_inproc:
+                in_process: {}
+        jobs:
+            my_job:
+                pipeline:
+                    pipeline_name: my_pipeline
+                executor: local_inproc
+        ```
     """
 
     class RetriesEnableOptions(BaseModel):
@@ -41,6 +54,20 @@ class MultiprocessExecutorOptions(InProcessExecutorOptions):
     Attributes:
         retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
         max_concurrent (int): Maximum number of concurrent processes.
+
+    Example:
+
+        ```yaml
+        executors:
+            local_multi:
+                multiprocess:
+                    max_concurrent: 4
+        jobs:
+            heavy_job:
+                pipeline:
+                    pipeline_name: heavy_pipeline
+                executor: local_multi
+        ```
     """
 
     max_concurrent: int = Field(
@@ -87,6 +114,23 @@ class DaskExecutorOptions(BaseModel):
 
     Attributes:
         cluster (DaskClusterConfig): Configuration for the Dask cluster.
+
+    Example:
+
+        ```yaml
+        executors:
+            dask_cluster:
+                dask_executor:
+                    cluster:
+                        local:
+                            n_workers: 4
+                            threads_per_worker: 2
+        jobs:
+            dask_job:
+                pipeline:
+                    pipeline_name: dask_enabled_pipeline
+                executor: dask_cluster
+        ```
     """
 
     cluster: DaskClusterConfig = Field(default=DaskClusterConfig(), description="Configuration for the Dask cluster.")
@@ -104,6 +148,22 @@ class DockerExecutorOptions(MultiprocessExecutorOptions):
         env_vars (list[str]): Environment variables for the container.
         container_kwargs (dict[str, Any] | None): Key-value pairs for containers.create.
         networks (list[str]): Names of the networks to connect the container at creation time.
+
+    Example:
+
+        ```yaml
+        executors:
+            docker_exec:
+                docker_executor:
+                    image: "myrepo/app:latest"
+                    max_concurrent: 3
+                    env_vars: ["ENV=prod", "LOG_LEVEL=INFO"]
+        jobs:
+            docker_job:
+                pipeline:
+                    pipeline_name: batch_pipeline
+                executor: docker_exec
+        ```
     """
 
     image: str | None = Field(
@@ -145,6 +205,23 @@ class CeleryExecutorOptions(BaseModel):
         include (list[str]): List of modules every worker should import.
         config_source (dict[str, Any] | None): Additional settings for the Celery app.
         retries (int | None): Number of retries for the Celery tasks.
+
+    Example:
+
+        ```yaml
+        executors:
+            celery_exec:
+                celery_executor:
+                    broker: "pyamqp://guest@localhost//"
+                    backend: "rpc://"
+                    include: ["my_project.workers"]
+                    retries: 2
+        jobs:
+            async_job:
+                pipeline:
+                    pipeline_name: async_pipeline
+                executor: celery_exec
+        ```
     """
 
     broker: str | None = Field(
@@ -184,6 +261,24 @@ class CeleryDockerExecutorOptions(CeleryExecutorOptions, DockerExecutorOptions):
         networks (list[str]): Names of the networks to connect the container at creation time.
         max_concurrent (int | None): Maximum number of concurrent processes.
         retries (RetriesEnableOptions | RetriesDisableOptions): Retry configuration for the executor.
+
+    Example:
+
+        ```yaml
+        executors:
+            celery_docker_exec:
+                celery_docker_executor:
+                    image: "myrepo/celery-worker:latest"
+                    broker: "redis://redis:6379/0"
+                    backend: "rpc://"
+                    include: ["my_project.workers"]
+                    env_vars: ["WORKER_POOL=default"]
+        jobs:
+            celery_docker_job:
+                pipeline:
+                    pipeline_name: async_docker_pipeline
+                executor: celery_docker_exec
+        ```
     """
 
     pass
@@ -198,6 +293,39 @@ class K8sJobConfig(BaseModel):
         pod_template_spec_metadata (dict[str, Any]): Metadata for the Pod template specification.
         job_spec_config (dict[str, Any]): Configuration for the Job specification.
         job_metadata (dict[str, Any]): Metadata for the Job.
+
+    Example YAML snippet (used inside `k8s_job_executor`):
+
+        ```yaml
+        executors:
+            k8s_exec:
+                k8s_job_executor:
+                    step_k8s_config:
+                        container_config:
+                            image: "python:3.11-slim"
+                            env:
+                                - name: "KEDRO_ENV"
+                                  value: "prod"
+                        pod_spec_config:
+                            nodeSelector:
+                                nodepool: cpu
+                        pod_template_spec_metadata:
+                            labels:
+                                app: dagster-step
+                        job_spec_config:
+                            backoffLimit: 3
+                        job_metadata:
+                            labels:
+                                team: platform
+                    # Optional per-op overrides
+                    per_step_k8s_config:
+                        op_name_overridden:
+                            container_config:
+                                resources:
+                                    limits:
+                                        cpu: "2"
+                                        memory: "2Gi"
+        ```
     """
 
     container_config: dict[str, Any] = Field(default={}, description="Configuration for the Kubernetes container.")
@@ -236,6 +364,31 @@ class K8sJobExecutorOptions(MultiprocessExecutorOptions):
         resources (dict[str, dict[str, str]] | None): Compute resource requirements.
         scheduler_name (str | None): Custom Kubernetes scheduler for Pods.
         security_context (dict[str, str]): Security settings for the container.
+
+    Example:
+
+        ```yaml
+        executors:
+            k8s_exec:
+                k8s_job_executor:
+                    job_namespace: "dagster"
+                    max_concurrent: 2
+                    image_pull_policy: IfNotPresent
+                    resources:
+                        limits:
+                            cpu: "1"
+                            memory: "1Gi"
+                        requests:
+                            cpu: "500m"
+                            memory: "512Mi"
+                    labels:
+                        team: platform
+        jobs:
+            k8s_job:
+                pipeline:
+                    pipeline_name: k8s_pipeline
+                executor: k8s_exec
+        ```
     """
 
     job_namespace: str = Field(default="dagster")
@@ -340,6 +493,25 @@ class CeleryK8sJobExecutorOptions(CeleryExecutorOptions, K8sJobExecutorOptions):
         scheduler_name (str | None): Custom Kubernetes scheduler for Pods.
         security_context (dict[str, str]): Security settings for the container.
         job_wait_timeout (float): Wait time in seconds for a job to complete before marking as failed.
+
+    Example:
+
+        ```yaml
+        executors:
+            celery_k8s_exec:
+                celery_k8s_job_executor:
+                    broker: "pyamqp://guest@broker//"
+                    backend: "rpc://"
+                    job_namespace: "dagster"
+                    job_wait_timeout: 43200
+                    env_vars: ["ENV=prod"]
+                    include: ["my_project.workers"]
+        jobs:
+            celery_k8s_job:
+                pipeline:
+                    pipeline_name: hybrid_async_pipeline
+                executor: celery_k8s_exec
+        ```
     """
 
     job_wait_timeout: float = Field(

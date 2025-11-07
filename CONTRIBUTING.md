@@ -89,7 +89,7 @@ We use a branching model that helps us keep track of branches in a logical, cons
   uv run mkdocs serve
   ```
 
-* API reference and technical documentation are auto-generated from the code and docstrings. Please keep docstrings up to date when contributing code.
+* API and CLI reference can be auto-generated from the code and docstrings but need to be manually added to the docs. Please keep docstrings up to date when contributing code.
 * When adding new features or making changes, update the relevant documentation pages in `docs/pages/` and ensure the navigation in `mkdocs.yml` is correct.
 
 ## Testing
