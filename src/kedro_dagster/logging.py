@@ -35,12 +35,12 @@ def getLogger(name: str | None = None) -> _logging.Logger:  # noqa: N802 (match 
         logging.Logger: A standard logger instance. When a Dagster run is
         active, this is backed by Dagster's logging machinery.
     """
-
+    logger: _logging.Logger
     try:
         # If there's an active Dagster context, this will succeed
         context = dg.OpExecutionContext.get()
         if context:
-            logger: _logging.Logger = dg.get_dagster_logger(name)
+            logger = dg.get_dagster_logger(name)
     except Exception:
         # Otherwise, fall back to Python logging
         logger = _logging.getLogger(name)
