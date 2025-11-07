@@ -41,8 +41,8 @@ def _get_version(package: str) -> tuple[int, int, int]:
     """
     try:
         module = importlib.import_module(package)
-    except Exception:
-        return 0, 0, 0  # pragma: no cover
+    except Exception:  # pragma: no cover
+        return 0, 0, 0
 
     version_str = str(getattr(module, "__version__", "0.0.0"))
     # Most libraries (including Kedro and Dagster) use SemVer: X.Y.Z[...]

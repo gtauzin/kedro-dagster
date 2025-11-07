@@ -21,23 +21,5 @@ defs_module = "kedro_dagster_example"
 # the root module name).
 code_location_name = "{{ package_name }}"
 
-# [cli]
-
-# (bool, optional) Specifies whether to use verbose output.
-#
-# Defaults to `false`.
-# verbose = false
-
-# (list[str], optional) Specifies a list of warning IDs to suppress. Full list of warning IDs can be
-# found here: https://github.com/dagster-io/dagster/blob/master/python_modules/libraries/dagster-dg-core/dagster_dg_core/utils/warnings.py
-# suppress_warnings = [
-#     "cli_config_in_workspace_project",
-#     "deprecated_user_config_location",
-#     "deprecated_python_environment",
-#     "deprecated_dagster_dg_library_entry_point",
-#     "missing_dg_plugin_module_in_manifest",
-#     "project_and_activated_venv_mismatch",
-# ]
-
 # For a list of other valid config parameters
 # See https://docs.dagster.io/api/clis/dg-cli/dg-cli-configuration

@@ -46,8 +46,7 @@ Additionally, the project features:
 5. **Explore pipelines in Dagster UI**:
 
    ```bash
-   export KEDRO_ENV=local
-   kedro dagster dev -e "$KEDRO_ENV"
+   kedro dagster dev -e "local"
    ```
 
    The `dev` environment requires a Postgres database. You can run one locally using Docker:
@@ -85,16 +84,15 @@ This section explains how the example repository is wired to Dagster: environmen
 
 ### Dynamic pipelines
 
-This example builds pipelines dynamically and separates them across environments using the `KEDRO_ENV` environment variable. The selected environment controls which configuration files are loaded from `conf/<ENV>/` and, as a result, which jobs are translated and shown in the Dagster UI.
+This example builds pipelines dynamically and separates them across environments using the `KEDRO_ENV` environment variable that is set at runtime by the Kedro and Kedro-Dagster CLI commands. The selected environment controls which configuration files are loaded from `conf/<ENV>/` and, as a result, which jobs are translated and shown in the Dagster UI.
 
 Use `--env` for Kedro commands and `-e` for the Dagster UI. For example:
 
 ```bash
-export KEDRO_ENV=dev
-kedro dagster dev -e "$KEDRO_ENV"
+kedro dagster dev -e "dev"
 ```
 
-When you launch the UI, Kedro‑Dagster constructs Dagster jobs from the active environment’s `dagster.yml` (filters, executor, schedules) and reads datasets from that environment’s `catalog.yml`. Changing `KEDRO_ENV` switches both the configuration and the set of dynamic pipelines considered, which in turn changes the jobs that appear in the UI.
+When you launch the UI, Kedro‑Dagster constructs Dagster jobs from the active environment’s `dagster.yml` (filters, executor, schedules) and reads datasets from that environment’s `catalog.yml`. Changing the Kedro environment switches both the configuration and the set of dynamic pipelines considered, which in turn changes the jobs that appear in the UI.
 
 Pipelines are built dynamically and parameterized by namespace and tags. Rather than introducing a custom `merge` resolver, parameters are namespaced via YAML inheritance, which keeps the configuration simple and makes per‑environment overrides straightforward. The split of dynamic pipelines across environments is orchestrated in the example’s [`settings.py`](https://github.com/gtauzin/kedro-dagster-example/blob/main/src/kedro_dagster_example/settings.py), which defines which pipelines are active per environment:
 
@@ -207,7 +205,7 @@ jobs:
 
 In practice, each Dagster job is generated from a filtered Kedro pipeline (selected by `pipeline_name` and optionally narrowed by `node_namespaces` or `tags`). The job uses the configured executor (`in_process`, `multiprocess`, and so on). When you run `kedro dagster dev -e local`, the UI listens on `127.0.0.1:3000` and prints colored logs, as specified above.
 
-See also the API reference entries for filtering and execution options: [`PipelineOptions`](api.md#pipelineoptions) and executor models.
+See also the API reference entries for filtering and execution options: [`PipelineOptions`](reference.md#pipelineoptions) and executor models.
 
 ### Partitions in practice
 
@@ -323,7 +321,7 @@ For the `dev` environment you must:
    export POSTGRES_PORT=5432
    ```
 
-3) Set `KEDRO_ENV=dev` and run `kedro dagster dev`
+3) Run `kedro dagster dev`
 
 ### MLflow integration
 
@@ -342,7 +340,6 @@ Additionally, we show how to use MLflow alongside Optuna in a Kedro project thro
 
 ### Common pitfalls and troubleshooting
 
-- `KEDRO_ENV` not set: The UI will default to `local`; explicitly `export KEDRO_ENV=<env>` to match your catalog and `dagster.yml`.
 - Dev database not reachable: Ensure Docker container is up and env vars match `conf/dev/credentials.yml` (example uses `dev_optuna`).
 - UI didn’t reflect config changes: Stop and restart `kedro dagster dev`; some changes aren’t hot‑reloaded by Dagster.
 - Asset names vs Kedro names: Dots in Kedro dataset names become `__` in Dagster; this is expected and reversible.
@@ -352,4 +349,4 @@ Additionally, we show how to use MLflow alongside Optuna in a Kedro project thro
 ## Next steps
 
 - **Technical documentation:** Explore the full [technical documentation](technical.md) for mapping details and configuration models.
-- **API reference:** See the [API reference](api.md) for `PipelineOptions`, executor options, and datasets like `DagsterPartitionedDataset` and `DagsterNothingDataset`.
+- **Reference:** See the [Kedro-Dagster reference](reference.md) for API and CLI details.

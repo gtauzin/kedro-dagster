@@ -1,7 +1,7 @@
 """Configuration definitions for Kedro-Dagster.
 
 This module parses and validates the top-level `dagster.yml` entries, merging
-sub-models for dev options, executors, schedules, and jobs into a single
+sub-models for executors, schedules, and jobs configs into a single
 KedroDagsterConfig object.
 """
 
@@ -23,7 +23,6 @@ class KedroDagsterConfig(BaseModel):
     """Main configuration class representing the `dagster.yml` structure.
 
     Attributes:
-        dev (DevOptions | None): Options for `kedro dagster dev` command.
         executors (dict[str, ExecutorOptions] | None): Mapping of executor names to executor options.
         schedules (dict[str, ScheduleOptions] | None): Mapping of schedule names to schedule options.
         jobs (dict[str, JobOptions] | None): Mapping of job names to job options.

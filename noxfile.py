@@ -101,16 +101,18 @@ def tests_versions(session: nox.Session, dagster_spec: str, kedro_spec: str, wit
     session.run_install(*sync_args, env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location})
 
     # Install specific Kedro / Dagster lines for this run
-    # Keep dagster-webserver aligned with dagster line
-    # TODO
-    # webserver_spec = dagster_spec.replace("dagster", "dagster-webserver", 1)
+    # Keep dagster-webserver and dagster-dg-cli aligned with dagster line
+    webserver_spec = dagster_spec.replace("dagster", "dagster-webserver", 1)
+    dg_cli_spec = dagster_spec.replace("dagster", "dagster-dg-cli", 1)
+
     session.run_install(
         "uv",
         "pip",
         "install",
         kedro_spec,
         dagster_spec,
-        # webserver_spec,
+        webserver_spec,
+        dg_cli_spec,
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
 

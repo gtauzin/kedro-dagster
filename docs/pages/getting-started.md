@@ -120,10 +120,6 @@ Use [`kedro dagster dev`](api.md#kedro-dagster-dev) to start the Dagster develop
 kedro dagster dev --env local
 ```
 
-!!! note
-
-    The `dagster.yml` file also include a **dev** section, containing the default parameters of the command. Check out the [API Reference](api.md#kedro-dagster-dev) for more info.
-
 The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000) by default.
 
 You can inspect assets, jobs, and resources, trigger or automate jobs, and monitor runs from the UI.
@@ -209,4 +205,4 @@ The job can be run by clicking on the "Launchpad" sub-tab. The Kedro pipeline, i
 
 - **Advanced example:** Visit the [example](example.md) section for a more advanced example.
 - **Technical documentation:** Explore the [technical documentation](technical.md) for advanced configuration and customization.
-- **API reference:** See the [API reference](api.md) for details on available classes and functions.
+- **Reference:** See the [Kedro-Dagster reference](reference.md) for details on available classes and functions.

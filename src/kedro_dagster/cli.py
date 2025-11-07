@@ -12,7 +12,6 @@ from kedro.framework.project import settings
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
-from kedro_dagster.config.kedro_dagster import get_dagster_config
 from kedro_dagster.utils import DAGSTER_VERSION, find_kedro_project, write_jinja_template
 
 LOGGER = getLogger(__name__)
@@ -52,15 +51,34 @@ def dagster_commands() -> None:
     help="Should message be logged when files are modified?",
 )
 def init(env: str, force: bool, silent: bool) -> None:
-    """Updates the template of a kedro project.
+    """Scaffold or refresh Dagster integration files for the current Kedro project.
 
-    Running this command is mandatory to use Kedro-Dagster.
+    Creates or updates the Dagster configuration and entry points so the project
+    can be run from Dagster. Existing files are preserved unless ``--force`` is used.
+    The Python package name is inferred from the Kedro project metadata.
 
-    This adds:
-     - "conf/base/dagster.yml": This is a configuration file
-     used for the dagster run parametrization.
-     - "src/<python_package>/definitions.py": This is the
-     dagster file where all dagster definitions are set.
+    Created/updated templates:
+    * ``conf/<env>/dagster.yml`` – Dagster run parametrization for Kedro-Dagster.
+    * ``src/<python_package>/definitions.py`` – Dagster ``Definitions`` entry-point.
+    * ``dg.toml`` – Dagster ``dg`` CLI configuration (Dagster >= 1.10.6 only).
+
+    Args:
+        env (str): Kedro environment under ``conf`` where ``dagster.yml`` is written. Defaults to ``"base"``.
+        force (bool): Overwrite existing files without prompting. Defaults to ``False``.
+        silent (bool): Suppress success messages for a quieter output. Defaults to ``False``.
+
+    Examples:
+        Basic initialization in the base config environment:
+
+        >>> kedro dagster init --env base
+
+        Force overwrite existing integration files:
+
+        >>> kedro dagster init -e base --force
+
+        Run silently (no success messages):
+
+        >>> kedro dagster init -e base --silent
     """
 
     dagster_yml = "dagster.yml"
@@ -226,7 +244,6 @@ if DAGSTER_VERSION >= (1, 10, 6):
                         env_vars = os.environ.copy()
                         # Set Kedro env vars so child process can pick them up if needed
                         env_vars["KEDRO_ENV"] = env
-                        env_vars["KEDRO_PROJECT_PATH"] = str(project_path)
 
                         # Execute the original 'dg' command, forwarding all extra args
                         subprocess.call(["dg", name, *args], cwd=str(project_path), env=env_vars)
@@ -299,40 +316,66 @@ else:  # pragma: no cover
         host: str,
         live_data_poll_rate: str,
     ) -> None:
-        """Opens the dagster dev user interface with the
-        project-specific settings of `dagster.yml`.
+        """Launch the Dagster developer UI for this Kedro project (Dagster < 1.10.6).
+
+        Bootstraps the Kedro project, resolves the Dagster ``python_file`` from the
+        Kedro-Dagster configuration, and invokes ``dagster dev`` with the provided options.
+        Use this for local development to iterate on assets, jobs, schedules, sensors.
+
+        Args:
+            env (str): Kedro configuration environment to load (e.g., ``"local"``, ``"base"``, ``"prod"``).
+            log_level (Literal["debug", "info", "warning", "error", "critical"]): Log verbosity for Dagster.
+            log_format (Literal["color", "json", "default"]): Output format for logs.
+            port (str): HTTP port to bind the Dagster web UI.
+            host (str): Interface or IP to bind (e.g., ``"127.0.0.1"`` or ``"0.0.0.0"``).
+            live_data_poll_rate (str): Polling interval in seconds when live data is enabled.
+
+        Examples:
+            Start the UI with the local environment on default port:
+
+            >>> kedro dagster dev -e local
+
+            Use JSON logs and custom port:
+
+            >>> kedro dagster dev -e local --log-format json --log-level info --port 3000
+
         """
 
         project_path = find_kedro_project(Path.cwd()) or Path.cwd()
-        bootstrap_project(project_path)
+        project_metadata = bootstrap_project(project_path)
+        package_name = project_metadata.package_name
+        definitions_py = "definitions.py"
+        definitions_py_path = project_path / "src" / package_name / definitions_py
 
         with KedroSession.create(
             project_path=project_path,
             env=env,
         ) as session:
-            context = session.load_context()
-            dagster_config = get_dagster_config(context)
-            python_file = dagster_config.dev.python_file
-            log_level = log_level or dagster_config.dev.log_level
-            log_format = log_format or dagster_config.dev.log_format
-            host = host or dagster_config.dev.host
-            port = port or dagster_config.dev.port
-            live_data_poll_rate = live_data_poll_rate or dagster_config.dev.live_data_poll_rate
+            # Ensure the Kedro context is fully initialized
+            session.load_context()
+
+            env_vars = os.environ.copy()
+            # Set Kedro env vars so child process can pick them up if needed
+            env_vars["KEDRO_ENV"] = env
 
             # call dagster dev with specific options
-            subprocess.call([
-                "dagster",
-                "dev",
-                "--python-file",
-                python_file,
-                "--log-level",
-                log_level,
-                "--log-format",
-                log_format,
-                "--host",
-                host,
-                "--port",
-                port,
-                "--live-data-poll-rate",
-                live_data_poll_rate,
-            ])
+            subprocess.call(
+                [
+                    "dagster",
+                    "dev",
+                    "--python-file",
+                    definitions_py_path,
+                    "--log-level",
+                    log_level,
+                    "--log-format",
+                    log_format,
+                    "--host",
+                    host,
+                    "--port",
+                    port,
+                    "--live-data-poll-rate",
+                    live_data_poll_rate,
+                ],
+                cwd=str(project_path),
+                env=env_vars,
+            )
