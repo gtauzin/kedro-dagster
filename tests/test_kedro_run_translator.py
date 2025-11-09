@@ -8,7 +8,6 @@ from typing import Any
 
 import dagster as dg
 import pytest
-from kedro.framework.project import pipelines
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
@@ -168,7 +167,7 @@ def test_resource_pipeline_filters_via_registry(
                 return {"ok": True}
 
     # Monkeypatch the Kedro pipelines registry getter used in kedro.py
-    monkeypatch.setattr(pipelines, "get", lambda name: _DummyPipeline())
+    monkeypatch.setattr("kedro.framework.project.pipelines.get", lambda name: _DummyPipeline())
 
     resource = translator.to_dagster(
         pipeline_name="my_pipeline",
