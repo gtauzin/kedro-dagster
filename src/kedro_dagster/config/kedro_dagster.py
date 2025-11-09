@@ -66,7 +66,7 @@ class KedroDagsterConfig(BaseModel):
         return values
 
 
-def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
+def get_dagster_config(context: "KedroContext") -> KedroDagsterConfig:
     """Get the Dagster configuration from the `dagster.yml` file.
 
     Args:
