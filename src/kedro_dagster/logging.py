@@ -66,14 +66,6 @@ def _reexport_std_logging(namespace: dict[str, Any]) -> None:
 _reexport_std_logging(globals())
 
 
-# Be explicit about public exports
-__all__ = [
-    "getLogger",
-]
-# Extend with every public name from stdlib logging (excluding private and our getLogger override)
-__all__.extend(n for n in dir(_logging) if not n.startswith("_") and n != "getLogger")
-
-
 def dagster_rich_formatter() -> structlog.stdlib.ProcessorFormatter:
     foreign_pre_chain = [
         structlog.stdlib.add_logger_name,
@@ -155,3 +147,14 @@ def dagster_colored_formatter() -> coloredlogs.ColoredFormatter:
         field_styles=field_styles,
         level_styles=level_styles,
     )
+
+
+# Be explicit about public exports
+__all__ = [
+    "getLogger",
+    "dagster_rich_formatter",
+    "dagster_json_formatter",
+    "dagster_colored_formatter",
+]
+# Extend with every public name from stdlib logging (excluding private and our getLogger override)
+__all__.extend(n for n in dir(_logging) if not n.startswith("_") and n != "getLogger")
