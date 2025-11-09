@@ -83,13 +83,25 @@ def dagster_rich_formatter() -> structlog.stdlib.ProcessorFormatter:
         structlog.stdlib.ExtraAdder(),
     ]
 
-    return structlog.stdlib.ProcessorFormatter(
-        foreign_pre_chain=foreign_pre_chain,
-        processors=[
-            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            structlog.dev.ConsoleRenderer(),
-        ],
-    )
+    processors = [
+        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+        structlog.dev.ConsoleRenderer(),
+    ]
+
+    try:
+        # Try the newer API with processors list
+        return structlog.stdlib.ProcessorFormatter(
+            foreign_pre_chain=foreign_pre_chain,
+            processors=processors,
+        )
+    except TypeError:
+        # Fallback to older API with single processor
+        # Chain the processors manually for older versions
+        processor = structlog.dev.ConsoleRenderer()
+        return structlog.stdlib.ProcessorFormatter(
+            foreign_pre_chain=foreign_pre_chain,
+            processor=processor,
+        )
 
 
 def dagster_json_formatter() -> structlog.stdlib.ProcessorFormatter:
@@ -102,14 +114,23 @@ def dagster_json_formatter() -> structlog.stdlib.ProcessorFormatter:
     ]
 
     json_renderer = structlog.processors.JSONRenderer(sort_keys=True, ensure_ascii=False)
+    processors = [
+        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+        json_renderer,
+    ]
 
-    return structlog.stdlib.ProcessorFormatter(
-        foreign_pre_chain=foreign_pre_chain,
-        processors=[
-            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            json_renderer,
-        ],
-    )
+    try:
+        # Try the newer API with processors list
+        return structlog.stdlib.ProcessorFormatter(
+            foreign_pre_chain=foreign_pre_chain,
+            processors=processors,
+        )
+    except TypeError:
+        # Fallback to older API with single processor
+        return structlog.stdlib.ProcessorFormatter(
+            foreign_pre_chain=foreign_pre_chain,
+            processor=json_renderer,
+        )
 
 
 def dagster_colored_formatter() -> coloredlogs.ColoredFormatter:
