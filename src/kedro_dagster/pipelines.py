@@ -9,7 +9,6 @@ overrides per job.
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
-from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
 
 from kedro_dagster.kedro import KedroRunTranslator
@@ -452,6 +451,9 @@ class PipelineTranslator:
         Returns:
             dict[str, dg.JobDefinition]: Translated Dagster jobs.
         """
+        # Lazy import to avoid circular dependency
+        from kedro.framework.project import pipelines
+
         named_jobs = {}
         for job_name, job_config in self._dagster_config.jobs.items():  # type: ignore[attr-defined]
             pipeline_config = job_config.pipeline.model_dump()

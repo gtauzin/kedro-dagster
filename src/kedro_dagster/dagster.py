@@ -9,7 +9,6 @@ import logging
 from typing import TYPE_CHECKING
 
 import dagster as dg
-from kedro.framework.project import pipelines
 
 from kedro_dagster.config.execution import (
     CeleryDockerExecutorOptions,
@@ -155,6 +154,9 @@ class LoggerTranslator:
         Returns:
             dict[str, LoggerDefinition]: Mapping of fully-qualified logger name to definition.
         """
+        # Lazy import to avoid circular dependency
+        from kedro.framework.project import pipelines
+
         named_loggers = {}
         for pipeline_name in pipelines:
             if pipeline_name != "__default__":

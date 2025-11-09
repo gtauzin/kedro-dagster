@@ -6,14 +6,12 @@ sensors, and loggers. It bootstraps the Kedro session, loads configuration,
 translates the catalog and nodes, and wires the resulting definitions together.
 """
 
-import os
 from dataclasses import dataclass
 from logging import getLogger
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import dagster as dg
-from kedro.framework.project import find_pipelines, pipelines, settings
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
@@ -68,15 +66,15 @@ class KedroProjectTranslator:
     """Translate a Kedro project into a Dagster code location.
 
     Args:
+        env (str): Kedro environment to use.
         project_path (Path | None): Path to the Kedro project. If omitted, auto-discovered.
-        env (str | None): Kedro environment to use. Defaults to Kedro's configured default.
         conf_source (str | None): Optional path to the Kedro configuration source directory.
     """
 
     def __init__(
         self,
+        env: str,
         project_path: Path | None = None,
-        env: str | None = None,
         conf_source: str | None = None,
     ) -> None:
         self._project_path: Path
@@ -84,10 +82,6 @@ class KedroProjectTranslator:
             self._project_path = find_kedro_project(Path.cwd()) or Path.cwd()
         else:
             self._project_path = project_path
-
-        if env is None:
-            default_run_env = settings._CONFIG_LOADER_ARGS["default_run_env"]
-            env = os.getenv("KEDRO_ENV", default_run_env) or ""
 
         self._env: str = env
 
@@ -102,6 +96,9 @@ class KedroProjectTranslator:
         Args:
             conf_source (str | None): Optional configuration source directory.
         """
+        # Lazy import to avoid circular dependency
+        from kedro.framework.project import find_pipelines
+
         LOGGER.info("Initializing Kedro project...")
 
         LOGGER.info("Bootstrapping Kedro project at path: %s", self._project_path)
@@ -136,6 +133,9 @@ class KedroProjectTranslator:
         Returns:
             list[Pipeline]: Kedro pipelines to translate.
         """
+        # Lazy import to avoid circular dependency
+        from kedro.framework.project import find_pipelines, pipelines
+
         if translate_all:
             return list(find_pipelines().values())
 

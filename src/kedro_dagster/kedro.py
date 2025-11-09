@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from kedro import __version__ as kedro_version
-from kedro.framework.project import pipelines
 
 from kedro_dagster.utils import KEDRO_VERSION, get_filter_params_dict
 
@@ -100,6 +99,9 @@ class KedroRunTranslator:
 
             @property
             def pipeline(self) -> dict[str, Any]:
+                # Lazy import to avoid circular dependency
+                from kedro.framework.project import pipelines
+
                 node_namespace_key: str | None = None
                 node_namespace_val: Any | None = None
                 if KEDRO_VERSION[0] >= 1:
