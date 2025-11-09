@@ -22,7 +22,9 @@ from __future__ import annotations
 import logging as _logging
 from typing import Any
 
+import coloredlogs
 import dagster as dg
+import structlog
 
 
 def getLogger(name: str | None = None) -> _logging.Logger:
@@ -70,3 +72,65 @@ __all__ = [
 ]
 # Extend with every public name from stdlib logging (excluding private and our getLogger override)
 __all__.extend(n for n in dir(_logging) if not n.startswith("_") and n != "getLogger")
+
+
+def dagster_rich_formatter() -> structlog.stdlib.ProcessorFormatter:
+    foreign_pre_chain = [
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso", utc=True),
+        structlog.processors.StackInfoRenderer(),
+        structlog.stdlib.ExtraAdder(),
+    ]
+
+    return structlog.stdlib.ProcessorFormatter(
+        foreign_pre_chain=foreign_pre_chain,
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            structlog.dev.ConsoleRenderer(),
+        ],
+    )
+
+
+def dagster_json_formatter() -> structlog.stdlib.ProcessorFormatter:
+    foreign_pre_chain = [
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso", utc=True),
+        structlog.processors.StackInfoRenderer(),
+        structlog.stdlib.ExtraAdder(),
+    ]
+
+    json_renderer = structlog.processors.JSONRenderer(sort_keys=True, ensure_ascii=False)
+
+    return structlog.stdlib.ProcessorFormatter(
+        foreign_pre_chain=foreign_pre_chain,
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            json_renderer,
+        ],
+    )
+
+
+def dagster_colored_formatter() -> coloredlogs.ColoredFormatter:
+    if coloredlogs is None:
+        # Fallback to a basic formatter if coloredlogs isn't available
+        return _logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    datefmt = "%Y-%m-%d %H:%M:%S %z"
+    field_styles = {
+        "levelname": {"color": "blue"},
+        "asctime": {"color": "green"},
+    }
+    level_styles = {
+        "debug": {},
+        "error": {"color": "red"},
+    }
+
+    return coloredlogs.ColoredFormatter(
+        fmt=fmt,
+        datefmt=datefmt,
+        field_styles=field_styles,
+        level_styles=level_styles,
+    )

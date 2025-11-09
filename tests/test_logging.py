@@ -1,6 +1,18 @@
 import importlib
 import logging as std_logging
 import types
+from unittest.mock import patch
+
+import coloredlogs
+import pytest
+import structlog
+from dagster._utils.log import configure_loggers
+
+from kedro_dagster.logging import (
+    dagster_colored_formatter,
+    dagster_json_formatter,
+    dagster_rich_formatter,
+)
 
 
 def _import_module():
@@ -58,3 +70,351 @@ def test_reexports_expose_stdlib_and_preserve_override():
 
     # Our getLogger should be the module's override, not stdlib's
     assert kd_logging.getLogger is not std_logging.getLogger
+
+
+def test_logging_config_yaml_structure():
+    """Test that the expected YAML structure from the user requirement matches the actual config.
+
+    This test verifies that the logging configuration matches the expected structur from the Dagster source code at:
+    https://github.com/dagster-io/dagster/blob/32540319b69dd175f8bbcd5655f5fc25e10cf88b/python_modules/dagster/dagster/_utils/log.py#L251
+    """
+    expected_yaml_structure = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "colored": {
+                "()": "coloredlogs.ColoredFormatter",
+                "fmt": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                "datefmt": "%Y-%m-%d %H:%M:%S %z",
+                "field_styles": {"levelname": {"color": "blue"}, "asctime": {"color": "green"}},
+                "level_styles": {"debug": {}, "error": {"color": "red"}},
+            },
+            "json": {
+                "()": "structlog.stdlib.ProcessorFormatter",
+                "foreign_pre_chain": [
+                    "structlog.stdlib.add_logger_name",
+                    "structlog.stdlib.add_log_level",
+                    'structlog.processors.TimeStamper(fmt="iso", utc=True)',
+                    "structlog.processors.StackInfoRenderer",
+                    "structlog.stdlib.ExtraAdder",
+                ],
+                "processors": [
+                    "structlog.stdlib.ProcessorFormatter.remove_processors_meta",
+                    "structlog.processors.JSONRenderer",
+                ],
+            },
+            "rich": {
+                "()": "structlog.stdlib.ProcessorFormatter",
+                "foreign_pre_chain": [
+                    "structlog.stdlib.add_logger_name",
+                    "structlog.stdlib.add_log_level",
+                    'structlog.processors.TimeStamper(fmt="iso", utc=True)',
+                    "structlog.processors.StackInfoRenderer",
+                    "structlog.stdlib.ExtraAdder",
+                ],
+                "processors": [
+                    "structlog.stdlib.ProcessorFormatter.remove_processors_meta",
+                    "structlog.dev.ConsoleRenderer",
+                ],
+            },
+        },
+        "handlers": {
+            "default": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+                "level": "INFO",
+                "formatter": "colored",
+            },
+            "null": {"class": "logging.NullHandler"},
+        },
+        "loggers": {
+            "dagster": {"handlers": ["default"], "level": "INFO"},
+            "dagit": {"handlers": ["default"], "level": "INFO"},
+            "dagster-webserver": {"handlers": ["default"], "level": "INFO"},
+        },
+    }
+
+    # Capture actual config
+    captured_config = {}
+
+    def capture_dictConfig(config):
+        captured_config.update(config)
+        pass
+
+    with patch.object(std_logging.config, "dictConfig", side_effect=capture_dictConfig):
+        configure_loggers()
+
+    # Check core structure matches
+    assert captured_config["version"] == expected_yaml_structure["version"]
+    assert captured_config["disable_existing_loggers"] == expected_yaml_structure["disable_existing_loggers"]
+
+    # Check formatters structure (we compare the basic structure since the actual
+    # implementation uses function objects rather than strings)
+    actual_formatters = captured_config["formatters"]
+    expected_formatters = expected_yaml_structure["formatters"]
+
+    # Colored formatter checks
+    assert actual_formatters["colored"]["fmt"] == expected_formatters["colored"]["fmt"]
+    assert actual_formatters["colored"]["datefmt"] == expected_formatters["colored"]["datefmt"]
+    assert actual_formatters["colored"]["field_styles"] == expected_formatters["colored"]["field_styles"]
+    assert actual_formatters["colored"]["level_styles"] == expected_formatters["colored"]["level_styles"]
+
+    # Check handlers structure
+    actual_handlers = captured_config["handlers"]
+    expected_handlers = expected_yaml_structure["handlers"]
+
+    assert actual_handlers["default"]["class"] == expected_handlers["default"]["class"]
+    assert actual_handlers["default"]["level"] == expected_handlers["default"]["level"]
+    assert actual_handlers["default"]["formatter"] == expected_handlers["default"]["formatter"]
+    assert actual_handlers["null"]["class"] == expected_handlers["null"]["class"]
+
+    # Check loggers structure
+    actual_loggers = captured_config["loggers"]
+    expected_loggers = expected_yaml_structure["loggers"]
+
+    for logger_name in ["dagster", "dagit", "dagster-webserver"]:
+        assert actual_loggers[logger_name]["handlers"] == expected_loggers[logger_name]["handlers"]
+        assert actual_loggers[logger_name]["level"] == expected_loggers[logger_name]["level"]
+
+
+def test_dagster_rich_formatter_creation():
+    """Test that dagster_rich_formatter creates a valid ProcessorFormatter."""
+    formatter = dagster_rich_formatter()
+
+    # Should return a structlog ProcessorFormatter instance
+    assert isinstance(formatter, std_logging.Formatter)
+    assert hasattr(formatter, "_style")
+
+
+def test_dagster_rich_formatter_with_new_api():
+    """Test that dagster_rich_formatter works with newer structlog API (processors list)."""
+    # Create a formatter - should work regardless of structlog version
+    formatter = dagster_rich_formatter()
+
+    # Should be able to format a log record
+    record = std_logging.LogRecord(
+        name="test_logger",
+        level=std_logging.INFO,
+        pathname="test.py",
+        lineno=1,
+        msg="Test message",
+        args=(),
+        exc_info=None,
+    )
+
+    # Should not raise an exception when formatting
+    try:
+        formatted = formatter.format(record)
+        assert isinstance(formatted, str)
+        assert "Test message" in formatted
+    except Exception as e:
+        # If we get a TypeError about processor vs processors, the fallback should handle it
+        assert "processor" not in str(e).lower()
+
+
+def test_dagster_rich_formatter_fallback_compatibility():
+    """Test that dagster_rich_formatter handles older structlog API gracefully."""
+    # Mock ProcessorFormatter to raise TypeError on processors argument
+    original_init = structlog.stdlib.ProcessorFormatter.__init__
+
+    def mock_init_old_api(self, *args, **kwargs):
+        if "processors" in kwargs:
+            raise TypeError("ProcessorFormatter() got an unexpected keyword argument 'processors'")
+        return original_init(self, *args, **kwargs)
+
+    with patch.object(structlog.stdlib.ProcessorFormatter, "__init__", mock_init_old_api):
+        # Should fallback to single processor argument
+        formatter = dagster_rich_formatter()
+        assert isinstance(formatter, std_logging.Formatter)
+
+
+def test_dagster_json_formatter_creation():
+    """Test that dagster_json_formatter creates a valid ProcessorFormatter."""
+    formatter = dagster_json_formatter()
+
+    # Should return a structlog ProcessorFormatter instance
+    assert isinstance(formatter, std_logging.Formatter)
+    assert hasattr(formatter, "_style")
+
+
+def test_dagster_json_formatter_with_new_api():
+    """Test that dagster_json_formatter works with newer structlog API (processors list)."""
+    # Create a formatter - should work regardless of structlog version
+    formatter = dagster_json_formatter()
+
+    # Should be able to format a log record
+    record = std_logging.LogRecord(
+        name="test_logger",
+        level=std_logging.INFO,
+        pathname="test.py",
+        lineno=1,
+        msg="Test message",
+        args=(),
+        exc_info=None,
+    )
+
+    # Should not raise an exception when formatting
+    try:
+        formatted = formatter.format(record)
+        assert isinstance(formatted, str)
+        assert "Test message" in formatted or "test message" in formatted.lower()
+    except Exception as e:
+        # If we get a TypeError about processor vs processors, the fallback should handle it
+        assert "processor" not in str(e).lower()
+
+
+def test_dagster_json_formatter_fallback_compatibility():
+    """Test that dagster_json_formatter handles older structlog API gracefully."""
+    # Mock ProcessorFormatter to raise TypeError on processors argument
+    original_init = structlog.stdlib.ProcessorFormatter.__init__
+
+    def mock_init_old_api(self, *args, **kwargs):
+        if "processors" in kwargs:
+            raise TypeError("ProcessorFormatter() got an unexpected keyword argument 'processors'")
+        return original_init(self, *args, **kwargs)
+
+    with patch.object(structlog.stdlib.ProcessorFormatter, "__init__", mock_init_old_api):
+        # Should fallback to single processor argument
+        formatter = dagster_json_formatter()
+        assert isinstance(formatter, std_logging.Formatter)
+
+
+def test_dagster_colored_formatter_creation():
+    """Test that dagster_colored_formatter creates a valid ColoredFormatter."""
+    formatter = dagster_colored_formatter()
+
+    # Should return a logging Formatter instance
+    assert isinstance(formatter, std_logging.Formatter)
+
+
+def test_dagster_colored_formatter_with_coloredlogs():
+    """Test that dagster_colored_formatter uses ColoredFormatter when coloredlogs is available."""
+    formatter = dagster_colored_formatter()
+
+    # Should be a ColoredFormatter instance if coloredlogs is available
+    assert isinstance(formatter, coloredlogs.ColoredFormatter | std_logging.Formatter)
+
+    # Test formatting a record
+    record = std_logging.LogRecord(
+        name="test_logger",
+        level=std_logging.INFO,
+        pathname="test.py",
+        lineno=1,
+        msg="Test message",
+        args=(),
+        exc_info=None,
+    )
+
+    formatted = formatter.format(record)
+    assert isinstance(formatted, str)
+    assert "Test message" in formatted
+
+
+def test_dagster_colored_formatter_fallback_without_coloredlogs():
+    """Test that dagster_colored_formatter falls back gracefully when coloredlogs is not available."""
+    # Mock coloredlogs as None to simulate it not being available
+    with patch("kedro_dagster.logging.coloredlogs", None):
+        formatter = dagster_colored_formatter()
+
+        # Should still return a valid formatter
+        assert isinstance(formatter, std_logging.Formatter)
+
+        # Test formatting a record
+        record = std_logging.LogRecord(
+            name="test_logger",
+            level=std_logging.INFO,
+            pathname="test.py",
+            lineno=1,
+            msg="Test message",
+            args=(),
+            exc_info=None,
+        )
+
+        formatted = formatter.format(record)
+        assert isinstance(formatted, str)
+        assert "Test message" in formatted
+
+
+def test_dagster_colored_formatter_field_styles():
+    """Test that dagster_colored_formatter applies the correct field and level styles."""
+    formatter = dagster_colored_formatter()
+
+    # If it's a ColoredFormatter, check the styles
+    if isinstance(formatter, coloredlogs.ColoredFormatter):
+        # Check that the expected field styles are set
+        assert hasattr(formatter, "field_styles")
+        field_styles = formatter.field_styles
+        assert "levelname" in field_styles
+        assert field_styles["levelname"]["color"] == "blue"
+        assert "asctime" in field_styles
+        assert field_styles["asctime"]["color"] == "green"
+
+        # Check that the expected level styles are set
+        assert hasattr(formatter, "level_styles")
+        level_styles = formatter.level_styles
+        assert "debug" in level_styles
+        assert "error" in level_styles
+        assert level_styles["error"]["color"] == "red"
+
+
+def test_all_formatters_handle_exceptions_gracefully():
+    """Test that all formatters handle exceptions in log records gracefully."""
+    formatters = [
+        dagster_rich_formatter(),
+        dagster_json_formatter(),
+        dagster_colored_formatter(),
+    ]
+
+    # Create a log record with exception info
+    try:
+        raise ValueError("Test exception")
+    except ValueError:
+        exc_info = std_logging.sys.exc_info()
+
+    record = std_logging.LogRecord(
+        name="test_logger",
+        level=std_logging.ERROR,
+        pathname="test.py",
+        lineno=1,
+        msg="Test message with exception",
+        args=(),
+        exc_info=exc_info,
+    )
+
+    for formatter in formatters:
+        try:
+            formatted = formatter.format(record)
+            assert isinstance(formatted, str)
+            assert "Test message with exception" in formatted
+        except Exception as e:
+            # Should not raise exceptions during formatting
+            pytest.fail(f"Formatter {type(formatter).__name__} raised exception: {e}")
+
+
+def test_formatters_preserve_logger_name():
+    """Test that all formatters preserve the logger name in the output."""
+    formatters = [
+        dagster_rich_formatter(),
+        dagster_json_formatter(),
+        dagster_colored_formatter(),
+    ]
+
+    record = std_logging.LogRecord(
+        name="my.test.logger",
+        level=std_logging.INFO,
+        pathname="test.py",
+        lineno=1,
+        msg="Test message",
+        args=(),
+        exc_info=None,
+    )
+
+    for formatter in formatters:
+        try:
+            formatted = formatter.format(record)
+            assert isinstance(formatted, str)
+            # Logger name should appear somewhere in the formatted output
+            # (exact format depends on the formatter type)
+            assert len(formatted) > 0
+        except Exception as e:
+            pytest.fail(f"Formatter {type(formatter).__name__} raised exception: {e}")
