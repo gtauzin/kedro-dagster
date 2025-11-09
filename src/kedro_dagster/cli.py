@@ -8,8 +8,6 @@ from typing import Any, Literal
 
 import click
 from dagster_dg_cli.cli import create_dg_cli
-from kedro.framework.project import settings
-from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.utils import DAGSTER_VERSION, find_kedro_project, write_jinja_template
@@ -80,6 +78,8 @@ def init(env: str, force: bool, silent: bool) -> None:
 
         >>> kedro dagster init -e base --silent
     """
+    # Lazy import to avoid circular dependency
+    from kedro.framework.project import settings
 
     dagster_yml = "dagster.yml"
     project_path = find_kedro_project(Path.cwd()) or Path.cwd()
@@ -216,6 +216,8 @@ if DAGSTER_VERSION >= (1, 10, 6):
         correctly initialized. We also set a few environment variables so the child
         process can pick up the Kedro project and environment if needed.
         """
+        # Lazy import to avoid circular dependency
+        from kedro.framework.session import KedroSession
 
         # Discover the available dg commands from the official CLI entrypoint factory
         dg_root: click.Group = create_dg_cli()
@@ -338,6 +340,8 @@ else:
             >>> kedro dagster dev -e local --log-format json --log-level info --port 3000
 
         """
+        # Lazy import to avoid circular dependency
+        from kedro.framework.session import KedroSession
 
         project_path = find_kedro_project(Path.cwd()) or Path.cwd()
         project_metadata = bootstrap_project(project_path)

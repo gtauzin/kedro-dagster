@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import dagster as dg
-from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.catalog import CatalogTranslator
@@ -98,6 +97,7 @@ class KedroProjectTranslator:
         """
         # Lazy import to avoid circular dependency
         from kedro.framework.project import find_pipelines
+        from kedro.framework.session import KedroSession
 
         LOGGER.info("Initializing Kedro project...")
 
