@@ -6,15 +6,17 @@ KedroDagsterConfig object.
 """
 
 from logging import getLogger
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from kedro.config import MissingConfigException
-from kedro.framework.context import KedroContext
 from pydantic import BaseModel, model_validator
 
 from .automation import ScheduleOptions
 from .execution import EXECUTOR_MAP, ExecutorOptions
 from .job import JobOptions
+
+if TYPE_CHECKING:
+    from kedro.framework.context import KedroContext
 
 LOGGER = getLogger(__name__)
 
