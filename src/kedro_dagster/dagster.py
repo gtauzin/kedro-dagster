@@ -278,7 +278,7 @@ class LoggerCreator:
                     elif config_data.get("formatters") is None:
                         # No formatter registry, attach default
                         handler_inst.setFormatter(
-                            logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
+                            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
                         )
 
                     # Attach filters
@@ -289,10 +289,10 @@ class LoggerCreator:
 
                     logger_.addHandler(handler_inst)
             else:
-                # No handlers specified → default StreamHandler
+                # No handlers specified, default to StreamHandler
                 sh = logging.StreamHandler()
                 sh.setLevel(level)
-                sh.setFormatter(logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s"))
+                sh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
                 logger_.addHandler(sh)
 
             return logger_

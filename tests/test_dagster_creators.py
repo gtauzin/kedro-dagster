@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import dagster as dg
 import pytest
 from kedro.framework.project import pipelines
@@ -877,3 +879,217 @@ def test_executor_creator_handles_none_executor():
     # Should create no executors for this job
     assert len(executors) == 0
     assert "job_without_executor__executor" not in executors
+
+
+class DummyFilter(logging.Filter):
+    def __init__(self, keyword: str):
+        super().__init__()
+        self.keyword = keyword
+
+    def filter(self, record: logging.LogRecord) -> bool:  # pragma: no cover - executed via logging
+        return self.keyword in record.getMessage()
+
+
+class DummyFormatter(logging.Formatter):
+    def __init__(self, prefix: str, format: str | None = None, datefmt: str | None = None, style: str = "%", **kwargs):
+        super().__init__(fmt=format, datefmt=datefmt, style=style, **kwargs)
+        self.prefix = prefix
+
+    def format(self, record: logging.LogRecord) -> str:  # pragma: no cover - executed via logging
+        base = super().format(record)
+        return f"{self.prefix}:{base}"
+
+
+def _build_logger_definition(cfg: KedroDagsterConfig, name: str) -> dg.LoggerDefinition:
+    creator = LoggerCreator(dagster_config=cfg)
+    definitions = creator.create_loggers()
+    return definitions[name]
+
+
+def test_logger_runtime_basic_configuration():
+    cfg = KedroDagsterConfig(
+        loggers={
+            "basic": LoggerOptions(
+                logger_name="test.runtime.basic",
+                log_level="debug",  # lower case to ensure normalization
+                handlers=[{"class": "logging.StreamHandler", "level": "DEBUG"}],
+            )
+        }
+    )
+
+    logger_def = _build_logger_definition(cfg, "basic")
+
+    # Simulate Dagster calling the logger_fn
+    context = type("Ctx", (), {"logger_config": {}})()
+    logger_obj = logger_def.logger_fn(context)  # type: ignore[attr-defined]
+
+    assert logger_obj.name == "test.runtime.basic"
+    assert logger_obj.level == logging.DEBUG
+    assert len(logger_obj.handlers) == 1
+    handler = logger_obj.handlers[0]
+    assert isinstance(handler, logging.StreamHandler)
+    # Since no formatter registry was provided, default formatter should be attached
+    assert handler.formatter is not None
+
+
+def test_logger_runtime_formatters_and_filters(tmp_path):
+    log_file = tmp_path / "filtered.log"
+    cfg = KedroDagsterConfig(
+        loggers={
+            "rich": LoggerOptions(
+                logger_name="test.runtime.rich",
+                log_level="INFO",
+                formatters={
+                    "plain": {"format": "%(levelname)s|%(message)s"},
+                    "custom": {
+                        "()": "tests.test_dagster_creators.DummyFormatter",
+                        "prefix": "PFX",
+                        "format": "%(message)s",
+                    },
+                },
+                filters={
+                    "kw": {"()": "tests.test_dagster_creators.DummyFilter", "keyword": "keep"},
+                },
+                handlers=[
+                    {
+                        "class": "logging.FileHandler",
+                        "args": [str(log_file)],
+                        "level": "INFO",
+                        "formatter": "plain",
+                        "filters": ["kw"],
+                    },
+                    {
+                        # standard stream handler using custom formatter
+                        "class": "logging.StreamHandler",
+                        "level": "INFO",
+                        "formatter": "custom",
+                    },
+                ],
+            )
+        }
+    )
+
+    logger_def = _build_logger_definition(cfg, "rich")
+    context = type("Ctx", (), {"logger_config": {}})()
+    logger_obj = logger_def.logger_fn(context)  # type: ignore[attr-defined]
+
+    # Validate two handlers attached
+    EXPECTED_HANDLER_COUNT = 2
+    assert len(logger_obj.handlers) == EXPECTED_HANDLER_COUNT
+
+    # Emit logs
+    logger_obj.info("we keep this")
+    logger_obj.info("drop me")
+
+    # Ensure file handler flushes to disk
+    for h in logger_obj.handlers:
+        if isinstance(h, logging.FileHandler):
+            h.flush()
+
+    with open(log_file, encoding="utf-8") as fh:
+        contents = fh.read().strip().splitlines()
+
+    # Only one line should pass filter
+    assert len(contents) == 1
+    assert "keep" in contents[0]
+
+
+def test_logger_runtime_job_inline_logger_isolated_handlers():
+    # Inline logger in job should receive unique handler instances even if logger name collides
+    base_options = LoggerOptions(logger_name="collision.test", log_level="INFO")
+    job_inline = LoggerOptions(logger_name="collision.test", log_level="ERROR")
+
+    cfg = KedroDagsterConfig(
+        loggers={"base": base_options},
+        jobs={"job1": JobOptions(pipeline=PipelineOptions(pipeline_name="p"), loggers=[job_inline])},
+    )
+
+    creator = LoggerCreator(dagster_config=cfg)
+    defs = creator.create_loggers()
+
+    base_def = defs["base"]
+    inline_def = defs["job1__logger_0"]
+
+    # Build both actual logger objects
+    ctx = type("Ctx", (), {"logger_config": {}})()
+
+    # First creation with base config
+    base_logger = base_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    assert base_logger.level == logging.INFO
+    first_handler_ids = [id(h) for h in base_logger.handlers]
+
+    # Second creation with inline config overrides the same named logger
+    inline_logger = inline_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    assert inline_logger.level == logging.ERROR
+
+    # The underlying logger object is the same; handlers should have been replaced
+    second_handler_ids = [id(h) for h in inline_logger.handlers]
+    assert first_handler_ids != second_handler_ids
+
+
+def test_logger_runtime_override_context_config():
+    # Provide a logger configuration via the InitLoggerContext to override base definition
+    cfg = KedroDagsterConfig(
+        loggers={
+            "override": LoggerOptions(
+                logger_name="override.base",
+                log_level="WARNING",
+                handlers=[{"class": "logging.StreamHandler", "level": "WARNING"}],
+            )
+        }
+    )
+
+    logger_def = _build_logger_definition(cfg, "override")
+
+    # Simulate Dagster providing dynamic config overriding level and name
+    dynamic_conf = {"logger_name": "override.dynamic", "log_level": "debug"}
+    ctx = type("Ctx", (), {"logger_config": dynamic_conf})()
+    dyn_logger = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+
+    assert dyn_logger.name == "override.dynamic"
+    assert dyn_logger.level == logging.DEBUG
+
+    # When context provides no handlers, a default StreamHandler is attached at the new log level
+    assert len(dyn_logger.handlers) == 1
+    assert isinstance(dyn_logger.handlers[0], logging.StreamHandler)
+    assert dyn_logger.handlers[0].level == logging.DEBUG
+
+
+def test_logger_runtime_default_handler_when_none_specified():
+    cfg = KedroDagsterConfig(
+        loggers={
+            "default_handler": LoggerOptions(
+                logger_name="default.handler.test",
+                log_level="INFO",
+            )
+        }
+    )
+
+    logger_def = _build_logger_definition(cfg, "default_handler")
+    ctx = type("Ctx", (), {"logger_config": {}})()
+    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+
+    # Should attach exactly one default StreamHandler with a formatter
+    assert len(logger_obj.handlers) == 1
+    assert isinstance(logger_obj.handlers[0], logging.StreamHandler)
+    assert logger_obj.handlers[0].formatter is not None
+
+
+@pytest.mark.parametrize(
+    "level",
+    ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"],
+)
+def test_logger_runtime_all_levels(level):
+    cfg = KedroDagsterConfig(
+        loggers={
+            "lv": LoggerOptions(
+                logger_name="all.levels.test",
+                log_level=level,
+            )
+        }
+    )
+
+    logger_def = _build_logger_definition(cfg, "lv")
+    ctx = type("Ctx", (), {"logger_config": {}})()
+    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    assert logger_obj.level == getattr(logging, level)
