@@ -1240,3 +1240,95 @@ def test_logger_reference_invalid_typeerror():
     ctx = type("Ctx", (), {"logger_config": override})()
     with pytest.raises(TypeError):
         logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+
+
+# ===== Additional validation error coverage for LoggerOptions (config/logging.py) =====
+
+
+def test_logger_options_handler_missing_class():
+    with pytest.raises(ValidationError, match="must specify a 'class' field"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.missingclass",
+                    log_level="INFO",
+                    handlers=[{}],  # missing 'class'
+                )
+            }
+        )
+
+
+def test_logger_options_handler_class_not_string():
+    with pytest.raises(ValidationError, match="must be a string"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.classtype",
+                    log_level="INFO",
+                    handlers=[{"class": 123}],  # non-string class
+                )
+            }
+        )
+
+
+def test_logger_options_formatter_missing_keys():
+    with pytest.raises(ValidationError, match=r"must specify either 'format' field or '\(\)'"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.formattermissing",
+                    log_level="INFO",
+                    formatters={"fmt": {"datefmt": "%Y"}},  # missing format and '()'
+                )
+            }
+        )
+
+
+def test_logger_options_log_level_not_string():
+    with pytest.raises(ValidationError, match="Log level must be a string"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.leveltype",
+                    log_level=123,  # non-string
+                )
+            }
+        )
+
+
+def test_logger_options_invalid_log_level_value():
+    with pytest.raises(ValidationError, match="Invalid log level"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.levelvalue",
+                    log_level="VERBOSE",  # invalid value
+                )
+            }
+        )
+
+
+def test_logger_options_handler_unknown_formatter_reference():
+    with pytest.raises(ValidationError, match="references unknown formatter"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.unknownfmt",
+                    log_level="INFO",
+                    handlers=[{"class": "logging.StreamHandler", "formatter": "missing"}],
+                )
+            }
+        )
+
+
+def test_logger_options_handler_unknown_filter_reference():
+    with pytest.raises(ValidationError, match="references unknown filter"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.unknownfilter",
+                    log_level="INFO",
+                    handlers=[{"class": "logging.StreamHandler", "filters": ["missing"]}],
+                )
+            }
+        )
