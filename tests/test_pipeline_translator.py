@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import dagster as dg
 import pytest
 from kedro.framework.project import pipelines
@@ -10,6 +12,8 @@ from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
+from kedro_dagster.config.job import PipelineOptions
+from kedro_dagster.config.logging import LoggerOptions
 from kedro_dagster.dagster import ExecutorCreator, LoggerCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
@@ -246,3 +250,245 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
     jobs = pipeline_translator.to_dagster()
     assert "default" in jobs
     assert isinstance(jobs["default"], dg.JobDefinition)
+
+
+def _patch_minimal_kedro_pipelines(monkeypatch):
+    """Patch kedro.framework.project.pipelines.get to avoid real Kedro dependency."""
+
+    class _DummyGetter:
+        def __call__(self, _name: str):
+            class _Pipe:
+                def filter(self, **_kwargs):  # pragma: no cover - trivial shim
+                    return object()
+
+            return _Pipe()
+
+    monkeypatch.setattr("kedro.framework.project.pipelines.get", _DummyGetter(), raising=False)
+
+
+def _make_translator_with(monkeypatch, named_loggers=None, named_executors=None):
+    """Create a PipelineTranslator with minimal viable context and a stub translate_pipeline.
+
+    Returns a tuple (translator, captured) where captured is a dict populated by the stub
+    translate_pipeline with the logger_defs and executor_def it received.
+    """
+
+    class _Ctx:
+        catalog = object()
+        _hook_manager = object()
+
+    captured: dict[str, object] = {}
+
+    def _fake_translate(self, *, pipeline, pipeline_name, filter_params, job_name, executor_def, logger_defs):
+        captured["logger_defs"] = logger_defs
+        captured["executor_def"] = executor_def
+        # Return a harmless sentinel to satisfy to_dagster contract
+        return f"job:{job_name}"
+
+    # Ensure Kedro pipeline access is stubbed
+    _patch_minimal_kedro_pipelines(monkeypatch)
+
+    translator = PipelineTranslator(
+        dagster_config=type("Cfg", (), {"jobs": {}})(),
+        context=_Ctx(),
+        project_path="/tmp/project",
+        env="dev",
+        run_id="rid",
+        named_assets={},
+        asset_partitions={},
+        named_op_factories={},
+        named_resources={},
+        named_executors=({} if named_executors is None else named_executors),
+        named_loggers=({} if named_loggers is None else named_loggers),
+        enable_mlflow=False,
+    )
+
+    # Patch the instance method to capture logger_defs
+    monkeypatch.setattr(PipelineTranslator, "translate_pipeline", _fake_translate, raising=False)
+    return translator, captured
+
+
+def test_pipeline_translator_logger_string_reference_found(monkeypatch):
+    # Arrange: a named logger exists and job references it by string
+    ld = dg.LoggerDefinition(logger_fn=lambda ctx: logging.getLogger("t"))
+    translator, captured = _make_translator_with(monkeypatch, {"console": ld})
+
+    # Inject a single job with a string logger reference
+    translator._dagster_config.jobs = {
+        "jobA": type(
+            "Job",
+            (),
+            {
+                "pipeline": PipelineOptions(pipeline_name="__default__"),
+                "loggers": ["console"],
+                "executor": None,
+            },
+        )()
+    }
+
+    # Act
+    named_jobs = translator.to_dagster()
+
+    # Assert: translate_pipeline received the logger_defs with the named logger
+    assert "jobA" in named_jobs
+    assert captured.get("logger_defs") == {"console": ld}
+
+
+def test_pipeline_translator_logger_string_reference_missing(monkeypatch):
+    # Arrange: no named loggers; job references a missing name
+    translator, _ = _make_translator_with(monkeypatch, {})
+    translator._dagster_config.jobs = {
+        "jobA": type(
+            "Job",
+            (),
+            {
+                "pipeline": PipelineOptions(pipeline_name="__default__"),
+                "loggers": ["missing"],
+                "executor": None,
+            },
+        )()
+    }
+
+    # Act / Assert
+    with pytest.raises(ValueError, match=r"Logger `missing` not found\."):
+        translator.to_dagster()
+
+
+def test_pipeline_translator_inline_logger_found(monkeypatch):
+    # Arrange: a job has an inline logger (non-string), and a job-specific named logger exists
+    job_name = "jobB"
+    specific_name = f"{job_name}__logger_0"
+    ld = dg.LoggerDefinition(logger_fn=lambda ctx: logging.getLogger("t"))
+    translator, captured = _make_translator_with(monkeypatch, {specific_name: ld})
+
+    translator._dagster_config.jobs = {
+        job_name: type(
+            "Job",
+            (),
+            {
+                "pipeline": PipelineOptions(pipeline_name="__default__"),
+                "loggers": [LoggerOptions(logger_name="inline.logger", log_level="INFO")],
+                "executor": None,
+            },
+        )()
+    }
+
+    # Act
+    translator.to_dagster()
+
+    # Assert: job-specific logger name is looked up and passed through
+    assert captured.get("logger_defs") == {specific_name: ld}
+
+
+def test_pipeline_translator_inline_logger_missing(monkeypatch):
+    # Arrange: a job has an inline logger (non-string), but the job-specific named logger is absent
+    job_name = "jobC"
+    translator, _ = _make_translator_with(monkeypatch, {})
+    translator._dagster_config.jobs = {
+        job_name: type(
+            "Job",
+            (),
+            {
+                "pipeline": PipelineOptions(pipeline_name="__default__"),
+                "loggers": [LoggerOptions(logger_name="inline.logger", log_level="INFO")],
+                "executor": None,
+            },
+        )()
+    }
+
+    # Act / Assert
+    with pytest.raises(ValueError, match=rf"Job-specific logger `{job_name}__logger_0` not found\."):
+        translator.to_dagster()
+
+
+def test_pipeline_translator_executor_string_reference_found(monkeypatch):
+    # Arrange: a named executor exists and job references it by string
+    exec_def = object()
+    translator, captured = _make_translator_with(monkeypatch, named_executors={"seq": exec_def})
+
+    translator._dagster_config.jobs = {
+        "jobA": type(
+            "Job",
+            (),
+            {
+                "pipeline": PipelineOptions(pipeline_name="__default__"),
+                "executor": "seq",
+                "loggers": None,
+            },
+        )()
+    }
+
+    # Act
+    named_jobs = translator.to_dagster()
+
+    # Assert
+    assert "jobA" in named_jobs
+    assert captured.get("executor_def") is exec_def
+
+
+def test_pipeline_translator_executor_string_reference_missing(monkeypatch):
+    # Arrange: job references a missing executor by string
+    translator, _ = _make_translator_with(monkeypatch)
+    translator._dagster_config.jobs = {
+        "jobA": type(
+            "Job",
+            (),
+            {
+                "pipeline": PipelineOptions(pipeline_name="__default__"),
+                "executor": "missing",
+                "loggers": None,
+            },
+        )()
+    }
+
+    # Act / Assert
+    with pytest.raises(ValueError, match=r"Executor `missing` not found\."):
+        translator.to_dagster()
+
+
+def test_pipeline_translator_executor_inline_found(monkeypatch):
+    # Arrange: job uses inline executor (non-string), job-specific executor name exists in registry
+    job_name = "jobB"
+    job_exec_name = f"{job_name}__executor"
+    exec_def = object()
+    translator, captured = _make_translator_with(monkeypatch, named_executors={job_exec_name: exec_def})
+
+    translator._dagster_config.jobs = {
+        job_name: type(
+            "Job",
+            (),
+            {
+                "pipeline": PipelineOptions(pipeline_name="__default__"),
+                "executor": object(),  # non-string triggers inline branch
+                "loggers": None,
+            },
+        )()
+    }
+
+    # Act
+    translator.to_dagster()
+
+    # Assert
+    assert captured.get("executor_def") is exec_def
+
+
+def test_pipeline_translator_executor_inline_missing(monkeypatch):
+    # Arrange: job uses inline executor but job-specific executor is not present
+    job_name = "jobC"
+    translator, _ = _make_translator_with(monkeypatch)
+
+    translator._dagster_config.jobs = {
+        job_name: type(
+            "Job",
+            (),
+            {
+                "pipeline": PipelineOptions(pipeline_name="__default__"),
+                "executor": object(),
+                "loggers": None,
+            },
+        )()
+    }
+
+    # Act / Assert
+    with pytest.raises(ValueError, match=rf"Job-specific executor `{job_name}__executor` not found\."):
+        translator.to_dagster()
