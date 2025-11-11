@@ -43,6 +43,7 @@ class PipelineTranslator:
         named_op_factories (dict[str, dg.OpDefinition]): Mapping of graph-op name -> op factory.
         named_resources (dict[str, dg.ResourceDefinition]): Mapping of resource name -> resource def.
         named_executors (dict[str, dg.ExecutorDefinition]): Mapping of executor name -> executor def.
+        named_loggers (dict[str, dg.LoggerDefinition]): Mapping of logger name -> logger def.
         enable_mlflow (bool): Whether MLflow integration is enabled.
     """
 
@@ -58,6 +59,7 @@ class PipelineTranslator:
         named_op_factories: dict[str, dg.OpDefinition],
         named_resources: dict[str, dg.ResourceDefinition],
         named_executors: dict[str, dg.ExecutorDefinition],
+        named_loggers: dict[str, dg.LoggerDefinition],
         enable_mlflow: bool,
     ):
         self._dagster_config = dagster_config
@@ -72,6 +74,7 @@ class PipelineTranslator:
         self._named_op_factories = named_op_factories
         self._named_resources = named_resources
         self._named_executors = named_executors
+        self._named_loggers = named_loggers
         self._enable_mlflow = enable_mlflow
 
     def _enumerate_partition_keys(self, partitions_def: dg.PartitionsDefinition | None) -> list[str]:
@@ -462,11 +465,41 @@ class PipelineTranslator:
             filter_params = get_filter_params_dict(pipeline_config)
             pipeline = pipelines.get(pipeline_name).filter(**filter_params)
 
+            # Handle executor configuration (string reference or inline config)
+            executor_def = None
             executor_config = job_config.executor
-            if executor_config in self._named_executors:
-                executor_def = self._named_executors[executor_config]
-            else:
-                raise ValueError(f"Executor `{executor_config}` not found.")
+            if executor_config is not None:
+                if isinstance(executor_config, str):
+                    # String reference to named executor
+                    if executor_config in self._named_executors:
+                        executor_def = self._named_executors[executor_config]
+                    else:
+                        raise ValueError(f"Executor `{executor_config}` not found.")
+                else:
+                    # Inline executor configuration - look for job-specific executor
+                    job_executor_name = f"{job_name}__executor"
+                    if job_executor_name in self._named_executors:
+                        executor_def = self._named_executors[job_executor_name]
+                    else:
+                        raise ValueError(f"Job-specific executor `{job_executor_name}` not found.")
+
+            # Handle logger configurations (string references and/or inline configs)
+            logger_defs = {}
+            if job_config.loggers:
+                for idx, logger_config in enumerate(job_config.loggers):
+                    if isinstance(logger_config, str):
+                        # String reference to named logger
+                        if logger_config in self._named_loggers:
+                            logger_defs[logger_config] = self._named_loggers[logger_config]
+                        else:
+                            raise ValueError(f"Logger `{logger_config}` not found.")
+                    else:
+                        # Inline logger configuration - look for job-specific logger
+                        job_logger_name = f"{job_name}__logger_{idx}"
+                        if job_logger_name in self._named_loggers:
+                            logger_defs[job_logger_name] = self._named_loggers[job_logger_name]
+                        else:
+                            raise ValueError(f"Job-specific logger `{job_logger_name}` not found.")
 
             job = self.translate_pipeline(
                 pipeline=pipeline,
@@ -474,6 +507,7 @@ class PipelineTranslator:
                 filter_params=filter_params,
                 job_name=job_name,
                 executor_def=executor_def,
+                logger_defs=logger_defs,
             )
 
             named_jobs[job_name] = job

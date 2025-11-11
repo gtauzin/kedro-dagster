@@ -11,6 +11,7 @@ from kedro_dagster.utils import KEDRO_VERSION
 
 from .automation import ScheduleOptions
 from .execution import ExecutorOptions
+from .logging import LoggerOptions
 
 
 class PipelineOptions(BaseModel):
@@ -72,6 +73,8 @@ class JobOptions(BaseModel):
         pipeline (PipelineOptions): PipelineOptions specifying which pipeline and nodes to run.
         executor (ExecutorOptions | str | None): ExecutorOptions instance or string key referencing an executor.
         schedule (ScheduleOptions | str | None): ScheduleOptions instance or string key referencing a schedule.
+        loggers (list[LoggerOptions | str] | None): List of logger configurations (inline LoggerOptions)
+            or list of logger names (strings) to attach to the job. Can mix both types.
 
     Example:
 
@@ -84,12 +87,14 @@ class JobOptions(BaseModel):
           tags: [test1]
         executor: multiprocessing   # references an executor name defined under executors:
         schedule: daily_schedule    # optional, references a schedule name defined under schedules:
+        loggers: [console, file_logger]
     ```
     """
 
     pipeline: PipelineOptions
     executor: ExecutorOptions | str | None = None
     schedule: ScheduleOptions | str | None = None
+    loggers: list[LoggerOptions | str] | None = None
 
     class Config:
         extra = "forbid"

@@ -10,7 +10,7 @@ from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
-from kedro_dagster.dagster import ExecutorCreator
+from kedro_dagster.dagster import ExecutorCreator, LoggerCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 
@@ -55,6 +55,10 @@ def test_pipeline_translator_to_dagster_with_executor(env, request):
     named_executors = executor_creator.create_executors()
     assert "seq" in named_executors
 
+    # Loggers from config
+    logger_creator = LoggerCreator(dagster_config=dagster_config)
+    named_loggers = logger_creator.create_loggers()
+
     # Build jobs
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
@@ -66,6 +70,7 @@ def test_pipeline_translator_to_dagster_with_executor(env, request):
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
+        named_loggers=named_loggers,
         enable_mlflow=False,
         run_id=session.session_id,
     )
@@ -115,6 +120,9 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
     executor_creator = ExecutorCreator(dagster_config=dagster_config)
     named_executors = executor_creator.create_executors()
 
+    logger_creator = LoggerCreator(dagster_config=dagster_config)
+    named_loggers = logger_creator.create_loggers()
+
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
         context=context,
@@ -125,6 +133,7 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
+        named_loggers=named_loggers,
         enable_mlflow=False,
         run_id=session.session_id,
     )
@@ -215,6 +224,10 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
     executor_creator = ExecutorCreator(dagster_config=dagster_config)
     named_executors = executor_creator.create_executors()
 
+    # Loggers from config
+    logger_creator = LoggerCreator(dagster_config=dagster_config)
+    named_loggers = logger_creator.create_loggers()
+
     # Build jobs
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
@@ -226,6 +239,7 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
+        named_loggers=named_loggers,
         enable_mlflow=False,
         run_id=session.session_id,
     )

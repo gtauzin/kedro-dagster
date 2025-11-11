@@ -14,6 +14,7 @@ from pydantic import BaseModel, model_validator
 from .automation import ScheduleOptions
 from .execution import EXECUTOR_MAP, ExecutorOptions
 from .job import JobOptions
+from .logging import LoggerOptions
 
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
@@ -25,11 +26,13 @@ class KedroDagsterConfig(BaseModel):
     """Main configuration class representing the `dagster.yml` structure.
 
     Attributes:
+        loggers (dict[str, LoggerOptions] | None): Mapping of logger names to logger options.
         executors (dict[str, ExecutorOptions] | None): Mapping of executor names to executor options.
         schedules (dict[str, ScheduleOptions] | None): Mapping of schedule names to schedule options.
         jobs (dict[str, JobOptions] | None): Mapping of job names to job options.
     """
 
+    loggers: dict[str, LoggerOptions] | None = None
     executors: dict[str, ExecutorOptions] | None = None
     schedules: dict[str, ScheduleOptions] | None = None
     jobs: dict[str, JobOptions] | None = None

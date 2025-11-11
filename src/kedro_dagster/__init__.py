@@ -3,7 +3,7 @@
 import logging
 
 from .catalog import CatalogTranslator
-from .dagster import ExecutorCreator, LoggerTranslator, ScheduleCreator
+from .dagster import ExecutorCreator, LoggerCreator, ScheduleCreator
 from .datasets import NOTHING_OUTPUT, DagsterNothingDataset, DagsterPartitionedDataset
 from .kedro import KedroRunTranslator
 from .logging import dagster_colored_formatter, dagster_json_formatter, dagster_rich_formatter
@@ -20,7 +20,7 @@ __all__ = [
     "DagsterNothingDataset",
     "DagsterPartitionedDataset",
     "ExecutorCreator",
-    "LoggerTranslator",
+    "LoggerCreator",
     "ScheduleCreator",
     "KedroRunTranslator",
     "NodeTranslator",

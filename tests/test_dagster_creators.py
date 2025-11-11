@@ -1,0 +1,879 @@
+# mypy: ignore-errors
+
+from __future__ import annotations
+
+import dagster as dg
+import pytest
+from kedro.framework.project import pipelines
+from kedro.framework.session import KedroSession
+from kedro.framework.startup import bootstrap_project
+from pydantic import ValidationError
+
+from kedro_dagster.catalog import CatalogTranslator
+from kedro_dagster.config import get_dagster_config
+from kedro_dagster.config.automation import ScheduleOptions
+from kedro_dagster.config.execution import InProcessExecutorOptions, MultiprocessExecutorOptions
+from kedro_dagster.config.job import JobOptions, PipelineOptions
+from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
+from kedro_dagster.config.logging import LoggerOptions
+from kedro_dagster.dagster import ExecutorCreator, LoggerCreator, ScheduleCreator
+from kedro_dagster.nodes import NodeTranslator
+from kedro_dagster.pipelines import PipelineTranslator
+from tests.scenarios.kedro_projects import pipeline_registry_default
+from tests.scenarios.project_factory import KedroProjectOptions
+
+
+# Helper classes for testing without Mock
+class MockJob:
+    """Simple mock job class for testing."""
+
+    def __init__(self, loggers=None, schedule=None, executor=None):
+        self.loggers = loggers
+        self.schedule = schedule
+        self.executor = executor
+
+
+class MockConfig:
+    """Simple mock config class for testing."""
+
+    def __init__(self, loggers=None, jobs=None, schedules=None, executors=None):
+        self.loggers = loggers or {}
+        self.jobs = jobs or {}
+        self.schedules = schedules or {}
+        self.executors = executors or {}
+
+
+@pytest.mark.parametrize("env", ["base", "local"])
+def test_schedule_creator_uses_named_schedule(env, request):
+    """Create a named schedule for the 'default' job with the expected cron expression."""
+    # Use the integration scenario which includes executors, schedules and a default job
+    options = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+    project_path = options.project_path
+    bootstrap_project(project_path)
+    session = KedroSession.create(project_path=project_path, env=env)
+    context = session.load_context()
+
+    dagster_config = get_dagster_config(context)
+
+    # Minimal path to jobs to feed into ScheduleCreator: compose with PipelineTranslator
+    default_pipeline = pipelines.get("__default__")
+    catalog_translator = CatalogTranslator(
+        catalog=context.catalog,
+        pipelines=[default_pipeline],
+        hook_manager=context._hook_manager,
+        env=env,
+    )
+    named_io_managers, asset_partitions = catalog_translator.to_dagster()
+    node_translator = NodeTranslator(
+        pipelines=[default_pipeline],
+        catalog=context.catalog,
+        hook_manager=context._hook_manager,
+        asset_partitions=asset_partitions,
+        named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
+        env=env,
+        run_id=session.session_id,
+    )
+    named_op_factories, named_assets = node_translator.to_dagster()
+
+    # Create loggers for PipelineTranslator
+    logger_creator = LoggerCreator(dagster_config=dagster_config)
+    named_loggers = logger_creator.create_loggers()
+
+    pipeline_translator = PipelineTranslator(
+        dagster_config=dagster_config,
+        context=context,
+        project_path=str(project_path),
+        env=env,
+        named_assets=named_assets,
+        asset_partitions=asset_partitions,
+        named_op_factories=named_op_factories,
+        named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
+        named_executors={"seq": dg.in_process_executor},
+        named_loggers=named_loggers,
+        enable_mlflow=False,
+        run_id=session.session_id,
+    )
+    named_jobs = pipeline_translator.to_dagster()
+
+    schedule_creator = ScheduleCreator(dagster_config=dagster_config, named_jobs=named_jobs)
+    named_schedules = schedule_creator.create_schedules()
+
+    assert "default" in named_schedules
+    schedule = named_schedules["default"]
+    assert isinstance(schedule, dg.ScheduleDefinition)
+    assert schedule.cron_schedule == "0 6 * * *"
+
+
+@pytest.mark.parametrize("env", ["base", "local"])
+def test_executor_translator_creates_multiple_executors(env, request):
+    """Build multiple executor definitions from config and validate their names/types."""
+    # Arrange: project with multiple executors and a default job
+    options = request.getfixturevalue(f"kedro_project_multi_executors_{env}")
+    project_path = options.project_path
+
+    # Act: parse dagster config and build executors
+    bootstrap_project(project_path)
+    session = KedroSession.create(project_path=project_path, env=env)
+    context = session.load_context()
+    dagster_config = get_dagster_config(context)
+    executors = ExecutorCreator(dagster_config=dagster_config).create_executors()
+
+    # Assert: both executors are registered
+    assert "seq" in executors
+    assert "multiproc" in executors
+
+    assert len(executors) == 2  # noqa: PLR2004
+
+    assert isinstance(executors["seq"], dg.ExecutorDefinition)
+    assert executors["seq"].name == "in_process"
+    assert isinstance(executors["multiproc"], dg.ExecutorDefinition)
+    assert executors["multiproc"].name == "multiprocess"
+
+
+@pytest.mark.parametrize("env", ["base"])  # keep fast
+def test_schedule_creator_raises_for_unknown_named_schedule(env, project_scenario_factory):
+    """When a job references a non-existent named schedule, raise a clear ValueError."""
+    # Build a Kedro project with a job referencing schedule "unknown" and no schedules defined
+    dagster_cfg = {
+        "executors": {"seq": {"in_process": {}}},
+        "jobs": {"default": {"pipeline": {"pipeline_name": "__default__"}, "executor": "seq", "schedule": "unknown"}},
+    }
+    opts = KedroProjectOptions(env=env, dagster=dagster_cfg, pipeline_registry_py=pipeline_registry_default())
+    options = project_scenario_factory(opts, project_name="kedro-project-unknown-schedule")
+
+    # Bootstrap and build Dagster objects
+    bootstrap_project(options.project_path)
+    session = KedroSession.create(project_path=options.project_path, env=env)
+    context = session.load_context()
+
+    dagster_config = get_dagster_config(context)
+
+    # Provide a minimal, valid Dagster job mapping to the ScheduleCreator without
+    # relying on Kedro translators (we're testing schedule resolution only here).
+    @dg.op
+    def _noop():
+        pass
+
+    @dg.job
+    def default():
+        _noop()
+
+    named_jobs = {"default": default}
+
+    schedule_creator = ScheduleCreator(dagster_config=dagster_config, named_jobs=named_jobs)
+    with pytest.raises(ValueError) as e:
+        schedule_creator.create_schedules()
+
+    assert "Schedule defined by unknown not found" in str(e.value)
+
+
+@pytest.mark.parametrize("env", ["base"])  # keep fast
+def test_executor_creator_unsupported_executor_raises(env, project_scenario_factory):
+    """If an optional executor's package isn't installed, creating it should raise a ValueError."""
+    # Use a k8s executor which relies on `dagster_k8s` being importable; assume it's not installed in test env.
+    dagster_cfg = {
+        "executors": {"k8s": {"k8s_job_executor": {}}},
+        "jobs": {"default": {"pipeline": {"pipeline_name": "__default__"}, "executor": "k8s"}},
+    }
+    options = project_scenario_factory(
+        KedroProjectOptions(env=env, dagster=dagster_cfg, pipeline_registry_py=pipeline_registry_default()),
+        project_name="kedro-project-k8s-executor",
+    )
+
+    bootstrap_project(options.project_path)
+    session = KedroSession.create(project_path=options.project_path, env=env)
+    context = session.load_context()
+
+    dagster_config = get_dagster_config(context)
+
+    creator = ExecutorCreator(dagster_config=dagster_config)
+    with pytest.raises(ValueError) as e:
+        creator.create_executors()
+
+    assert "not supported" in str(e.value)
+
+
+@pytest.mark.parametrize("env", ["base"])  # keep fast
+def test_logger_translator_exact_key_and_description(env, request):
+    """LoggerCreator should emit exact module key and description for non-default pipelines."""
+    options = request.getfixturevalue(f"kedro_project_exec_filebacked_{env}")
+
+    bootstrap_project(options.project_path)
+    session = KedroSession.create(project_path=options.project_path, env=env)
+    context = session.load_context()
+
+    dagster_config = get_dagster_config(context)
+
+    translator = LoggerCreator(dagster_config=dagster_config)
+    named_loggers = translator.create_loggers()
+
+    # Should have console and file_logger from config
+    assert "console" in named_loggers
+    assert "file_logger" in named_loggers
+
+    # Validate the description text for the emitted logger definitions
+    assert "console" in named_loggers["console"].description
+    assert "file_logger" in named_loggers["file_logger"].description
+
+
+def test_logger_create_simple_logger():
+    """Test creating a simple logger with minimal configuration."""
+    config = KedroDagsterConfig(
+        loggers={
+            "simple": LoggerOptions(
+                logger_name="test.simple",
+                log_level="INFO",
+            )
+        }
+    )
+
+    translator = LoggerCreator(dagster_config=config)
+    loggers = translator.create_loggers()
+
+    assert "simple" in loggers
+    assert "Logger definition `simple`" in loggers["simple"].description
+
+
+def test_logger_create_multiple_loggers():
+    """Test creating multiple loggers with different configurations."""
+    config = KedroDagsterConfig(
+        loggers={
+            "info_logger": LoggerOptions(
+                logger_name="test.info",
+                log_level="INFO",
+            ),
+            "debug_logger": LoggerOptions(
+                logger_name="test.debug",
+                log_level="DEBUG",
+            ),
+            "error_logger": LoggerOptions(
+                logger_name="test.error",
+                log_level="ERROR",
+            ),
+        }
+    )
+
+    translator = LoggerCreator(dagster_config=config)
+    loggers = translator.create_loggers()
+
+    expected_logger_count = 3
+    assert len(loggers) == expected_logger_count
+    assert "info_logger" in loggers
+    assert "debug_logger" in loggers
+    assert "error_logger" in loggers
+
+
+def test_logger_no_loggers_config():
+    """Test when no loggers are configured."""
+    config = KedroDagsterConfig()
+
+    translator = LoggerCreator(dagster_config=config)
+    loggers = translator.create_loggers()
+
+    assert len(loggers) == 0
+
+
+def test_logger_empty_loggers_config():
+    """Test when loggers config is empty dict."""
+    config = KedroDagsterConfig(loggers={})
+
+    translator = LoggerCreator(dagster_config=config)
+    loggers = translator.create_loggers()
+
+    assert len(loggers) == 0
+
+
+def test_logger_with_file_handler():
+    """Test creating logger with file handler."""
+    config = KedroDagsterConfig(
+        loggers={
+            "file_logger": LoggerOptions(
+                logger_name="test.file",
+                log_level="DEBUG",
+                handlers=[
+                    {
+                        "class": "logging.FileHandler",
+                        "args": ["test.log"],
+                        "level": "DEBUG",
+                    }
+                ],
+            )
+        }
+    )
+
+    translator = LoggerCreator(dagster_config=config)
+    loggers = translator.create_loggers()
+
+    assert "file_logger" in loggers
+    logger_def = loggers["file_logger"]
+
+    # Check that the logger definition was created properly
+    assert logger_def.description == "Logger definition `file_logger`."
+    assert hasattr(logger_def, "logger_fn")
+
+
+def test_logger_with_stream_handler():
+    """Test creating logger with stream handler."""
+    config = KedroDagsterConfig(
+        loggers={
+            "stream_logger": LoggerOptions(
+                logger_name="test.stream",
+                log_level="INFO",
+                handlers=[
+                    {
+                        "class": "logging.StreamHandler",
+                        "level": "INFO",
+                    }
+                ],
+            )
+        }
+    )
+
+    translator = LoggerCreator(dagster_config=config)
+    loggers = translator.create_loggers()
+
+    assert "stream_logger" in loggers
+    logger_def = loggers["stream_logger"]
+
+    # Check that the logger definition was created properly
+    assert logger_def.description == "Logger definition `stream_logger`."
+    assert hasattr(logger_def, "logger_fn")
+
+
+def test_logger_with_custom_formatter():
+    """Test creating logger with custom formatter."""
+    config = KedroDagsterConfig(
+        loggers={
+            "formatted_logger": LoggerOptions(
+                logger_name="test.formatted",
+                log_level="INFO",
+                formatters={
+                    "detailed": {
+                        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                        "datefmt": "%Y-%m-%d %H:%M:%S",
+                    }
+                },
+                handlers=[{"class": "logging.StreamHandler", "level": "INFO", "formatter": "detailed"}],
+            )
+        }
+    )
+
+    translator = LoggerCreator(dagster_config=config)
+    loggers = translator.create_loggers()
+
+    assert "formatted_logger" in loggers
+    logger_def = loggers["formatted_logger"]
+
+    # Check that the logger definition was created properly
+    assert logger_def.description == "Logger definition `formatted_logger`."
+    assert hasattr(logger_def, "logger_fn")
+
+
+def test_logger_with_multiple_formatters():
+    """Test creating logger with multiple formatters."""
+    config = KedroDagsterConfig(
+        loggers={
+            "multi_format_logger": LoggerOptions(
+                logger_name="test.multi",
+                log_level="DEBUG",
+                formatters={
+                    "simple": {"format": "%(levelname)s: %(message)s"},
+                    "detailed": {"format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"},
+                },
+                handlers=[{"class": "logging.StreamHandler", "level": "INFO", "formatter": "simple"}],
+            )
+        }
+    )
+
+    translator = LoggerCreator(dagster_config=config)
+    loggers = translator.create_loggers()
+
+    assert "multi_format_logger" in loggers
+    logger_def = loggers["multi_format_logger"]
+
+    # Check that the logger definition was created properly
+    assert logger_def.description == "Logger definition `multi_format_logger`."
+    assert hasattr(logger_def, "logger_fn")
+
+
+def test_logger_invalid_log_level_validation():
+    """Test that invalid log levels are caught during config validation."""
+    with pytest.raises(ValidationError, match="Invalid log level"):
+        KedroDagsterConfig(
+            loggers={
+                "invalid_logger": LoggerOptions(
+                    logger_name="test.invalid",
+                    log_level="INVALID_LEVEL",  # This should fail validation
+                )
+            }
+        )
+
+
+def test_logger_invalid_logger_name_validation():
+    """Test that invalid logger names are caught during config validation."""
+    with pytest.raises(ValidationError, match="must follow Python module naming conventions"):
+        KedroDagsterConfig(
+            loggers={
+                "invalid_logger": LoggerOptions(
+                    logger_name="test-with-dashes",  # Invalid Python module name
+                    log_level="INFO",
+                )
+            }
+        )
+
+
+def test_logger_nonexistent_formatter_reference():
+    """Test that referencing non-existent formatter raises validation error."""
+    with pytest.raises(ValidationError, match="references unknown formatter"):
+        KedroDagsterConfig(
+            loggers={
+                "bad_logger": LoggerOptions(
+                    logger_name="test.bad",
+                    log_level="INFO",
+                    handlers=[{"class": "logging.StreamHandler", "formatter": "nonexistent_formatter"}],
+                )
+            }
+        )
+
+
+def test_logger_case_insensitive_log_levels():
+    """Test that log levels are case insensitive."""
+    for level in ["info", "INFO", "Info", "iNfO"]:
+        config = KedroDagsterConfig(
+            loggers={
+                "case_test": LoggerOptions(
+                    logger_name="test.case",
+                    log_level=level,
+                )
+            }
+        )
+
+        translator = LoggerCreator(dagster_config=config)
+        loggers = translator.create_loggers()
+
+        assert "case_test" in loggers
+        logger_def = loggers["case_test"]
+        assert logger_def.description == "Logger definition `case_test`."
+
+
+def test_logger_complex_configuration():
+    """Test a complex logger configuration with multiple handlers, formatters."""
+    config = KedroDagsterConfig(
+        loggers={
+            "complex_logger": LoggerOptions(
+                logger_name="test.complex",
+                log_level="DEBUG",
+                formatters={
+                    "console_format": {"format": "%(name)s - %(levelname)s - %(message)s"},
+                    "file_format": {
+                        "format": "%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+                        "datefmt": "%Y-%m-%d %H:%M:%S",
+                    },
+                },
+                handlers=[
+                    {"class": "logging.StreamHandler", "level": "INFO", "formatter": "console_format"},
+                    {
+                        "class": "logging.FileHandler",
+                        "args": ["test.log"],
+                        "level": "DEBUG",
+                        "formatter": "file_format",
+                    },
+                ],
+            )
+        }
+    )
+
+    translator = LoggerCreator(dagster_config=config)
+    loggers = translator.create_loggers()
+
+    assert "complex_logger" in loggers
+    logger_def = loggers["complex_logger"]
+
+    # Check that the logger definition was created properly
+    assert logger_def.description == "Logger definition `complex_logger`."
+    assert hasattr(logger_def, "logger_fn")
+
+
+def test_logger_with_default_handler():
+    """Test that logger gets default handler when none specified."""
+    config = KedroDagsterConfig(
+        loggers={
+            "default_handler_logger": LoggerOptions(
+                logger_name="test.default",
+                log_level="INFO",
+                # No handlers specified - should get default StreamHandler
+            )
+        }
+    )
+
+    translator = LoggerCreator(dagster_config=config)
+    loggers = translator.create_loggers()
+
+    logger_def = loggers["default_handler_logger"]
+
+    # Check that the logger definition was created properly
+    assert logger_def.description == "Logger definition `default_handler_logger`."
+    assert hasattr(logger_def, "logger_fn")
+
+
+def test_job_options_with_logger_string_references():
+    """Test JobOptions with logger string references."""
+    job_config = JobOptions(pipeline=PipelineOptions(pipeline_name="test_pipeline"), loggers=["console", "file_logger"])
+
+    assert job_config.loggers == ["console", "file_logger"]
+    assert isinstance(job_config.loggers[0], str)
+
+
+def test_job_options_with_inline_logger_options():
+    """Test JobOptions with inline LoggerOptions."""
+    inline_logger = LoggerOptions(logger_name="test.inline", log_level="INFO")
+
+    job_config = JobOptions(pipeline=PipelineOptions(pipeline_name="test_pipeline"), loggers=[inline_logger])
+
+    assert len(job_config.loggers) == 1
+    assert isinstance(job_config.loggers[0], LoggerOptions)
+    assert job_config.loggers[0].logger_name == "test.inline"
+    assert job_config.loggers[0].log_level == "INFO"
+
+
+def test_job_options_mixed_logger_types():
+    """Test JobOptions with mixed logger types (both strings and LoggerOptions)."""
+    inline_logger = LoggerOptions(logger_name="test.mixed", log_level="DEBUG")
+
+    job_config = JobOptions(pipeline=PipelineOptions(pipeline_name="test_pipeline"), loggers=["console", inline_logger])
+
+    expected_logger_count = 2
+    assert len(job_config.loggers) == expected_logger_count
+    assert isinstance(job_config.loggers[0], str)
+    assert job_config.loggers[0] == "console"
+    assert isinstance(job_config.loggers[1], LoggerOptions)
+    assert job_config.loggers[1].logger_name == "test.mixed"
+
+
+def test_pipeline_translator_handles_inline_loggers():
+    """Test that PipelineTranslator can handle inline LoggerOptions in job config."""
+    # This would normally be an integration test, but let's test the logger processing logic
+
+    # Create a config with an inline logger for a job
+    inline_logger = LoggerOptions(logger_name="test.pipeline.inline", log_level="WARNING")
+
+    # Test creating a logger from inline configuration
+    temp_config = KedroDagsterConfig(loggers={"job_test_logger": inline_logger})
+    logger_creator = LoggerCreator(dagster_config=temp_config)
+    loggers = logger_creator.create_loggers()
+
+    assert "job_test_logger" in loggers
+    logger_def = loggers["job_test_logger"]
+    assert "Logger definition `job_test_logger`" in logger_def.description
+    assert hasattr(logger_def, "logger_fn")
+
+
+def test_logger_creator_with_job_inline_loggers(monkeypatch):
+    """Test LoggerCreator handling inline loggers defined directly in job configurations."""
+
+    # Create a mock config object using a simple class
+    class MockConfig:
+        def __init__(self):
+            self.loggers = {"global_logger": LoggerOptions(logger_name="global.logger", log_level="INFO")}
+
+            # Create mock jobs with inline logger configurations
+            self.jobs = {}
+
+    # Set up the mock config
+    mock_config = MockConfig()
+
+    # Create mock job objects
+    class MockJob:
+        def __init__(self, loggers=None):
+            self.loggers = loggers
+
+    mock_config.jobs = {"job_with_inline": MockJob(), "job_with_reference": MockJob(), "job_without_loggers": MockJob()}
+
+    # Job with inline logger configuration
+    inline_logger = LoggerOptions(logger_name="job.inline.logger", log_level="DEBUG")
+    mock_config.jobs["job_with_inline"].loggers = [inline_logger]
+
+    # Job with string reference to global logger
+    mock_config.jobs["job_with_reference"].loggers = ["global_logger"]
+
+    # Job without loggers
+    mock_config.jobs["job_without_loggers"].loggers = None
+
+    logger_creator = LoggerCreator(dagster_config=mock_config)
+    loggers = logger_creator.create_loggers()
+
+    # Should have global logger and job-specific inline logger
+    assert "global_logger" in loggers
+    assert "job_with_inline__logger_0" in loggers
+
+    # Verify the inline logger was created correctly
+    inline_logger_def = loggers["job_with_inline__logger_0"]
+    assert "Logger definition `job_with_inline__logger_0`" in inline_logger_def.description
+
+
+def test_logger_creator_validates_job_string_references():
+    """Test LoggerCreator validates job logger string references against available loggers."""
+
+    # Create a mock config with global loggers
+    mock_config = MockConfig(
+        loggers={"available_logger": LoggerOptions(logger_name="available.logger", log_level="INFO")},
+        jobs={"job_with_bad_ref": MockJob(loggers=["nonexistent_logger"])},
+    )
+
+    logger_creator = LoggerCreator(dagster_config=mock_config)
+
+    # Should raise ValueError for invalid reference
+    with pytest.raises(ValueError) as exc_info:
+        logger_creator.create_loggers()
+
+    assert "Logger 'nonexistent_logger' referenced in job 'job_with_bad_ref'" in str(exc_info.value)
+    assert "not found in available loggers" in str(exc_info.value)
+
+
+def test_logger_creator_mixed_job_logger_types():
+    """Test LoggerCreator handling jobs with mixed logger types (strings and inline configs)."""
+
+    inline_logger = LoggerOptions(logger_name="mixed.inline.logger", log_level="WARNING")
+
+    # Create a mock config with global loggers
+    mock_config = MockConfig(
+        loggers={"shared_logger": LoggerOptions(logger_name="shared.logger", log_level="INFO")},
+        jobs={
+            "mixed_job": MockJob(
+                loggers=[
+                    "shared_logger",  # String reference
+                    inline_logger,  # Inline configuration
+                ]
+            )
+        },
+    )
+
+    logger_creator = LoggerCreator(dagster_config=mock_config)
+    loggers = logger_creator.create_loggers()
+
+    # Should have both global logger and job-specific inline logger
+    assert "shared_logger" in loggers
+    assert "mixed_job__logger_1" in loggers  # Second item gets index 1
+
+    # Verify the inline logger was created correctly
+    inline_logger_def = loggers["mixed_job__logger_1"]
+    assert "Logger definition `mixed_job__logger_1`" in inline_logger_def.description
+
+
+def test_schedule_creator_with_inline_schedule(monkeypatch):
+    """Test ScheduleCreator handling inline schedule configurations in job definitions."""
+
+    inline_schedule = ScheduleOptions(
+        cron_schedule="0 12 * * *", execution_timezone="UTC", description="Inline schedule for testing"
+    )
+
+    # Create a mock config with no global schedules
+    mock_config = MockConfig(schedules={}, jobs={"job_with_inline_schedule": MockJob(schedule=inline_schedule)})
+
+    # Mock the actual schedule creation to avoid Dagster validation issues
+    def mock_create_schedule(*args, **kwargs):
+        name = kwargs.get("name", "test_schedule")
+        cron_schedule = kwargs.get("cron_schedule", "0 0 * * *")
+        mock_schedule = type("MockSchedule", (), {"name": name, "cron_schedule": cron_schedule})()
+        return mock_schedule
+
+    # Patch ScheduleDefinition creation
+    monkeypatch.setattr("dagster.ScheduleDefinition", mock_create_schedule)
+
+    schedule_creator = ScheduleCreator(dagster_config=mock_config, named_jobs={"job_with_inline_schedule": "mock_job"})
+    schedules = schedule_creator.create_schedules()
+
+    # Should create schedule with job-based name
+    assert "job_with_inline_schedule" in schedules
+    schedule_def = schedules["job_with_inline_schedule"]
+    assert schedule_def.name == "job_with_inline_schedule__schedule"
+    assert schedule_def.cron_schedule == "0 12 * * *"
+
+
+def test_schedule_creator_validates_string_references():
+    """Test ScheduleCreator validates job schedule string references against available schedules."""
+
+    # Create a mock config with global schedules
+    mock_config = MockConfig(
+        schedules={"available_schedule": ScheduleOptions(cron_schedule="0 6 * * *", execution_timezone="UTC")},
+        jobs={"job_with_bad_schedule_ref": MockJob(schedule="nonexistent_schedule")},
+    )
+
+    # Create mock jobs dictionary for ScheduleCreator
+    mock_job = "mock_job"
+    named_jobs = {"job_with_bad_schedule_ref": mock_job}
+
+    schedule_creator = ScheduleCreator(dagster_config=mock_config, named_jobs=named_jobs)
+
+    # Should raise ValueError for invalid reference
+    with pytest.raises(ValueError) as exc_info:
+        schedule_creator.create_schedules()
+
+    assert "Schedule defined by nonexistent_schedule not found" in str(exc_info.value)
+
+
+def test_schedule_creator_mixed_schedule_types(monkeypatch):
+    """Test ScheduleCreator handling mixed schedule types (strings and inline configs)."""
+
+    inline_schedule = ScheduleOptions(
+        cron_schedule="0 18 * * *", execution_timezone="Europe/London", description="Evening schedule"
+    )
+
+    # Create a mock config with global schedules
+    mock_config = MockConfig(
+        schedules={"global_schedule": ScheduleOptions(cron_schedule="0 6 * * *", execution_timezone="UTC")},
+        jobs={
+            "job_with_string_ref": MockJob(schedule="global_schedule"),
+            "job_with_inline": MockJob(schedule=inline_schedule),
+            "job_without_schedule": MockJob(schedule=None),
+        },
+    )
+
+    # Mock the actual schedule creation to avoid Dagster validation issues
+    def mock_create_schedule(*args, **kwargs):
+        name = kwargs.get("name", "test_schedule")
+        cron_schedule = kwargs.get("cron_schedule", "0 0 * * *")
+        mock_schedule = type("MockSchedule", (), {"name": name, "cron_schedule": cron_schedule})()
+        return mock_schedule
+
+    # Patch ScheduleDefinition creation
+    monkeypatch.setattr("dagster.ScheduleDefinition", mock_create_schedule)
+
+    # Create mock jobs dictionary for ScheduleCreator
+    mock_jobs = {
+        "job_with_string_ref": "mock_job_1",
+        "job_with_inline": "mock_job_2",
+        "job_without_schedule": "mock_job_3",
+    }
+
+    schedule_creator = ScheduleCreator(dagster_config=mock_config, named_jobs=mock_jobs)
+    schedules = schedule_creator.create_schedules()
+
+    # Should create schedules for jobs with schedule configurations
+    expected_schedule_count = 2
+    assert len(schedules) == expected_schedule_count
+    assert "job_with_string_ref" in schedules
+    assert "job_with_inline" in schedules
+    assert "job_without_schedule" not in schedules
+
+
+def test_schedule_creator_handles_none_schedule():
+    """Test ScheduleCreator properly handles jobs with schedule=None."""
+
+    # Create a mock config with job that has no schedule
+    mock_config = MockConfig(schedules={}, jobs={"job_without_schedule": MockJob(schedule=None)})
+
+    # Create mock jobs dictionary for ScheduleCreator
+    mock_job = "mock_job"
+    named_jobs = {"job_without_schedule": mock_job}
+
+    schedule_creator = ScheduleCreator(dagster_config=mock_config, named_jobs=named_jobs)
+    schedules = schedule_creator.create_schedules()
+
+    # Should create no schedules
+    assert len(schedules) == 0
+    assert "job_without_schedule" not in schedules
+
+
+def test_executor_creator_with_job_inline_executors():
+    """Test ExecutorCreator handling inline executor configurations in job definitions."""
+
+    inline_executor = InProcessExecutorOptions()
+
+    # Create a mock config with no global executors
+    mock_config = MockConfig(executors={}, jobs={"job_with_inline_executor": MockJob(executor=inline_executor)})
+
+    executor_creator = ExecutorCreator(dagster_config=mock_config)
+    executors = executor_creator.create_executors()
+
+    # Should create executor with job-based name
+    assert "job_with_inline_executor__executor" in executors
+    executor_def = executors["job_with_inline_executor__executor"]
+    assert executor_def is not None
+
+
+def test_executor_creator_validates_job_string_references():
+    """Test ExecutorCreator validates job executor string references against available executors."""
+
+    # Create a mock config with global executors
+    mock_config = MockConfig(
+        executors={"available_executor": InProcessExecutorOptions()},
+        jobs={"job_with_bad_ref": MockJob(executor="nonexistent_executor")},
+    )
+
+    executor_creator = ExecutorCreator(dagster_config=mock_config)
+
+    # Should raise ValueError for invalid reference
+    with pytest.raises(ValueError) as exc_info:
+        executor_creator.create_executors()
+
+    assert (
+        "Executor reference 'nonexistent_executor' for job 'job_with_bad_ref' not found in available executors"
+        in str(exc_info.value)
+    )
+
+
+def test_executor_creator_mixed_job_executor_types():
+    """Test ExecutorCreator handling jobs with mixed executor types (strings and inline configs)."""
+
+    inline_executor = MultiprocessExecutorOptions()
+
+    # Create a mock config with global executors
+    mock_config = MockConfig(
+        executors={"shared_executor": InProcessExecutorOptions()},
+        jobs={
+            "job_with_string_ref": MockJob(executor="shared_executor"),
+            "job_with_inline": MockJob(executor=inline_executor),
+            "job_without_executor": MockJob(executor=None),
+        },
+    )
+
+    executor_creator = ExecutorCreator(dagster_config=mock_config)
+    executors = executor_creator.create_executors()
+
+    # Should have both global executor and job-specific inline executor
+    assert "shared_executor" in executors
+    assert "job_with_inline__executor" in executors
+
+    # Job without executor should not create an executor
+    assert "job_without_executor__executor" not in executors
+
+    # Verify the number of executors
+    expected_executor_count = 2  # shared_executor + job_with_inline_executor
+    assert len(executors) == expected_executor_count
+
+
+def test_executor_creator_unsupported_inline_executor_type():
+    """Test ExecutorCreator error handling for unsupported inline executor types."""
+
+    # Create an unsupported executor type
+    class UnsupportedExecutor:
+        pass
+
+    unsupported_executor = UnsupportedExecutor()
+
+    # Create a mock config with unsupported executor
+    mock_config = MockConfig(executors={}, jobs={"job_with_unsupported": MockJob(executor=unsupported_executor)})
+
+    executor_creator = ExecutorCreator(dagster_config=mock_config)
+
+    # Should raise ValueError for unsupported type
+    with pytest.raises(ValueError) as exc_info:
+        executor_creator.create_executors()
+
+    assert "Executor type" in str(exc_info.value)
+    assert "not supported" in str(exc_info.value)
+
+
+def test_executor_creator_handles_none_executor():
+    """Test ExecutorCreator properly handles jobs with executor=None."""
+
+    # Create a mock config with job that has no executor
+    mock_config = MockConfig(executors={}, jobs={"job_without_executor": MockJob(executor=None)})
+
+    executor_creator = ExecutorCreator(dagster_config=mock_config)
+    executors = executor_creator.create_executors()
+
+    # Should create no executors for this job
+    assert len(executors) == 0
+    assert "job_without_executor__executor" not in executors

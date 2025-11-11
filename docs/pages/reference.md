@@ -224,11 +224,11 @@ Creates Dagster executors from configuration, allowing for granular execution st
 
 ---
 
-#### `LoggerTranslator`
+#### `LoggerCreator`
 
 Translates Kedro loggers to Dagster loggers for unified logging across both frameworks.
 
-::: kedro_dagster.dagster.LoggerTranslator
+::: kedro_dagster.dagster.LoggerCreator
 
 ---
 

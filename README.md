@@ -35,8 +35,8 @@ Currently, Kedro-Dagster supports Kedro versions 0.19.x and 1.x, and Dagster ver
 - **Customization:** The core integration lives in the auto‑generated Dagster `definitions.py`. For advanced use cases, you can extend or override these definitions.
 - **Kedro hooks preservation:** Kedro hooks are preserved and called at the appropriate time during pipeline execution, so custom logic (e.g., data validation, logging) continues to work seamlessly.
 - **MLflow compatibility:** Use [Kedro-MLflow](https://github.com/Galileo-Galilei/kedro-mlflow) with Dagster’s [MLflow integration](https://dagster.io/integrations/dagster-mlflow) to track experiments, log models, and register artifacts.
+- **Logger integration:** Unifies Kedro and Dagster logging so logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug. Additionally, provides configuration to customize Dagster run loggers.
 - **(Experimental) Dagster partition support:** Make use of Dagster's partitions to fan-out Kedro nodes acting on partitioned data.
-- **(Experimental) Logger integration:** Unifies Kedro and Dagster logging so logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug.
 
 ## How to install Kedro-Dagster?
 

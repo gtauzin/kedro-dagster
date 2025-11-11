@@ -10,7 +10,7 @@ from kedro.framework.startup import bootstrap_project
 
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
-from kedro_dagster.dagster import ExecutorCreator
+from kedro_dagster.dagster import ExecutorCreator, LoggerCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 
@@ -103,6 +103,9 @@ def test_static_partitions_and_static_mapping(env, request):
     executor_creator = ExecutorCreator(dagster_config=dagster_config)
     named_executors = executor_creator.create_executors()
 
+    logger_creator = LoggerCreator(dagster_config=dagster_config)
+    named_loggers = logger_creator.create_loggers()
+
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
         context=context,
@@ -113,6 +116,7 @@ def test_static_partitions_and_static_mapping(env, request):
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
+        named_loggers=named_loggers,
         enable_mlflow=False,
         run_id=session.session_id,
     )
