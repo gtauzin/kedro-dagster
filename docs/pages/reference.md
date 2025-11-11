@@ -164,6 +164,14 @@ Options for defining Dagster schedules.
 
 ---
 
+#### `LoggerOptions`
+
+Options for defining Dagster loggers.
+
+::: kedro_dagster.config.automation.LoggerOptions
+
+---
+
 ### Translation modules
 
 The following classes are responsible for translating Kedro concepts into Dagster constructs:
@@ -280,7 +288,44 @@ my_barrier:
 
 ::: kedro_dagster.datasets.DagsterNothingDataset
 
-#### Utilities
+### Logging
+
+#### `logging` module drop-in replacement
+
+Integration of Kedro logging with Dagster's logging system to ensure logs from Kedro nodes are captured in the Dagster UI.
+
+!!! note
+    The `kedro_dagster.logging` module provides a `getLogger` function that Kedro nodes can use to obtain loggers compatible with Dagster's logging system. This ensures that logs generated within Kedro nodes are properly captured and displayed in the Dagster UI. We recommend replacing standard `logging.getLogger` calls in your Kedro nodes with `kedro_dagster.logging.getLogger` to benefit from this integration.
+
+::: kedro_dagster.logging.getLogger
+
+#### Dagster CLI logger formatting utilities
+
+Implementation of Dagster CLI logger formatters to be used in Kedro's `logging.yml` configuration for unifying logging output between Dagster, Kedro, Kedro-Dagster, or any third-party libraries.
+
+##### `dagster_colored_formatter`
+
+Formatter used in Kedro-Dagster CLI commands when `--log-format colored` is specified.
+
+::: kedro_dagster.logging.dagster_colored_formatter
+
+---
+
+##### `dagster_rich_formatter`
+
+Formatter used in Kedro-Dagster CLI commands when `--log-format rich` is specified.
+
+::: kedro_dagster.logging.dagster_rich_formatter
+
+---
+
+##### `dagster_json_formatter`
+
+Formatter used in Kedro-Dagster CLI commands when `--log-format json` is specified.
+
+::: kedro_dagster.logging.dagster_json_formatter
+
+### Utilities
 
 Helper functions for formatting, filtering, and supporting translation between Kedro and Dagster concepts.
 

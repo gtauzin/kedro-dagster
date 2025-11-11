@@ -165,17 +165,13 @@ The example defines four environments, `local`, `dev`, `staging`, and `prod`, ea
 
 While `staging` and `prod` are similar, `local` is geared towards development with in‑process execution and `dev` introduces multiprocessing and scheduling, as well as a new `model_tuning` pipeline.
 
-The `dev` section in `dagster.yml` configures how `kedro dagster dev` behaves (log level/format, host/port, and live polling rate). The executor and schedule sections define how jobs are executed and scheduled and the jobs section defines which Kedro pipelines are translated into Dagster jobs.
-
 Example `conf/prod/dagster.yml` (trimmed):
 
 ```yaml
-dev:
-  log_level: "info"
-  log_format: "colored"
-  port: "3000"
-  host: "127.0.0.1"
-  live_data_poll_rate: "2000"
+loggers:
+   console:
+      level: INFO
+      format: "[%(asctime)s] %(levelname)s - %(message)s"
 
 executors:
   sequential:
@@ -197,6 +193,7 @@ jobs:
       - reviews_predictor
       tags:
       - base
+    loggers: ["console"]
     executor: multiprocessing
     schedule: daily
 
@@ -207,6 +204,7 @@ jobs:
       - reviews_predictor
       tags:
       - base
+    loggers: ["console"]
     executor: multiprocessing
     schedule: daily
 ```
