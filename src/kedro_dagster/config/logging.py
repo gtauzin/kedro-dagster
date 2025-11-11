@@ -9,7 +9,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Valid Python logging levels (normalized to uppercase)
-LogLevel = Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
+LogLevel = Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]
 
 
 class LoggerOptions(BaseModel):
@@ -17,7 +17,7 @@ class LoggerOptions(BaseModel):
 
     Attributes:
         logger_name (str): Name of the logger to use. Must follow Python module naming conventions.
-        log_level (LogLevel): Logging level (CRITICAL/ERROR/WARNING/INFO/DEBUG).
+        log_level (LogLevel): Logging level (CRITICAL/ERROR/WARNING/INFO/DEBUG/NOTSET).
         handlers (list[dict[str, Any]] | None): List of handler config dicts.
         formatters (dict[str, dict[str, Any]] | None): Formatter configs, name→config.
         filters (dict[str, dict[str, Any]] | None): Filter configs, name→config.

@@ -18,7 +18,7 @@ default_executor = dg.multiprocess_executor.configured(dict(max_concurrent=2))
 
 # Define default loggers for Dagster jobs
 default_loggers = {
-    "console": dg.console_logger,
+    "console": dg.colored_console_logger,
 }
 # They could also come from the Kedro-Dagster config
 # default_loggers = {
