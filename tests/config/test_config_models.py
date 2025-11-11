@@ -341,3 +341,128 @@ def test_logger_options_forbid_extra_fields():
         LoggerOptions(logger_name="test.logger", log_level="INFO", unknown_field="should_fail")
     # Check that extra inputs are not permitted
     assert "Extra inputs are not permitted" in str(exc_info.value)
+
+
+def test_logger_options_handler_missing_class():
+    with pytest.raises(ValidationError, match="must specify a 'class' field"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.missingclass",
+                    log_level="INFO",
+                    handlers=[{}],  # missing 'class'
+                )
+            }
+        )
+
+
+def test_logger_options_handler_class_not_string():
+    with pytest.raises(ValidationError, match="must be a string"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.classtype",
+                    log_level="INFO",
+                    handlers=[{"class": 123}],  # non-string class
+                )
+            }
+        )
+
+
+def test_logger_options_formatter_missing_keys():
+    with pytest.raises(ValidationError, match=r"must specify either 'format' field or '\(\)'"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.formattermissing",
+                    log_level="INFO",
+                    formatters={"fmt": {"datefmt": "%Y"}},  # missing format and '()'
+                )
+            }
+        )
+
+
+def test_logger_options_log_level_not_string():
+    with pytest.raises(ValidationError, match="Log level must be a string"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.leveltype",
+                    log_level=123,  # non-string
+                )
+            }
+        )
+
+
+def test_logger_options_invalid_log_level_value():
+    with pytest.raises(ValidationError, match="Invalid log level"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.levelvalue",
+                    log_level="VERBOSE",  # invalid value
+                )
+            }
+        )
+
+
+def test_logger_options_handler_unknown_formatter_reference():
+    with pytest.raises(ValidationError, match="references unknown formatter"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.unknownfmt",
+                    log_level="INFO",
+                    handlers=[{"class": "logging.StreamHandler", "formatter": "missing"}],
+                )
+            }
+        )
+
+
+def test_logger_options_handler_unknown_filter_reference():
+    with pytest.raises(ValidationError, match="references unknown filter"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.unknownfilter",
+                    log_level="INFO",
+                    handlers=[{"class": "logging.StreamHandler", "filters": ["missing"]}],
+                )
+            }
+        )
+
+
+def test_logger_options_handler_not_dict():
+    """Handler entry that's not a dict should raise a validation error.
+
+    Matches either custom validator message or Pydantic's generic dict error depending on evaluation order.
+    """
+    with pytest.raises(ValidationError, match=r"Handler at index 0 must be a dictionary|valid dictionary"):
+        KedroDagsterConfig(
+            loggers={
+                "bad": LoggerOptions(
+                    logger_name="test.bad.handlernotdict",
+                    log_level="INFO",
+                    handlers=["not-a-dict"],  # type: ignore[list-item]
+                )
+            }
+        )
+
+
+def test_logger_options_empty_name_validation():
+    """LoggerOptions should raise ValidationError when logger_name is empty string.
+
+    Covers the explicit ValueError branch; Pydantic's min_length fires first.
+    """
+    with pytest.raises(ValidationError, match="at least 1 character"):
+        LoggerOptions(logger_name="", log_level="INFO")
+
+
+def test_logger_options_handler_not_dict_validation():
+    """Handlers list containing a non-dict element should raise ValidationError.
+
+    Depending on Pydantic pre-validation, the error may be the generic dict-type message
+    or our custom validator message. Match either to keep the test stable across versions.
+    """
+    with pytest.raises(ValidationError, match=r"Handler at index 0 must be a dictionary|valid dictionary"):
+        LoggerOptions(logger_name="test.handlers", log_level="INFO", handlers=["not-a-dict"])  # type: ignore[list-item]
