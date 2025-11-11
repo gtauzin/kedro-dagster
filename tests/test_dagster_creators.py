@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import logging
 
 import dagster as dg
@@ -11,6 +12,7 @@ from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 from pydantic import ValidationError
 
+from kedro_dagster import dagster as dagster_module
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
 from kedro_dagster.config.automation import ScheduleOptions
@@ -1093,3 +1095,148 @@ def test_logger_runtime_all_levels(level):
     ctx = type("Ctx", (), {"logger_config": {}})()
     logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
     assert logger_obj.level == getattr(logging, level)
+
+
+def test_logger_runtime_filter_class_path(tmp_path):
+    """Filter instantiation via 'class' reference with 'params' should attach and filter records."""
+    log_file = tmp_path / "class_filter.log"
+    cfg = KedroDagsterConfig(
+        loggers={
+            "class_filter_logger": LoggerOptions(
+                logger_name="test.runtime.class_filter",
+                log_level="INFO",
+                filters={
+                    # Use class path branch (no '()')
+                    "kw": {
+                        "class": "tests.test_dagster_creators.DummyFilter",
+                        "params": {"keyword": "keep"},
+                    }
+                },
+                handlers=[
+                    {
+                        "class": "logging.FileHandler",
+                        "args": [str(log_file)],
+                        "level": "INFO",
+                        "filters": ["kw"],
+                    }
+                ],
+            )
+        }
+    )
+
+    logger_def = _build_logger_definition(cfg, "class_filter_logger")
+    ctx = type("Ctx", (), {"logger_config": {}})()
+    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+
+    # Ensure handler has the filter attached (branch executed)
+    assert len(logger_obj.handlers) == 1
+    handler = logger_obj.handlers[0]
+    assert any(isinstance(f, DummyFilter) for f in handler.filters)
+
+    logger_obj.info("please keep this line")
+    logger_obj.info("discard")
+    for h in logger_obj.handlers:
+        if isinstance(h, logging.FileHandler):
+            h.flush()
+
+    contents = log_file.read_text(encoding="utf-8").strip().splitlines()
+    assert len(contents) == 1
+    assert "keep" in contents[0]
+
+
+def test_logger_runtime_handler_callable_path():
+    """Handler construction via '()' callable path should work and attach default formatter."""
+    cfg = KedroDagsterConfig(
+        loggers={
+            "callable_handler": LoggerOptions(
+                logger_name="test.runtime.callable_handler",
+                log_level="INFO",
+            )
+        }
+    )
+
+    # Provide context override using '()' style for handler with a custom stream
+    stream = io.StringIO()
+    override = {
+        "logger_name": "test.runtime.callable_handler",
+        "log_level": "INFO",
+        "handlers": [
+            {
+                "()": "logging.StreamHandler",
+                "stream": stream,
+            }
+        ],
+    }
+
+    logger_def = _build_logger_definition(cfg, "callable_handler")
+    ctx = type("Ctx", (), {"logger_config": override})()
+    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+
+    # Should have exactly one StreamHandler with our stream and a default formatter
+    assert len(logger_obj.handlers) == 1
+    handler = logger_obj.handlers[0]
+    assert isinstance(handler, logging.StreamHandler)
+    assert getattr(handler, "stream", None) is stream
+    assert handler.formatter is not None
+
+    logger_obj.info("hello world")
+    handler.flush()
+    assert "hello world" in stream.getvalue()
+
+
+def test_logger_reference_globals_resolution(monkeypatch, tmp_path):
+    """Ensure _resolve_reference fallback to globals()[attr] works when providing bare symbol name."""
+
+    # Inject a DummyFilter symbol directly into module globals for bare-name resolution
+    class GlobalDummyFilter(logging.Filter):
+        def __init__(self, keyword: str):
+            super().__init__()
+            self.keyword = keyword
+
+        def filter(self, record: logging.LogRecord) -> bool:  # pragma: no cover
+            return self.keyword in record.getMessage()
+
+    monkeypatch.setattr(dagster_module, "GlobalDummyFilter", GlobalDummyFilter, raising=False)
+
+    log_file = tmp_path / "global_filter.log"
+    cfg = KedroDagsterConfig(
+        loggers={
+            "global_filter_logger": LoggerOptions(
+                logger_name="test.runtime.global_filter",
+                log_level="INFO",
+                filters={"gf": {"()": "GlobalDummyFilter", "keyword": "accept"}},
+                handlers=[
+                    {
+                        "class": "logging.FileHandler",
+                        "args": [str(log_file)],
+                        "level": "INFO",
+                        "filters": ["gf"],
+                    }
+                ],
+            )
+        }
+    )
+
+    logger_def = _build_logger_definition(cfg, "global_filter_logger")
+    ctx = type("Ctx", (), {"logger_config": {}})()
+    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj.info("should accept this")
+    logger_obj.info("reject")
+    for h in logger_obj.handlers:
+        if isinstance(h, logging.FileHandler):
+            h.flush()
+
+    lines = log_file.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 1
+    assert "accept" in lines[0]
+
+
+def test_logger_reference_invalid_typeerror():
+    """Non-string reference for '()' should raise TypeError in _resolve_reference."""
+    cfg = KedroDagsterConfig(loggers={"bad": LoggerOptions(logger_name="test.runtime.bad", log_level="INFO")})
+    logger_def = _build_logger_definition(cfg, "bad")
+    # Supply invalid non-string reference via context override to bypass Pydantic validation
+    override = {"handlers": [{"()": 123}]}
+    ctx = type("Ctx", (), {"logger_config": override})()
+    with pytest.raises(TypeError):
+        logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
