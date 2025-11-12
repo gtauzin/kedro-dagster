@@ -210,9 +210,7 @@ class LoggerCreator:
                     # no module specified, assume built‑in or current namespace
                     obj = globals().get(attr)
                     if obj is None:
-                        raise NameError(
-                            f"Reference '{attr}' could not be resolved in the global namespace."
-                        )
+                        raise NameError(f"Reference '{attr}' could not be resolved in the global namespace.")
                     return obj
             raise TypeError(f"Unable to resolve reference {ref!r}")
 
