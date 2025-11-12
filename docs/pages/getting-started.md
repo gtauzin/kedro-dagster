@@ -76,8 +76,14 @@ Let's edit the automatically generated `conf/local/dagster.yml` to customize job
 ```yaml
 loggers:
   console:
-      level: INFO
-      format: "[%(asctime)s] %(levelname)s - %(message)s"
+    log_level: INFO
+    formatters:
+      simple:
+        format: "[%(asctime)s] %(levelname)s - %(message)s"
+    handlers:
+      - class: logging.StreamHandler
+        stream: ext://sys.stdout
+        formatter: simple
 
 schedules:
   daily: # Schedule name

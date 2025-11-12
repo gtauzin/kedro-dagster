@@ -189,9 +189,15 @@ Example `conf/prod/dagster.yml` (trimmed):
 
 ```yaml
 loggers:
-   console:
-      level: INFO
-      format: "[%(asctime)s] %(levelname)s - %(message)s"
+  console:
+    log_level: INFO
+    formatters:
+      simple:
+        format: "[%(asctime)s] %(levelname)s - %(message)s"
+    handlers:
+      - class: logging.StreamHandler
+        stream: ext://sys.stdout
+        formatter: simple
 
 executors:
   sequential:

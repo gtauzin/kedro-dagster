@@ -129,7 +129,6 @@ Logs generated within Kedro nodes are captured if `import logging` is replaced b
 ```yaml
 loggers:
   console_logger: # Logger name
-    logger_name: my_custom_logger # LoggerOptions parameters
     log_level: INFO
     handlers:
       - class: logging.StreamHandler
