@@ -7,6 +7,7 @@ loggers.
 
 import importlib
 import logging
+import sys
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
@@ -206,11 +207,12 @@ class LoggerCreator:
 
         def dagster_logger(context: dg.InitLoggerContext) -> logging.Logger:
             # Use the provided config directly instead of dynamic schema
-            config_data = dict(context.logger_config) if context.logger_config else logger_config
-
-            logger_ = logging.getLogger(logger_name)
+            config_data = dict(context.logger_config)
             level = config_data.get("log_level", "INFO").upper()
-            logger_.setLevel(level)
+
+            klass = logging.getLoggerClass()
+            logger_ = klass(logger_name, level=level)
+
             # Optionally clear existing handlers to prevent duplicates
             for h in list(logger_.handlers):
                 logger_.removeHandler(h)
@@ -288,16 +290,24 @@ class LoggerCreator:
                     logger_.addHandler(handler_inst)
             else:
                 # No handlers specified, default to StreamHandler
-                sh = logging.StreamHandler()
+                sh = logging.StreamHandler(stream=sys.stdout)
                 sh.setLevel(level)
                 sh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
                 logger_.addHandler(sh)
 
             return logger_
 
+        config_schema = {
+            "log_level": dg.Field(str, default_value="INFO"),
+            "handlers": dg.Field(dict, is_required=False),
+            "formatters": dg.Field(dict, is_required=False),
+            "filters": dg.Field(dict, is_required=False),
+        }
+
         return dg.LoggerDefinition(
             dagster_logger,
             description=f"Logger definition `{logger_name}`.",
+            config_schema=config_schema,
         )
 
     def create_loggers(self) -> dict[str, dg.LoggerDefinition]:

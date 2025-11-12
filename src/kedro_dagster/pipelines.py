@@ -244,6 +244,7 @@ class PipelineTranslator:
             run_params = kedro_run_resource.run_params
 
             self._hook_manager.hook.after_pipeline_run(
+                run_results=None,  # We don't have run results in this context
                 run_params=run_params,
                 pipeline=pipeline,
                 catalog=self._catalog,
@@ -259,6 +260,7 @@ class PipelineTranslator:
         job_name: str,
         executor_def: dg.ExecutorDefinition | None = None,
         logger_defs: dict[str, dg.LoggerDefinition] | None = None,
+        loggers_config: dict[str, Any] | None = None,
     ) -> dg.JobDefinition:
         """Translate a Kedro pipeline into a Dagster job with partition support.
 
@@ -274,6 +276,7 @@ class PipelineTranslator:
             job_name (str): Name of the job.
             executor_def (ExecutorDefinition | None): Executor definition.
             logger_defs (dict[str, LoggerDefinition] | None): Logger definitions.
+            loggers_config (dict[str, Any] | None): Logger configurations.
 
         Returns:
             dg.JobDefinition: Dagster job definition with partition-aware ops.
@@ -444,6 +447,7 @@ class PipelineTranslator:
             resource_defs=resource_defs,
             executor_def=executor_def,
             logger_defs=logger_defs,
+            config=loggers_config,
         )
 
         return job
@@ -484,7 +488,7 @@ class PipelineTranslator:
                         raise ValueError(f"Job-specific executor `{job_executor_name}` not found.")
 
             # Handle logger configurations (string references and/or inline configs)
-            logger_defs = {}
+            logger_defs, logger_configs = {}, {}
             if job_config.loggers:
                 for idx, logger_config in enumerate(job_config.loggers):
                     if isinstance(logger_config, str):
@@ -493,6 +497,9 @@ class PipelineTranslator:
                             logger_defs[logger_config] = self._named_loggers[logger_config]
                         else:
                             raise ValueError(f"Logger `{logger_config}` not found.")
+
+                        logger_configs[logger_config] = self._dagster_config["loggers"][logger_config].model_dump()
+
                     else:
                         # Inline logger configuration - look for job-specific logger
                         job_logger_name = f"{job_name}__logger_{idx}"
@@ -501,6 +508,8 @@ class PipelineTranslator:
                         else:
                             raise ValueError(f"Job-specific logger `{job_logger_name}` not found.")
 
+                        logger_configs[job_logger_name] = logger_config.model_dump()
+
             job = self.translate_pipeline(
                 pipeline=pipeline,
                 pipeline_name=pipeline_name,
@@ -508,6 +517,9 @@ class PipelineTranslator:
                 job_name=job_name,
                 executor_def=executor_def,
                 logger_defs=logger_defs,
+                loggers_config={
+                    "loggers": {name: {"config": logger_config} for name, logger_config in logger_configs.items()}
+                },
             )
 
             named_jobs[job_name] = job
