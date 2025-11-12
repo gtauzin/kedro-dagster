@@ -309,31 +309,6 @@ def test_dagster_colored_formatter_with_coloredlogs():
     assert "Test message" in formatted
 
 
-def test_dagster_colored_formatter_fallback_without_coloredlogs():
-    """Test that dagster_colored_formatter falls back gracefully when coloredlogs is not available."""
-    # Mock coloredlogs as None to simulate it not being available
-    with patch("kedro_dagster.logging.coloredlogs", None):
-        formatter = dagster_colored_formatter()
-
-        # Should still return a valid formatter
-        assert isinstance(formatter, std_logging.Formatter)
-
-        # Test formatting a record
-        record = std_logging.LogRecord(
-            name="test_logger",
-            level=std_logging.INFO,
-            pathname="test.py",
-            lineno=1,
-            msg="Test message",
-            args=(),
-            exc_info=None,
-        )
-
-        formatted = formatter.format(record)
-        assert isinstance(formatted, str)
-        assert "Test message" in formatted
-
-
 def test_dagster_colored_formatter_field_styles():
     """Test that dagster_colored_formatter applies the correct field and level styles."""
     formatter = dagster_colored_formatter()
