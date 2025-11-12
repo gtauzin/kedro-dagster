@@ -147,9 +147,6 @@ class LoggerOptions(BaseModel):
             return v
 
         for name, formatter in v.items():
-            if not isinstance(formatter, dict):
-                raise ValueError(f"Formatter '{name}' configuration must be a dictionary")
-
             # Require either 'format' for standard formatter or '()' for custom class
             has_format = "format" in formatter
             has_callable = "()" in formatter

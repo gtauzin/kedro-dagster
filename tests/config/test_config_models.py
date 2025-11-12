@@ -283,6 +283,9 @@ def test_logger_options_validate_formatters():
     with pytest.raises(ValidationError, match=r"'\(\)' must be a string import path"):
         LoggerOptions(logger_name="t.logger.formatters", formatters={"bad": {"()": 123}})
 
+    # None formatters should remain None
+    assert LoggerOptions(logger_name="t.logger.formatters", formatters=None).formatters is None
+
 
 def test_logger_options_validate_filters():
     """All filter validation scenarios (validate_filters)."""
