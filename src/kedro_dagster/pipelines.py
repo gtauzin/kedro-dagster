@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 import dagster as dg
 from kedro.pipeline import Pipeline
 
+from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
 from kedro_dagster.kedro import KedroRunTranslator
 from kedro_dagster.utils import (
     _is_param_name,
@@ -33,7 +34,7 @@ class PipelineTranslator:
     """Translator for Kedro pipelines to Dagster jobs.
 
     Args:
-        dagster_config (dict[str, Any]): Parsed configuration of the Dagster repository.
+        dagster_config (KedroDagsterConfig): Parsed configuration of the Dagster repository.
         context (KedroContext): Active Kedro context (provides catalog and hooks).
         project_path (str): Path to the Kedro project.
         env (str): Kedro environment used for namespacing.
@@ -49,7 +50,7 @@ class PipelineTranslator:
 
     def __init__(
         self,
-        dagster_config: dict[str, Any],
+        dagster_config: "KedroDagsterConfig",
         context: "KedroContext",
         project_path: str,
         env: str,
@@ -462,7 +463,7 @@ class PipelineTranslator:
         from kedro.framework.project import pipelines
 
         named_jobs = {}
-        for job_name, job_config in self._dagster_config.jobs.items():  # type: ignore[attr-defined]
+        for job_name, job_config in self._dagster_config.model_dump()["jobs"].items():
             pipeline_config = job_config.pipeline.model_dump()
 
             pipeline_name = pipeline_config.get("pipeline_name", "__default__")
@@ -498,7 +499,7 @@ class PipelineTranslator:
                         else:
                             raise ValueError(f"Logger `{logger_config}` not found.")
 
-                        logger_configs[logger_config] = self._dagster_config["loggers"][logger_config].model_dump()
+                        logger_configs[logger_config] = self._dagster_config.model_dump()["loggers"][logger_config]
 
                     else:
                         # Inline logger configuration - look for job-specific logger
