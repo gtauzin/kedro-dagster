@@ -299,7 +299,7 @@ class LoggerCreator:
 
         config_schema = {
             "log_level": dg.Field(str, default_value="INFO"),
-            "handlers": dg.Field(dict, is_required=False),
+            "handlers": dg.Field(list, is_required=False),
             "formatters": dg.Field(dict, is_required=False),
             "filters": dg.Field(dict, is_required=False),
         }

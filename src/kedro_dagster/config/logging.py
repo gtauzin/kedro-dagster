@@ -16,9 +16,9 @@ class LoggerOptions(BaseModel):
 
     Attributes:
         log_level (LogLevel): Logging level (CRITICAL/ERROR/WARNING/INFO/DEBUG/NOTSET).
-        handlers (list[dict[str, Any]] | None): List of handler config dicts.
-        formatters (dict[str, dict[str, Any]] | None): Formatter configs, name→config.
-        filters (dict[str, dict[str, Any]] | None): Filter configs, name→config.
+        handlers (list[dict[str, Any]]): List of handler config dicts.
+        formatters (dict[str, dict[str, Any]]): Formatter configs, name→config.
+        filters (dict[str, dict[str, Any]]): Filter configs, name→config.
 
     """
 
@@ -26,16 +26,16 @@ class LoggerOptions(BaseModel):
         default="INFO",
         description="Python logging level (case-insensitive)",
     )
-    handlers: list[dict[str, Any]] | None = Field(
-        default=None,
+    handlers: list[dict[str, Any]] = Field(
+        default=[],
         description="List of handler configurations",
     )
-    formatters: dict[str, dict[str, Any]] | None = Field(
-        default=None,
+    formatters: dict[str, dict[str, Any]] = Field(
+        default={},
         description="Formatter configurations mapped by name",
     )
-    filters: dict[str, dict[str, Any]] | None = Field(
-        default=None,
+    filters: dict[str, dict[str, Any]] = Field(
+        default={},
         description="Filter configurations mapped by name",
     )
 
