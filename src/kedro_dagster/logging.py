@@ -126,10 +126,6 @@ def dagster_json_formatter() -> structlog.stdlib.ProcessorFormatter:
 
 
 def dagster_colored_formatter() -> coloredlogs.ColoredFormatter:
-    if coloredlogs is None:
-        # Fallback to a basic formatter if coloredlogs isn't available
-        return _logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
     fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     datefmt = "%Y-%m-%d %H:%M:%S %z"
     field_styles = {

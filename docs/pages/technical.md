@@ -148,7 +148,7 @@ jobs:
     loggers: [console_logger]
 ```
 
-See the [Example page](example.md#custom-logging-configuration) for a complete example of configuring logging in Kedro-Dagster.
+See the [Example page](example.md#custom-logging-integration) for a complete example of configuring logging in Kedro-Dagster.
 
 ## Kedro datasets for Dagster partitioning
 

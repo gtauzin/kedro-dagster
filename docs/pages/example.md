@@ -160,7 +160,7 @@ def register_pipelines() -> dict[str, Pipeline]:
 
 The `DYNAMIC_PIPELINES_MAPPING` is then used to build pipelines variants dynamically in each pipeline definition function.
 
-### Logging integration
+### Custom logging integration
 
 Kedro-Dagster unifies Kedro and Dagster logging with minimal code change so that logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug. In order to achieve this, Kedro-Dagster provides a drop-in replacement for the `logging` module that redirects Kedro logs to Dagster's logging system. In the node files, simply replace:
 
@@ -171,7 +171,7 @@ import logging
 by
 
 ```python
-from kedro_dagster.config import logging
+from kedro_dagster import logging
 ```
 
 Additionally, Kedro-Dagster provides configuration to customize Dagster run loggers via the `dagster.yml` file.
