@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any
 import dagster as dg
 from kedro.pipeline import Pipeline
 
-from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
 from kedro_dagster.kedro import KedroRunTranslator
 from kedro_dagster.utils import (
     _is_param_name,
@@ -28,6 +27,8 @@ from kedro_dagster.utils import (
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
     from kedro.pipeline.node import Node
+
+    from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
 
 
 class PipelineTranslator:
@@ -464,7 +465,7 @@ class PipelineTranslator:
 
         named_jobs = {}
         for job_name, job_config in self._dagster_config.model_dump()["jobs"].items():
-            pipeline_config = job_config.pipeline.model_dump()
+            pipeline_config = job_config["pipeline"]
 
             pipeline_name = pipeline_config.get("pipeline_name", "__default__")
             filter_params = get_filter_params_dict(pipeline_config)
