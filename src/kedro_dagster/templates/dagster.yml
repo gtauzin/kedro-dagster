@@ -1,3 +1,7 @@
+# Dagster loggers configuration
+loggers:
+  console:
+
 # Dagster schedules configuration
 schedules:
   daily: # Schedule name

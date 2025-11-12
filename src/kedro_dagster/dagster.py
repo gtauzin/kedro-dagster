@@ -208,10 +208,8 @@ class LoggerCreator:
             # Use the provided config directly instead of dynamic schema
             config_data = dict(context.logger_config) if context.logger_config else logger_config
 
-            logger_name_to_use = config_data.get("logger_name", logger_name)
+            logger_ = logging.getLogger(logger_name)
             level = config_data.get("log_level", "INFO").upper()
-
-            logger_ = logging.getLogger(logger_name_to_use)
             logger_.setLevel(level)
             # Optionally clear existing handlers to prevent duplicates
             for h in list(logger_.handlers):

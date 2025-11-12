@@ -367,7 +367,7 @@ def test_pipeline_translator_inline_logger_found(monkeypatch):
             (),
             {
                 "pipeline": PipelineOptions(pipeline_name="__default__"),
-                "loggers": [LoggerOptions(logger_name="inline.logger", log_level="INFO")],
+                "loggers": [LoggerOptions(log_level="INFO")],
                 "executor": None,
             },
         )()
@@ -390,7 +390,7 @@ def test_pipeline_translator_inline_logger_missing(monkeypatch):
             (),
             {
                 "pipeline": PipelineOptions(pipeline_name="__default__"),
-                "loggers": [LoggerOptions(logger_name="inline.logger", log_level="INFO")],
+                "loggers": [LoggerOptions(log_level="INFO")],
                 "executor": None,
             },
         )()

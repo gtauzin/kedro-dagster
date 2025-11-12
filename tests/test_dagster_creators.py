@@ -225,7 +225,6 @@ def test_logger_create_simple_logger():
     config = KedroDagsterConfig(
         loggers={
             "simple": LoggerOptions(
-                logger_name="test.simple",
                 log_level="INFO",
             )
         }
@@ -243,15 +242,12 @@ def test_logger_create_multiple_loggers():
     config = KedroDagsterConfig(
         loggers={
             "info_logger": LoggerOptions(
-                logger_name="test.info",
                 log_level="INFO",
             ),
             "debug_logger": LoggerOptions(
-                logger_name="test.debug",
                 log_level="DEBUG",
             ),
             "error_logger": LoggerOptions(
-                logger_name="test.error",
                 log_level="ERROR",
             ),
         }
@@ -292,7 +288,6 @@ def test_logger_with_file_handler():
     config = KedroDagsterConfig(
         loggers={
             "file_logger": LoggerOptions(
-                logger_name="test.file",
                 log_level="DEBUG",
                 handlers=[
                     {
@@ -321,7 +316,6 @@ def test_logger_with_stream_handler():
     config = KedroDagsterConfig(
         loggers={
             "stream_logger": LoggerOptions(
-                logger_name="test.stream",
                 log_level="INFO",
                 handlers=[
                     {
@@ -349,7 +343,6 @@ def test_logger_with_custom_formatter():
     config = KedroDagsterConfig(
         loggers={
             "formatted_logger": LoggerOptions(
-                logger_name="test.formatted",
                 log_level="INFO",
                 formatters={
                     "detailed": {
@@ -378,7 +371,6 @@ def test_logger_with_multiple_formatters():
     config = KedroDagsterConfig(
         loggers={
             "multi_format_logger": LoggerOptions(
-                logger_name="test.multi",
                 log_level="DEBUG",
                 formatters={
                     "simple": {"format": "%(levelname)s: %(message)s"},
@@ -406,7 +398,6 @@ def test_logger_invalid_log_level_validation():
         KedroDagsterConfig(
             loggers={
                 "invalid_logger": LoggerOptions(
-                    logger_name="test.invalid",
                     log_level="INVALID_LEVEL",  # This should fail validation
                 )
             }
@@ -414,16 +405,16 @@ def test_logger_invalid_log_level_validation():
 
 
 def test_logger_invalid_logger_name_validation():
-    """Test that invalid logger names are caught during config validation."""
-    with pytest.raises(ValidationError, match="must follow Python module naming conventions"):
-        KedroDagsterConfig(
-            loggers={
-                "invalid_logger": LoggerOptions(
-                    logger_name="test-with-dashes",  # Invalid Python module name
-                    log_level="INFO",
-                )
-            }
-        )
+    """Test that logger options can be created without logger_name field."""
+    # Logger name validation was removed, this test now just checks basic creation
+    config = KedroDagsterConfig(
+        loggers={
+            "valid_logger": LoggerOptions(
+                log_level="INFO",
+            )
+        }
+    )
+    assert "valid_logger" in config.loggers
 
 
 def test_logger_nonexistent_formatter_reference():
@@ -432,7 +423,6 @@ def test_logger_nonexistent_formatter_reference():
         KedroDagsterConfig(
             loggers={
                 "bad_logger": LoggerOptions(
-                    logger_name="test.bad",
                     log_level="INFO",
                     handlers=[{"class": "logging.StreamHandler", "formatter": "nonexistent_formatter"}],
                 )
@@ -446,7 +436,6 @@ def test_logger_case_insensitive_log_levels():
         config = KedroDagsterConfig(
             loggers={
                 "case_test": LoggerOptions(
-                    logger_name="test.case",
                     log_level=level,
                 )
             }
@@ -465,7 +454,6 @@ def test_logger_complex_configuration():
     config = KedroDagsterConfig(
         loggers={
             "complex_logger": LoggerOptions(
-                logger_name="test.complex",
                 log_level="DEBUG",
                 formatters={
                     "console_format": {"format": "%(name)s - %(levelname)s - %(message)s"},
@@ -503,7 +491,6 @@ def test_logger_with_default_handler():
     config = KedroDagsterConfig(
         loggers={
             "default_handler_logger": LoggerOptions(
-                logger_name="test.default",
                 log_level="INFO",
                 # No handlers specified - should get default StreamHandler
             )
@@ -530,19 +517,18 @@ def test_job_options_with_logger_string_references():
 
 def test_job_options_with_inline_logger_options():
     """Test JobOptions with inline LoggerOptions."""
-    inline_logger = LoggerOptions(logger_name="test.inline", log_level="INFO")
+    inline_logger = LoggerOptions(log_level="INFO")
 
     job_config = JobOptions(pipeline=PipelineOptions(pipeline_name="test_pipeline"), loggers=[inline_logger])
 
     assert len(job_config.loggers) == 1
     assert isinstance(job_config.loggers[0], LoggerOptions)
-    assert job_config.loggers[0].logger_name == "test.inline"
     assert job_config.loggers[0].log_level == "INFO"
 
 
 def test_job_options_mixed_logger_types():
     """Test JobOptions with mixed logger types (both strings and LoggerOptions)."""
-    inline_logger = LoggerOptions(logger_name="test.mixed", log_level="DEBUG")
+    inline_logger = LoggerOptions(log_level="DEBUG")
 
     job_config = JobOptions(pipeline=PipelineOptions(pipeline_name="test_pipeline"), loggers=["console", inline_logger])
 
@@ -551,7 +537,6 @@ def test_job_options_mixed_logger_types():
     assert isinstance(job_config.loggers[0], str)
     assert job_config.loggers[0] == "console"
     assert isinstance(job_config.loggers[1], LoggerOptions)
-    assert job_config.loggers[1].logger_name == "test.mixed"
 
 
 def test_pipeline_translator_handles_inline_loggers():
@@ -559,7 +544,7 @@ def test_pipeline_translator_handles_inline_loggers():
     # This would normally be an integration test, but let's test the logger processing logic
 
     # Create a config with an inline logger for a job
-    inline_logger = LoggerOptions(logger_name="test.pipeline.inline", log_level="WARNING")
+    inline_logger = LoggerOptions(log_level="WARNING")
 
     # Test creating a logger from inline configuration
     temp_config = KedroDagsterConfig(loggers={"job_test_logger": inline_logger})
@@ -578,7 +563,7 @@ def test_logger_creator_with_job_inline_loggers(monkeypatch):
     # Create a mock config object using a simple class
     class MockConfig:
         def __init__(self):
-            self.loggers = {"global_logger": LoggerOptions(logger_name="global.logger", log_level="INFO")}
+            self.loggers = {"global_logger": LoggerOptions(log_level="INFO")}
 
             # Create mock jobs with inline logger configurations
             self.jobs = {}
@@ -594,7 +579,7 @@ def test_logger_creator_with_job_inline_loggers(monkeypatch):
     mock_config.jobs = {"job_with_inline": MockJob(), "job_with_reference": MockJob(), "job_without_loggers": MockJob()}
 
     # Job with inline logger configuration
-    inline_logger = LoggerOptions(logger_name="job.inline.logger", log_level="DEBUG")
+    inline_logger = LoggerOptions(log_level="DEBUG")
     mock_config.jobs["job_with_inline"].loggers = [inline_logger]
 
     # Job with string reference to global logger
@@ -620,7 +605,7 @@ def test_logger_creator_validates_job_string_references():
 
     # Create a mock config with global loggers
     mock_config = MockConfig(
-        loggers={"available_logger": LoggerOptions(logger_name="available.logger", log_level="INFO")},
+        loggers={"available_logger": LoggerOptions(log_level="INFO")},
         jobs={"job_with_bad_ref": MockJob(loggers=["nonexistent_logger"])},
     )
 
@@ -637,11 +622,11 @@ def test_logger_creator_validates_job_string_references():
 def test_logger_creator_mixed_job_logger_types():
     """Test LoggerCreator handling jobs with mixed logger types (strings and inline configs)."""
 
-    inline_logger = LoggerOptions(logger_name="mixed.inline.logger", log_level="WARNING")
+    inline_logger = LoggerOptions(log_level="WARNING")
 
     # Create a mock config with global loggers
     mock_config = MockConfig(
-        loggers={"shared_logger": LoggerOptions(logger_name="shared.logger", log_level="INFO")},
+        loggers={"shared_logger": LoggerOptions(log_level="INFO")},
         jobs={
             "mixed_job": MockJob(
                 loggers=[
@@ -912,7 +897,6 @@ def test_logger_runtime_basic_configuration():
     cfg = KedroDagsterConfig(
         loggers={
             "basic": LoggerOptions(
-                logger_name="test.runtime.basic",
                 log_level="debug",  # lower case to ensure normalization
                 handlers=[{"class": "logging.StreamHandler", "level": "DEBUG"}],
             )
@@ -925,7 +909,7 @@ def test_logger_runtime_basic_configuration():
     context = type("Ctx", (), {"logger_config": {}})()
     logger_obj = logger_def.logger_fn(context)  # type: ignore[attr-defined]
 
-    assert logger_obj.name == "test.runtime.basic"
+    assert logger_obj.name == "basic"
     assert logger_obj.level == logging.DEBUG
     assert len(logger_obj.handlers) == 1
     handler = logger_obj.handlers[0]
@@ -939,7 +923,6 @@ def test_logger_runtime_formatters_and_filters(tmp_path):
     cfg = KedroDagsterConfig(
         loggers={
             "rich": LoggerOptions(
-                logger_name="test.runtime.rich",
                 log_level="INFO",
                 formatters={
                     "plain": {"format": "%(levelname)s|%(message)s"},
@@ -998,8 +981,8 @@ def test_logger_runtime_formatters_and_filters(tmp_path):
 
 def test_logger_runtime_job_inline_logger_isolated_handlers():
     # Inline logger in job should receive unique handler instances even if logger name collides
-    base_options = LoggerOptions(logger_name="collision.test", log_level="INFO")
-    job_inline = LoggerOptions(logger_name="collision.test", log_level="ERROR")
+    base_options = LoggerOptions(log_level="INFO")
+    job_inline = LoggerOptions(log_level="ERROR")
 
     cfg = KedroDagsterConfig(
         loggers={"base": base_options},
@@ -1034,7 +1017,6 @@ def test_logger_runtime_override_context_config():
     cfg = KedroDagsterConfig(
         loggers={
             "override": LoggerOptions(
-                logger_name="override.base",
                 log_level="WARNING",
                 handlers=[{"class": "logging.StreamHandler", "level": "WARNING"}],
             )
@@ -1043,12 +1025,12 @@ def test_logger_runtime_override_context_config():
 
     logger_def = _build_logger_definition(cfg, "override")
 
-    # Simulate Dagster providing dynamic config overriding level and name
-    dynamic_conf = {"logger_name": "override.dynamic", "log_level": "debug"}
+    # Simulate Dagster providing dynamic config overriding level
+    dynamic_conf = {"log_level": "debug"}
     ctx = type("Ctx", (), {"logger_config": dynamic_conf})()
     dyn_logger = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
 
-    assert dyn_logger.name == "override.dynamic"
+    assert dyn_logger.name == "override"
     assert dyn_logger.level == logging.DEBUG
 
     # When context provides no handlers, a default StreamHandler is attached at the new log level
@@ -1061,7 +1043,6 @@ def test_logger_runtime_default_handler_when_none_specified():
     cfg = KedroDagsterConfig(
         loggers={
             "default_handler": LoggerOptions(
-                logger_name="default.handler.test",
                 log_level="INFO",
             )
         }
@@ -1085,7 +1066,6 @@ def test_logger_runtime_all_levels(level):
     cfg = KedroDagsterConfig(
         loggers={
             "lv": LoggerOptions(
-                logger_name="all.levels.test",
                 log_level=level,
             )
         }
@@ -1103,7 +1083,6 @@ def test_logger_runtime_filter_class_path(tmp_path):
     cfg = KedroDagsterConfig(
         loggers={
             "class_filter_logger": LoggerOptions(
-                logger_name="test.runtime.class_filter",
                 log_level="INFO",
                 filters={
                     # Use class path branch (no '()')
@@ -1149,7 +1128,6 @@ def test_logger_runtime_handler_callable_path():
     cfg = KedroDagsterConfig(
         loggers={
             "callable_handler": LoggerOptions(
-                logger_name="test.runtime.callable_handler",
                 log_level="INFO",
             )
         }
@@ -1158,7 +1136,6 @@ def test_logger_runtime_handler_callable_path():
     # Provide context override using '()' style for handler with a custom stream
     stream = io.StringIO()
     override = {
-        "logger_name": "test.runtime.callable_handler",
         "log_level": "INFO",
         "handlers": [
             {
@@ -1202,7 +1179,6 @@ def test_logger_reference_globals_resolution(monkeypatch, tmp_path):
     cfg = KedroDagsterConfig(
         loggers={
             "global_filter_logger": LoggerOptions(
-                logger_name="test.runtime.global_filter",
                 log_level="INFO",
                 filters={"gf": {"()": "GlobalDummyFilter", "keyword": "accept"}},
                 handlers=[
@@ -1233,7 +1209,7 @@ def test_logger_reference_globals_resolution(monkeypatch, tmp_path):
 
 def test_logger_reference_invalid_typeerror():
     """Non-string reference for '()' should raise TypeError in _resolve_reference."""
-    cfg = KedroDagsterConfig(loggers={"bad": LoggerOptions(logger_name="test.runtime.bad", log_level="INFO")})
+    cfg = KedroDagsterConfig(loggers={"bad": LoggerOptions(log_level="INFO")})
     logger_def = _build_logger_definition(cfg, "bad")
     # Supply invalid non-string reference via context override to bypass Pydantic validation
     override = {"handlers": [{"()": 123}]}

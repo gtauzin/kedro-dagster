@@ -75,7 +75,7 @@ def test_reexports_expose_stdlib_and_preserve_override():
 def test_logging_config_yaml_structure():
     """Test that the expected YAML structure from the user requirement matches the actual config.
 
-    This test verifies that the logging configuration matches the expected structur from the Dagster source code at:
+    This test verifies that the logging configuration matches the expected structure from the Dagster source code at:
     https://github.com/dagster-io/dagster/blob/32540319b69dd175f8bbcd5655f5fc25e10cf88b/python_modules/dagster/dagster/_utils/log.py#L251
     """
     expected_yaml_structure = {

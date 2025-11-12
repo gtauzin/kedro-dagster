@@ -97,4 +97,6 @@ class JobOptions(BaseModel):
     loggers: list[LoggerOptions | str] | None = None
 
     class Config:
+        """Pydantic configuration enforcing strict fields."""
+
         extra = "forbid"

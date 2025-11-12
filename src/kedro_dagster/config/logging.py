@@ -3,7 +3,6 @@
 Defines the schema for logger entries referenced by jobs in `dagster.yml`.
 """
 
-import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -16,7 +15,6 @@ class LoggerOptions(BaseModel):
     """Options for defining Dagster loggers.
 
     Attributes:
-        logger_name (str): Name of the logger to use. Must follow Python module naming conventions.
         log_level (LogLevel): Logging level (CRITICAL/ERROR/WARNING/INFO/DEBUG/NOTSET).
         handlers (list[dict[str, Any]] | None): List of handler config dicts.
         formatters (dict[str, dict[str, Any]] | None): Formatter configs, name→config.
@@ -24,11 +22,6 @@ class LoggerOptions(BaseModel):
 
     """
 
-    logger_name: str = Field(
-        ...,
-        description="Logger name following Python module naming conventions",
-        min_length=1,
-    )
     log_level: LogLevel = Field(
         default="INFO",
         description="Python logging level (case-insensitive)",
@@ -79,29 +72,6 @@ class LoggerOptions(BaseModel):
             )
 
         return normalized
-
-    @field_validator("logger_name")
-    @classmethod
-    def validate_logger_name(cls, v: str) -> str:
-        """Validate logger name follows Python module naming conventions.
-
-        Args:
-            v: Logger name to validate.
-
-        Returns:
-            Validated logger name.
-
-        Raises:
-            ValueError: If logger name is invalid.
-        """
-        # Check for valid Python identifier pattern (allows dots for module-style names)
-        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*$", v):
-            raise ValueError(
-                f"Logger name '{v}' must follow Python module naming conventions "
-                "(alphanumeric + underscore, dot-separated)"
-            )
-
-        return v
 
     @field_validator("handlers")
     @classmethod

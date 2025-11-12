@@ -18,11 +18,9 @@ def dagster_executors_config() -> dict[str, Any]:
 def dagster_loggers_config() -> dict[str, Any]:
     return {
         "console": {
-            "logger_name": "kedro.testpackage.console",
             "log_level": "INFO",
         },
         "file_logger": {
-            "logger_name": "kedro.testpackage.file",
             "log_level": "DEBUG",
             "handlers": [
                 {

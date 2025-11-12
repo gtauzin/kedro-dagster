@@ -124,7 +124,7 @@ root:
 
 #### In-code logging
 
-Logs generated within Kedro nodes are captured if `import logging` is replaced by `import kedro_dagster.logging as logging`. These logs are then displayed in the Dagster UI, allowing for easier tracing and debugging of pipeline executions.  To configure logging within Dagster runs, use the Kedro-Dagster `loggers` section of the `dagster.yml` configuration file to define and customize loggers for your Dagster runs:
+Logs generated within Kedro nodes are captured if `import logging` is replaced by `import kedro_dagster.logging as logging` with `logging.getLogger` calls inside the node functions. These logs are then displayed in the Dagster UI, allowing for easier tracing and debugging of pipeline executions.  To configure logging within Dagster runs, use the Kedro-Dagster `loggers` section of the `dagster.yml` configuration file to define and customize loggers for your Dagster runs:
 
 ```yaml
 loggers:

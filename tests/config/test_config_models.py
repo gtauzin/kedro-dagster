@@ -129,10 +129,9 @@ def test_kedrodagster_config_unknown_executor_raises():
 
 
 def test_logger_options_minimal_config():
-    """LoggerOptions accepts minimal configuration with logger_name only."""
-    logger_opts = LoggerOptions(logger_name="test.logger")
+    """LoggerOptions accepts minimal configuration without any required fields."""
+    logger_opts = LoggerOptions()
 
-    assert logger_opts.logger_name == "test.logger"
     assert logger_opts.log_level == "INFO"  # default
     assert logger_opts.handlers is None
     assert logger_opts.formatters is None
@@ -151,25 +150,24 @@ def test_logger_options_normalize_log_level_validation():
         ("notset", "NOTSET"),
     ]
     for raw, expected in normalization_cases:
-        assert LoggerOptions(logger_name="t.l", log_level=raw).log_level == expected
+        assert LoggerOptions(log_level=raw).log_level == expected
 
     # Whitespace handling
     whitespace_cases = [" info ", "\tDEBUG\t", "  ERROR  ", "\n INFO \n"]
     for raw in whitespace_cases:
-        cleaned = LoggerOptions(logger_name="t.l", log_level=raw).log_level
+        cleaned = LoggerOptions(log_level=raw).log_level
         assert cleaned in {"INFO", "DEBUG", "ERROR"}
 
     # Invalid values (string type but not a valid level or empty)
     for invalid in ["INVALID", "trace", "VERBOSE", ""]:
         with pytest.raises(ValidationError, match="Invalid log level"):
-            LoggerOptions(logger_name="t.l", log_level=invalid)
+            LoggerOptions(log_level=invalid)
 
     # Non-string type
     with pytest.raises(ValidationError, match="Log level must be a string"):
         KedroDagsterConfig(
             loggers={
                 "bad": LoggerOptions(
-                    logger_name="t.l.nonstring",
                     log_level=123,  # type: ignore[arg-type]
                 )
             }
@@ -180,38 +178,10 @@ def test_logger_options_normalize_log_level_validation():
         KedroDagsterConfig(
             loggers={
                 "bad": LoggerOptions(
-                    logger_name="t.l.badvalue",
                     log_level="VERBOSE",
                 )
             }
         )
-
-
-def test_logger_options_validate_logger_name():
-    """All logger_name validator scenarios (validate_logger_name)."""
-
-    valid = [
-        "logger",
-        "my_logger",
-        "my.module.logger",
-        "app.service.logger",
-        "_internal",
-        "logger123",
-    ]
-    for name in valid:
-        assert LoggerOptions(logger_name=name).logger_name == name
-
-    invalid = [
-        "",  # empty (min_length triggers generic message)
-        "123invalid",  # starts with number
-        "invalid-name",  # contains hyphen
-        "invalid name",  # space
-        "invalid@name",  # special char
-        ".invalid",  # leading dot
-    ]
-    for name in invalid:
-        with pytest.raises(ValidationError):
-            LoggerOptions(logger_name=name)
 
 
 def test_logger_options_validate_handlers():
@@ -220,7 +190,6 @@ def test_logger_options_validate_handlers():
     assert (
         len(
             LoggerOptions(
-                logger_name="t.logger.handlers",
                 handlers=[{"class": "logging.StreamHandler", "level": "INFO"}],
             ).handlers
         )
@@ -229,11 +198,11 @@ def test_logger_options_validate_handlers():
 
     # Missing 'class'
     with pytest.raises(ValidationError, match="must specify a 'class' field"):
-        LoggerOptions(logger_name="t.logger.handlers", handlers=[{"level": "INFO"}])
+        LoggerOptions(handlers=[{"level": "INFO"}])
 
     # Non-string class
     with pytest.raises(ValidationError, match="must be a string"):
-        LoggerOptions(logger_name="t.logger.handlers", handlers=[{"class": 123}])  # type: ignore[list-item]
+        LoggerOptions(handlers=[{"class": 123}])  # type: ignore[list-item]
 
     # Not a dictionary entry
     with pytest.raises(
@@ -243,98 +212,90 @@ def test_logger_options_validate_handlers():
         KedroDagsterConfig(
             loggers={
                 "bad": LoggerOptions(
-                    logger_name="t.logger.handlers",
                     handlers=["not-a-dict"],  # type: ignore[list-item]
                 )
             }
         )
 
     # None handlers should remain None
-    assert LoggerOptions(logger_name="t.logger.handlers", handlers=None).handlers is None
+    assert LoggerOptions(handlers=None).handlers is None
 
 
 def test_logger_options_validate_formatters():
     """All formatter validation scenarios (validate_formatters)."""
     # Valid: has 'format'
-    fmt_cfg = LoggerOptions(logger_name="t.logger.formatters", formatters={"simple": {"format": "%(msg)s"}})
+    fmt_cfg = LoggerOptions(formatters={"simple": {"format": "%(msg)s"}})
     assert "simple" in fmt_cfg.formatters
 
     # Valid: has '()'
-    custom_fmt = LoggerOptions(
-        logger_name="t.logger.formatters", formatters={"colored": {"()": "coloredlogs.ColoredFormatter"}}
-    )
+    custom_fmt = LoggerOptions(formatters={"colored": {"()": "coloredlogs.ColoredFormatter"}})
     assert "colored" in custom_fmt.formatters
 
     # Invalid: missing both keys
     with pytest.raises(ValidationError, match=r"must specify either 'format' field or '\(\)'"):
-        KedroDagsterConfig(
-            loggers={"bad": LoggerOptions(logger_name="t.logger.formatters", formatters={"bad": {"other": "v"}})}
-        )
+        KedroDagsterConfig(loggers={"bad": LoggerOptions(formatters={"bad": {"other": "v"}})})
 
     # Not a dict value
     with pytest.raises(ValidationError, match=r"Input should be a valid dictionary"):
-        LoggerOptions(logger_name="t.logger.formatters", formatters={"bad": "not_a_dict"})  # type: ignore[dict-item]
+        LoggerOptions(formatters={"bad": "not_a_dict"})  # type: ignore[dict-item]
 
     # Non-string 'format'
     with pytest.raises(ValidationError, match=r"'format' must be a string"):
-        LoggerOptions(logger_name="t.logger.formatters", formatters={"bad": {"format": 123}})
+        LoggerOptions(formatters={"bad": {"format": 123}})
 
     # Non-string '()'
     with pytest.raises(ValidationError, match=r"'\(\)' must be a string import path"):
-        LoggerOptions(logger_name="t.logger.formatters", formatters={"bad": {"()": 123}})
+        LoggerOptions(formatters={"bad": {"()": 123}})
 
     # None formatters should remain None
-    assert LoggerOptions(logger_name="t.logger.formatters", formatters=None).formatters is None
+    assert LoggerOptions(formatters=None).formatters is None
 
 
 def test_logger_options_validate_filters():
     """All filter validation scenarios (validate_filters)."""
     # Valid
-    f_cfg = LoggerOptions(logger_name="t.logger.filters", filters={"level": {"()": "logging.Filter"}})
+    f_cfg = LoggerOptions(filters={"level": {"()": "logging.Filter"}})
     assert "level" in f_cfg.filters
 
     # Valid using class + params
     f_cfg2 = LoggerOptions(
-        logger_name="t.logger.filters",
         filters={"by_class": {"class": "logging.Filter", "params": {"name": "my.app"}}},
     )
     assert "by_class" in f_cfg2.filters
 
     # Not a dict
     with pytest.raises(ValidationError, match=r"Input should be a valid dictionary"):
-        LoggerOptions(logger_name="t.logger.filters", filters={"bad": "not_a_dict"})  # type: ignore[dict-item]
+        LoggerOptions(filters={"bad": "not_a_dict"})  # type: ignore[dict-item]
 
     # Missing both '()' and 'class'
     with pytest.raises(ValidationError, match=r"must specify either '\(\)'.* or 'class'"):
-        LoggerOptions(logger_name="t.logger.filters", filters={"bad": {"name": "no-type"}})
+        LoggerOptions(filters={"bad": {"name": "no-type"}})
 
     # Non-string '()'
     with pytest.raises(ValidationError, match=r"'\(\)' must be a string import path"):
-        LoggerOptions(logger_name="t.logger.filters", filters={"bad": {"()": 123}})
+        LoggerOptions(filters={"bad": {"()": 123}})
 
     # Non-string 'class'
     with pytest.raises(ValidationError, match=r"class must be a string"):
-        LoggerOptions(logger_name="t.logger.filters", filters={"bad": {"class": 123}})
+        LoggerOptions(filters={"bad": {"class": 123}})
 
     # None stays None
-    assert LoggerOptions(logger_name="t.logger.filters", filters=None).filters is None
+    assert LoggerOptions(filters=None).filters is None
 
 
 def test_logger_options_validate_references():
     """All cross-reference validation scenarios (validate_references)."""
     # Valid cross references
     valid = LoggerOptions(
-        logger_name="t.logger.refs",
         handlers=[{"class": "logging.StreamHandler", "formatter": "detailed", "filters": ["level_filter"]}],
         formatters={"detailed": {"format": "%(asctime)s - %(levelname)s - %(message)s"}},
         filters={"level_filter": {"()": "logging.Filter"}},
     )
-    assert valid.logger_name == "t.logger.refs"
+    assert valid.log_level == "INFO"  # Check default value instead
 
     # Unknown formatter
     with pytest.raises(ValidationError, match="references unknown formatter 'unknown_formatter'"):
         LoggerOptions(
-            logger_name="t.logger.refs",
             handlers=[{"class": "logging.StreamHandler", "formatter": "unknown_formatter"}],
             formatters={"existing": {"format": "%(message)s"}},
         )
@@ -342,7 +303,6 @@ def test_logger_options_validate_references():
     # Unknown filter
     with pytest.raises(ValidationError, match="references unknown filter 'unknown_filter'"):
         LoggerOptions(
-            logger_name="t.logger.refs",
             handlers=[{"class": "logging.StreamHandler", "filters": ["unknown_filter"]}],
             filters={"existing": {"()": "logging.Filter"}},
         )
@@ -351,7 +311,6 @@ def test_logger_options_validate_references():
 def test_logger_options_complex_valid_configuration():
     """LoggerOptions handles complex but valid configurations."""
     complex_config = LoggerOptions(
-        logger_name="my.application.logger",
         log_level="debug",  # lowercase, should be normalized
         handlers=[
             {"class": "logging.StreamHandler", "level": "INFO", "formatter": "colored", "filters": ["level_filter"]},
@@ -364,7 +323,6 @@ def test_logger_options_complex_valid_configuration():
         filters={"level_filter": {"()": "logging.Filter", "name": "my.application"}},
     )
 
-    assert complex_config.logger_name == "my.application.logger"
     assert complex_config.log_level == "DEBUG"  # normalized to uppercase
 
     # Check expected counts
@@ -384,12 +342,6 @@ def test_logger_options_complex_valid_configuration():
 def test_logger_options_forbid_extra_fields():
     """LoggerOptions should forbid extra fields due to Pydantic strict config."""
     with pytest.raises(ValidationError) as exc_info:
-        LoggerOptions(logger_name="test.logger", log_level="INFO", unknown_field="should_fail")
+        LoggerOptions(log_level="INFO", unknown_field="should_fail")
     # Check that extra inputs are not permitted
     assert "Extra inputs are not permitted" in str(exc_info.value)
-
-
-def test_logger_options_empty_name_validation():
-    """Empty logger name still validated (covered in logger_name validator aggregation)."""
-    with pytest.raises(ValidationError):
-        LoggerOptions(logger_name="", log_level="INFO")
