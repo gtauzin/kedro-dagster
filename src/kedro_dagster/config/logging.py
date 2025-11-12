@@ -94,9 +94,6 @@ class LoggerOptions(BaseModel):
         Raises:
             ValueError: If logger name is invalid.
         """
-        if not v:
-            raise ValueError("Logger name cannot be empty")
-
         # Check for valid Python identifier pattern (allows dots for module-style names)
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*$", v):
             raise ValueError(
@@ -124,9 +121,6 @@ class LoggerOptions(BaseModel):
             return v
 
         for i, handler in enumerate(v):
-            if not isinstance(handler, dict):
-                raise ValueError(f"Handler at index {i} must be a dictionary")
-
             if "class" not in handler:
                 raise ValueError(f"Handler at index {i} must specify a 'class' field")
 
@@ -156,9 +150,19 @@ class LoggerOptions(BaseModel):
             if not isinstance(formatter, dict):
                 raise ValueError(f"Formatter '{name}' configuration must be a dictionary")
 
-            # Common formatter validation - check for either 'format' or '()' (custom class)
-            if "format" not in formatter and "()" not in formatter:
+            # Require either 'format' for standard formatter or '()' for custom class
+            has_format = "format" in formatter
+            has_callable = "()" in formatter
+
+            if not (has_format or has_callable):
                 raise ValueError(f"Formatter '{name}' must specify either 'format' field or '()' for custom class")
+
+            # Type validation for keys when present
+            if has_format and not isinstance(formatter["format"], str):
+                raise ValueError(f"Formatter '{name}' 'format' must be a string")
+
+            if has_callable and not isinstance(formatter["()"], str):
+                raise ValueError(f"Formatter '{name}' '()' must be a string import path")
 
         return v
 
@@ -182,6 +186,22 @@ class LoggerOptions(BaseModel):
         for name, filter_config in v.items():
             if not isinstance(filter_config, dict):
                 raise ValueError(f"Filter '{name}' configuration must be a dictionary")
+
+            # Require either custom callable/class path via '()' or a class path via 'class'
+            has_callable = "()" in filter_config
+            has_class = "class" in filter_config
+
+            if not (has_callable or has_class):
+                raise ValueError(
+                    f"Filter '{name}' must specify either '()' for custom callable/class or 'class' for import path"
+                )
+
+            # Basic type checks for keys when present
+            if has_callable and not isinstance(filter_config["()"], str):
+                raise ValueError(f"Filter '{name}' '()' must be a string import path")
+
+            if has_class and not isinstance(filter_config["class"], str):
+                raise ValueError(f"Filter '{name}' class must be a string")
 
         return v
 

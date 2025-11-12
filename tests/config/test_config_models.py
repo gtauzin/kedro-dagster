@@ -189,6 +189,7 @@ def test_logger_options_normalize_log_level_validation():
 
 def test_logger_options_validate_logger_name():
     """All logger_name validator scenarios (validate_logger_name)."""
+
     valid = [
         "logger",
         "my_logger",
@@ -237,7 +238,7 @@ def test_logger_options_validate_handlers():
     # Not a dictionary entry
     with pytest.raises(
         ValidationError,
-        match=r"Handler at index 0 must be a dictionary|valid dictionary|Input should be a valid dictionary",
+        match=r"Input should be a valid dictionary",
     ):
         KedroDagsterConfig(
             loggers={
@@ -271,10 +272,16 @@ def test_logger_options_validate_formatters():
         )
 
     # Not a dict value
-    with pytest.raises(
-        ValidationError, match=r"must be a dictionary|valid dictionary|Input should be a valid dictionary"
-    ):
+    with pytest.raises(ValidationError, match=r"Input should be a valid dictionary"):
         LoggerOptions(logger_name="t.logger.formatters", formatters={"bad": "not_a_dict"})  # type: ignore[dict-item]
+
+    # Non-string 'format'
+    with pytest.raises(ValidationError, match=r"'format' must be a string"):
+        LoggerOptions(logger_name="t.logger.formatters", formatters={"bad": {"format": 123}})
+
+    # Non-string '()'
+    with pytest.raises(ValidationError, match=r"'\(\)' must be a string import path"):
+        LoggerOptions(logger_name="t.logger.formatters", formatters={"bad": {"()": 123}})
 
 
 def test_logger_options_validate_filters():
@@ -283,11 +290,28 @@ def test_logger_options_validate_filters():
     f_cfg = LoggerOptions(logger_name="t.logger.filters", filters={"level": {"()": "logging.Filter"}})
     assert "level" in f_cfg.filters
 
+    # Valid using class + params
+    f_cfg2 = LoggerOptions(
+        logger_name="t.logger.filters",
+        filters={"by_class": {"class": "logging.Filter", "params": {"name": "my.app"}}},
+    )
+    assert "by_class" in f_cfg2.filters
+
     # Not a dict
-    with pytest.raises(
-        ValidationError, match=r"must be a dictionary|valid dictionary|Input should be a valid dictionary"
-    ):
+    with pytest.raises(ValidationError, match=r"Input should be a valid dictionary"):
         LoggerOptions(logger_name="t.logger.filters", filters={"bad": "not_a_dict"})  # type: ignore[dict-item]
+
+    # Missing both '()' and 'class'
+    with pytest.raises(ValidationError, match=r"must specify either '\(\)'.* or 'class'"):
+        LoggerOptions(logger_name="t.logger.filters", filters={"bad": {"name": "no-type"}})
+
+    # Non-string '()'
+    with pytest.raises(ValidationError, match=r"'\(\)' must be a string import path"):
+        LoggerOptions(logger_name="t.logger.filters", filters={"bad": {"()": 123}})
+
+    # Non-string 'class'
+    with pytest.raises(ValidationError, match=r"class must be a string"):
+        LoggerOptions(logger_name="t.logger.filters", filters={"bad": {"class": 123}})
 
     # None stays None
     assert LoggerOptions(logger_name="t.logger.filters", filters=None).filters is None
