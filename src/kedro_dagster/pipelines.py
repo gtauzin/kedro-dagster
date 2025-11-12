@@ -473,7 +473,7 @@ class PipelineTranslator:
 
             # Handle executor configuration (string reference or inline config)
             executor_def = None
-            executor_config = job_config.executor
+            executor_config = job_config["executor"]
             if executor_config is not None:
                 if isinstance(executor_config, str):
                     # String reference to named executor
@@ -491,8 +491,8 @@ class PipelineTranslator:
 
             # Handle logger configurations (string references and/or inline configs)
             logger_defs, logger_configs = {}, {}
-            if job_config.loggers:
-                for idx, logger_config in enumerate(job_config.loggers):
+            if "loggers" in job_config:
+                for idx, logger_config in enumerate(job_config["loggers"]):
                     if isinstance(logger_config, str):
                         # String reference to named logger
                         if logger_config in self._named_loggers:
@@ -510,7 +510,7 @@ class PipelineTranslator:
                         else:
                             raise ValueError(f"Job-specific logger `{job_logger_name}` not found.")
 
-                        logger_configs[job_logger_name] = logger_config.model_dump()
+                        logger_configs[job_logger_name] = logger_config
 
             job = self.translate_pipeline(
                 pipeline=pipeline,
