@@ -43,7 +43,7 @@ def getLogger(name: str | None = None) -> _logging.Logger:
         if context:
             logger: _logging.Logger = dg.get_dagster_logger(name)
             return logger
-    except Exception:
+    except Exception:  # Fallback if no active Dagster context
         pass
 
     # Otherwise, fall back to Python logging

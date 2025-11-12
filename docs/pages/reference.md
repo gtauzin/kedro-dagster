@@ -168,7 +168,7 @@ Options for defining Dagster schedules.
 
 Options for defining Dagster loggers.
 
-::: kedro_dagster.config.automation.LoggerOptions
+::: kedro_dagster.config.logging.LoggerOptions
 
 ---
 

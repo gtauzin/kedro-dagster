@@ -130,7 +130,7 @@ kedro dagster dev --env local
 The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000) by default.
 
 !!! note
-    You may noticed that by default, logs from Kedro/Kedro-Dagster and Dagster are displayed in different formats in the Dagster UI. You can configure Kedro/Kedro-Dagster logging to match Dagster's format by making use of Dagster formatters in your Kedro project's `logging.yml`. For more information, see the [Logging](technical.md#logging) section in the technical documentation.
+    You may have noticed that by default, logs from Kedro/Kedro-Dagster and Dagster are displayed in different formats on the terminal. You can configure Kedro/Kedro-Dagster logging to match Dagster's format by making use of Dagster formatters in your Kedro project's `logging.yml`. For more information, see the [Logging](technical.md#logging) section in the technical documentation.
 
 ### Assets
 

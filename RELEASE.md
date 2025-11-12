@@ -11,6 +11,7 @@
 - Fix how `LoggerCreator` creates loggers for Dagster runs. Generic logging configuration is now supported from `dagster.yml`.
 
 ## Breaking changes to the API
+- `env` is now a required parameter of `KedroProjectTranslator`.
 - Remove `dev` config in `dagster.yml`.
 
 ## Thanks for supporting contributions

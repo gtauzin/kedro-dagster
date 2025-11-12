@@ -37,7 +37,7 @@ def test_getLogger_uses_dagster_logger_when_context_active(monkeypatch):
     kd_logging = _import_module()
 
     # Pretend an active context exists
-    monkeypatch.setattr(kd_logging.dg.OpExecutionContext, "get", staticmethod(lambda: object()), raising=True)
+    monkeypatch.setattr(kd_logging.dg.OpExecutionContext, "get", staticmethod(object), raising=True)
 
     captured = {}
 
@@ -139,7 +139,6 @@ def test_logging_config_yaml_structure():
 
     def capture_dictConfig(config):
         captured_config.update(config)
-        pass
 
     with patch.object(std_logging.config, "dictConfig", side_effect=capture_dictConfig):
         configure_loggers()

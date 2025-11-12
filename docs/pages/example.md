@@ -15,7 +15,7 @@ Additionally, the project features:
 - **MLflow integration**: [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow) is used for experiment tracking and model registry. Configure MLflow in your Kedro project and Kedro-Dagster will make it available as a Dagster resource.
 - **Hyperparameter tuning with Optuna**: Integrate Optuna for distributed hyperparameter optimization via the [`optuna.StudyDataset`](https://docs.kedro.org/projects/kedro-datasets/en/latest/api/kedro_datasets_experimental.optuna.StudyDataset.html) Kedro dataset.
 
-## Quick Start
+## Quick start
 
 1. **Clone the repository**:
 
@@ -50,6 +50,9 @@ Additionally, the project features:
    ```bash
    kedro dagster list defs --env "local"
    ```
+
+   !!! note
+      By default, logs from Kedro/Kedro-Dagster and Dagster are displayed in different formats on the terminal. You can configure Kedro/Kedro-Dagster logging to match Dagster's format by making use of Dagster formatters in your Kedro project's `logging.yml`. For more information, see the [Logging](technical.md#logging) section in the technical documentation.
 
 6. **Explore pipelines in Dagster UI**:
 
@@ -156,6 +159,23 @@ def register_pipelines() -> dict[str, Pipeline]:
 ```
 
 The `DYNAMIC_PIPELINES_MAPPING` is then used to build pipelines variants dynamically in each pipeline definition function.
+
+### Logging integration
+
+Kedro-Dagster unifies Kedro and Dagster logging with minimal code change so that logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug. In order to achieve this, Kedro-Dagster provides a drop-in replacement for the `logging` module that redirects Kedro logs to Dagster's logging system. In the node files, simply replace:
+
+```python
+import logging
+```
+
+by
+
+```python
+from kedro_dagster.config import logging
+```
+
+Additionally, Kedro-Dagster provides configuration to customize Dagster run loggers via the `dagster.yml` file.
+This is done by configuring a [`LoggerCreator`](reference.md#loggercreator) that reads the `loggers` section of `dagster.yml` and creates the corresponding Dagster `LoggerDefinition`.
 
 ### Environments configuration at a glance
 
