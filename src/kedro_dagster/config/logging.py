@@ -181,9 +181,6 @@ class LoggerOptions(BaseModel):
             return v
 
         for name, filter_config in v.items():
-            if not isinstance(filter_config, dict):
-                raise ValueError(f"Filter '{name}' configuration must be a dictionary")
-
             # Require either custom callable/class path via '()' or a class path via 'class'
             has_callable = "()" in filter_config
             has_class = "class" in filter_config
