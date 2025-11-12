@@ -526,6 +526,7 @@ class CeleryK8sJobExecutorOptions(CeleryExecutorOptions, K8sJobExecutorOptions):
 ExecutorOptions = (
     InProcessExecutorOptions
     | MultiprocessExecutorOptions
+    | DaskExecutorOptions
     | K8sJobExecutorOptions
     | DockerExecutorOptions
     | CeleryExecutorOptions
@@ -537,6 +538,7 @@ ExecutorOptions = (
 EXECUTOR_MAP = {
     "in_process": InProcessExecutorOptions,
     "multiprocess": MultiprocessExecutorOptions,
+    "dask_executor": DaskExecutorOptions,
     "k8s_job_executor": K8sJobExecutorOptions,
     "docker_executor": DockerExecutorOptions,
     "celery_executor": CeleryExecutorOptions,

@@ -18,20 +18,21 @@ from kedro_dagster.config.execution import (
     CeleryK8sJobExecutorOptions,
     DaskExecutorOptions,
     DockerExecutorOptions,
+    ExecutorOptions,
     InProcessExecutorOptions,
     K8sJobExecutorOptions,
     MultiprocessExecutorOptions,
 )
 
 if TYPE_CHECKING:
-    from pydantic import BaseModel
+    from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
 
 
 class ExecutorCreator:
     """Create Dagster executor definitions from Kedro-Dagster configuration.
 
     Args:
-        dagster_config (BaseModel): Parsed Kedro-Dagster config containing executor entries.
+        dagster_config (KedroDagsterConfig): Parsed Kedro-Dagster config containing executor entries.
     """
 
     _OPTION_EXECUTOR_MAP = {
@@ -39,7 +40,7 @@ class ExecutorCreator:
         MultiprocessExecutorOptions: dg.multiprocess_executor,
     }
 
-    _EXECUTOR_CONFIGS = [
+    _EXECUTOR_CONFIGS: list[tuple[type[ExecutorOptions], str, str]] = [
         (CeleryExecutorOptions, "dagster_celery", "celery_executor"),
         (CeleryDockerExecutorOptions, "dagster_celery_docker", "celery_docker_executor"),
         (CeleryK8sJobExecutorOptions, "dagster_celery_k8s", "celery_k8s_job_executor"),
@@ -48,14 +49,14 @@ class ExecutorCreator:
         (K8sJobExecutorOptions, "dagster_k8s", "k8s_job_executor"),
     ]
 
-    def __init__(self, dagster_config: "BaseModel"):
+    def __init__(self, dagster_config: "KedroDagsterConfig"):
         self._dagster_config = dagster_config
 
-    def register_executor(self, executor_option: "BaseModel", executor: dg.ExecutorDefinition) -> None:
+    def register_executor(self, executor_option: type[ExecutorOptions], executor: dg.ExecutorDefinition) -> None:
         """Register a mapping between an options model and a Dagster executor factory.
 
         Args:
-            executor_option (BaseModel): Pydantic model type acting as the key.
+            executor_option (type[ExecutorOptions]): Pydantic model type acting as the key.
             executor (ExecutorDefinition): Dagster executor factory to use for that key.
         """
         self._OPTION_EXECUTOR_MAP[executor_option] = executor
@@ -96,13 +97,12 @@ class ExecutorCreator:
             available_executor_names = set(named_executors.keys())
 
             for job_name, job_config in self._dagster_config.jobs.items():
-                executor_config = job_config.executor
-                if executor_config is not None:
-                    if isinstance(executor_config, str):
+                if job_config.executor is not None:
+                    if isinstance(job_config.executor, str):
                         # String reference - validate it exists in available executors
-                        if executor_config not in available_executor_names:
+                        if job_config.executor not in available_executor_names:
                             raise ValueError(
-                                f"Executor reference '{executor_config}' for job '{job_name}' not found in available executors. "
+                                f"Executor reference '{job_config.executor}' for job '{job_name}' not found in available executors. "
                                 f"Available executors: {sorted(available_executor_names)}"
                             )
                     else:
@@ -124,9 +124,14 @@ class ExecutorCreator:
 
 
 class ScheduleCreator:
-    """Create Dagster schedule definitions from Kedro configuration."""
+    """Create Dagster schedule definitions from Kedro configuration.
 
-    def __init__(self, dagster_config: "BaseModel", named_jobs: dict[str, dg.JobDefinition]):
+    Args:
+        dagster_config (KedroDagsterConfig): Parsed Kedro-Dagster config containing schedule entries.
+        named_jobs (dict[str, dg.JobDefinition]): Mapping of job names to Dagster job definitions.
+    """
+
+    def __init__(self, dagster_config: "KedroDagsterConfig", named_jobs: dict[str, dg.JobDefinition]):
         self._dagster_config = dagster_config
         self._named_jobs = named_jobs
 
@@ -143,31 +148,31 @@ class ScheduleCreator:
                 named_schedule_config[schedule_name] = schedule_config.model_dump()
 
         named_schedules = {}
-        for job_name, job_config in self._dagster_config.jobs.items():
-            schedule_config = job_config.schedule
-            if schedule_config is not None:
-                if isinstance(schedule_config, str):
-                    schedule_name = schedule_config
-                    if schedule_name in named_schedule_config:
-                        schedule = dg.ScheduleDefinition(
-                            name=f"{job_name}_{schedule_name}_schedule",
-                            job=self._named_jobs[job_name],
-                            **named_schedule_config[schedule_name],
-                        )
+        if self._dagster_config.jobs is not None:
+            for job_name, job_config in self._dagster_config.jobs.items():
+                if job_config.schedule is not None:
+                    if isinstance(job_config.schedule, str):
+                        schedule_name = job_config.schedule
+                        if schedule_name in named_schedule_config:
+                            schedule = dg.ScheduleDefinition(
+                                name=f"{job_name}_{schedule_name}_schedule",
+                                job=self._named_jobs[job_name],
+                                **named_schedule_config[schedule_name],
+                            )
+                        else:
+                            raise ValueError(
+                                f"Schedule defined by {schedule_config} not found. "
+                                "Please make sure the schedule is defined in the configuration."
+                            )
                     else:
-                        raise ValueError(
-                            f"Schedule defined by {schedule_config} not found. "
-                            "Please make sure the schedule is defined in the configuration."
+                        # If schedule_config is not a string, create schedule definition using inline config
+                        schedule = dg.ScheduleDefinition(
+                            name=f"{job_name}__schedule",
+                            job=self._named_jobs[job_name],
+                            **schedule_config.model_dump(),
                         )
-                else:
-                    # If schedule_config is not a string, create schedule definition using inline config
-                    schedule = dg.ScheduleDefinition(
-                        name=f"{job_name}__schedule",
-                        job=self._named_jobs[job_name],
-                        **schedule_config.model_dump(),
-                    )
 
-                named_schedules[job_name] = schedule
+                    named_schedules[job_name] = schedule
 
         return named_schedules
 
@@ -176,18 +181,17 @@ class LoggerCreator:
     """Create Dagster logger definitions from Kedro-Dagster configuration.
 
     Args:
-        dagster_config (BaseModel): Parsed Kedro-Dagster config containing logger entries.
+        dagster_config (KedroDagsterConfig): Parsed Kedro-Dagster config containing logger entries.
     """
 
-    def __init__(self, dagster_config: "BaseModel"):
+    def __init__(self, dagster_config: "KedroDagsterConfig"):
         self._dagster_config = dagster_config
 
-    def _get_logger_definition(self, logger_name: str, logger_config: dict[str, Any]) -> dg.LoggerDefinition:
+    def _get_logger_definition(self, logger_name: str) -> dg.LoggerDefinition:
         """Create a Dagster logger definition from the configuration.
 
         Args:
             logger_name (str): Name of the logger.
-            logger_config (dict[str, Any]): Logger configuration dictionary.
 
         Returns:
             dg.LoggerDefinition: Dagster logger definition.
@@ -218,6 +222,7 @@ class LoggerCreator:
                 logger_.removeHandler(h)
 
             # Build formatter registry
+            default_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             formatter_registry: dict[str, logging.Formatter] = {}
             if config_data.get("formatters"):
                 for fname, fcfg in config_data["formatters"].items():
@@ -277,9 +282,7 @@ class LoggerCreator:
                         handler_inst.setFormatter(formatter_registry[fmt_ref])
                     elif config_data.get("formatters") is None:
                         # No formatter registry, attach default
-                        handler_inst.setFormatter(
-                            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-                        )
+                        handler_inst.setFormatter(default_formatter)
 
                     # Attach filters
                     filter_refs = hcfg.get("filters") or []
@@ -292,7 +295,7 @@ class LoggerCreator:
                 # No handlers specified, default to StreamHandler
                 sh = logging.StreamHandler(stream=sys.stdout)
                 sh.setLevel(level)
-                sh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+                sh.setFormatter(default_formatter)
                 logger_.addHandler(sh)
 
             return logger_
@@ -318,8 +321,8 @@ class LoggerCreator:
         """
         named_loggers = {}
         if self._dagster_config.loggers:
-            for logger_name, logger_config in self._dagster_config.loggers.items():
-                logger = self._get_logger_definition(logger_name, logger_config.model_dump())
+            for logger_name in self._dagster_config.loggers.keys():
+                logger = self._get_logger_definition(logger_name)
                 named_loggers[logger_name] = logger
 
         # Iterate over jobs to handle job-specific logger configurations
@@ -338,7 +341,7 @@ class LoggerCreator:
                         else:
                             # If logger_config is not a string, create logger definition named after the job
                             job_logger_name = f"{job_name}__logger_{idx}"
-                            logger = self._get_logger_definition(job_logger_name, logger_config.model_dump())
+                            logger = self._get_logger_definition(job_logger_name)
                             named_loggers[job_logger_name] = logger
 
         return named_loggers

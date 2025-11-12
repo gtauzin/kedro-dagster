@@ -463,8 +463,10 @@ class PipelineTranslator:
         # Lazy import to avoid circular dependency
         from kedro.framework.project import pipelines
 
+        dagster_config = self._dagster_config.model_dump()
+
         named_jobs = {}
-        for job_name, job_config in self._dagster_config.model_dump()["jobs"].items():
+        for job_name, job_config in dagster_config["jobs"].items():
             pipeline_config = job_config["pipeline"]
 
             pipeline_name = pipeline_config.get("pipeline_name", "__default__")
@@ -500,7 +502,7 @@ class PipelineTranslator:
                         else:
                             raise ValueError(f"Logger `{logger_config}` not found.")
 
-                        logger_configs[logger_config] = self._dagster_config.model_dump()["loggers"][logger_config]
+                        logger_configs[logger_config] = dagster_config["loggers"][logger_config]
 
                     else:
                         # Inline logger configuration - look for job-specific logger
