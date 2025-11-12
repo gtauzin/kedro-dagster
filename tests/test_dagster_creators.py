@@ -168,7 +168,7 @@ def test_schedule_creator_raises_for_unknown_named_schedule(env, project_scenari
     with pytest.raises(ValueError) as e:
         schedule_creator.create_schedules()
 
-    assert "Schedule defined by unknown not found" in str(e.value)
+    assert "Schedule named 'unknown' for job 'default' not found in available schedules" in str(e.value)
 
 
 @pytest.mark.parametrize("env", ["base"])  # keep fast
@@ -698,7 +698,10 @@ def test_schedule_creator_validates_string_references():
     with pytest.raises(ValueError) as exc_info:
         schedule_creator.create_schedules()
 
-    assert "Schedule defined by nonexistent_schedule not found" in str(exc_info.value)
+    assert (
+        "Schedule named 'nonexistent_schedule' for job 'job_with_bad_schedule_ref' not found in available schedules"
+        in str(exc_info.value)
+    )
 
 
 def test_schedule_creator_mixed_schedule_types(monkeypatch):
@@ -796,9 +799,8 @@ def test_executor_creator_validates_job_string_references():
     with pytest.raises(ValueError) as exc_info:
         executor_creator.create_executors()
 
-    assert (
-        "Executor reference 'nonexistent_executor' for job 'job_with_bad_ref' not found in available executors"
-        in str(exc_info.value)
+    assert "Executor named 'nonexistent_executor' for job 'job_with_bad_ref' not found in available executors" in str(
+        exc_info.value
     )
 
 
@@ -905,8 +907,9 @@ def test_logger_runtime_basic_configuration():
 
     logger_def = _build_logger_definition(cfg, "basic")
 
-    # Simulate Dagster calling the logger_fn
-    context = type("Ctx", (), {"logger_config": {}})()
+    # Simulate Dagster calling the logger_fn with proper logger configuration
+    logger_config = cfg.loggers["basic"].model_dump()
+    context = type("Ctx", (), {"logger_config": logger_config})()
     logger_obj = logger_def.logger_fn(context)  # type: ignore[attr-defined]
 
     assert logger_obj.name == "basic"
@@ -955,7 +958,8 @@ def test_logger_runtime_formatters_and_filters(tmp_path):
     )
 
     logger_def = _build_logger_definition(cfg, "rich")
-    context = type("Ctx", (), {"logger_config": {}})()
+    logger_config = cfg.loggers["rich"].model_dump()
+    context = type("Ctx", (), {"logger_config": logger_config})()
     logger_obj = logger_def.logger_fn(context)  # type: ignore[attr-defined]
 
     # Validate two handlers attached
@@ -996,15 +1000,18 @@ def test_logger_runtime_job_inline_logger_isolated_handlers():
     inline_def = defs["job1__logger_0"]
 
     # Build both actual logger objects
-    ctx = type("Ctx", (), {"logger_config": {}})()
+    base_config = base_options.model_dump()
+    base_ctx = type("Ctx", (), {"logger_config": base_config})()
 
     # First creation with base config
-    base_logger = base_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    base_logger = base_def.logger_fn(base_ctx)  # type: ignore[attr-defined]
     assert base_logger.level == logging.INFO
     first_handler_ids = [id(h) for h in base_logger.handlers]
 
     # Second creation with inline config overrides the same named logger
-    inline_logger = inline_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    inline_config = job_inline.model_dump()
+    inline_ctx = type("Ctx", (), {"logger_config": inline_config})()
+    inline_logger = inline_def.logger_fn(inline_ctx)  # type: ignore[attr-defined]
     assert inline_logger.level == logging.ERROR
 
     # The underlying logger object is the same; handlers should have been replaced
@@ -1049,7 +1056,8 @@ def test_logger_runtime_default_handler_when_none_specified():
     )
 
     logger_def = _build_logger_definition(cfg, "default_handler")
-    ctx = type("Ctx", (), {"logger_config": {}})()
+    logger_config = cfg.loggers["default_handler"].model_dump()
+    ctx = type("Ctx", (), {"logger_config": logger_config})()
     logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
 
     # Should attach exactly one default StreamHandler with a formatter
@@ -1072,7 +1080,8 @@ def test_logger_runtime_all_levels(level):
     )
 
     logger_def = _build_logger_definition(cfg, "lv")
-    ctx = type("Ctx", (), {"logger_config": {}})()
+    logger_config = cfg.loggers["lv"].model_dump()
+    ctx = type("Ctx", (), {"logger_config": logger_config})()
     logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
     assert logger_obj.level == getattr(logging, level)
 
@@ -1104,7 +1113,8 @@ def test_logger_runtime_filter_class_path(tmp_path):
     )
 
     logger_def = _build_logger_definition(cfg, "class_filter_logger")
-    ctx = type("Ctx", (), {"logger_config": {}})()
+    logger_config = cfg.loggers["class_filter_logger"].model_dump()
+    ctx = type("Ctx", (), {"logger_config": logger_config})()
     logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
 
     # Ensure handler has the filter attached (branch executed)
@@ -1194,7 +1204,8 @@ def test_logger_reference_globals_resolution(monkeypatch, tmp_path):
     )
 
     logger_def = _build_logger_definition(cfg, "global_filter_logger")
-    ctx = type("Ctx", (), {"logger_config": {}})()
+    logger_config = cfg.loggers["global_filter_logger"].model_dump()
+    ctx = type("Ctx", (), {"logger_config": logger_config})()
     logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
     logger_obj.info("should accept this")
     logger_obj.info("reject")

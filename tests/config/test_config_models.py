@@ -30,7 +30,7 @@ def test_schedule_options_happy_path():
 def test_pipeline_options_forbid_extra_and_defaults():
     """PipelineOptions defaults to None for filters and forbids unknown fields."""
     p = PipelineOptions()
-    assert p.pipeline_name is None
+    assert p.pipeline_name == "__default__"
     assert p.from_nodes is None
     assert p.to_nodes is None
     assert p.node_names is None
@@ -133,9 +133,9 @@ def test_logger_options_minimal_config():
     logger_opts = LoggerOptions()
 
     assert logger_opts.log_level == "INFO"  # default
-    assert logger_opts.handlers is None
-    assert logger_opts.formatters is None
-    assert logger_opts.filters is None
+    assert len(logger_opts.handlers) == 0
+    assert len(logger_opts.formatters) == 0
+    assert len(logger_opts.filters) == 0
 
 
 def test_logger_options_normalize_log_level_validation():
@@ -217,8 +217,8 @@ def test_logger_options_validate_handlers():
             }
         )
 
-    # None handlers should remain None
-    assert LoggerOptions(handlers=None).handlers is None
+    # No handlers is empty list
+    assert len(LoggerOptions().handlers) == 0
 
 
 def test_logger_options_validate_formatters():
@@ -247,8 +247,8 @@ def test_logger_options_validate_formatters():
     with pytest.raises(ValidationError, match=r"'\(\)' must be a string import path"):
         LoggerOptions(formatters={"bad": {"()": 123}})
 
-    # None formatters should remain None
-    assert LoggerOptions(formatters=None).formatters is None
+    # No formatters is empty dict
+    assert len(LoggerOptions().formatters) == 0
 
 
 def test_logger_options_validate_filters():
@@ -279,8 +279,8 @@ def test_logger_options_validate_filters():
     with pytest.raises(ValidationError, match=r"class must be a string"):
         LoggerOptions(filters={"bad": {"class": 123}})
 
-    # None stays None
-    assert LoggerOptions(filters=None).filters is None
+    # No filters is empty dict
+    assert len(LoggerOptions().filters) == 0
 
 
 def test_logger_options_validate_references():

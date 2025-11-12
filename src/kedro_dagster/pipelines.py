@@ -463,46 +463,49 @@ class PipelineTranslator:
         # Lazy import to avoid circular dependency
         from kedro.framework.project import pipelines
 
-        dagster_config = self._dagster_config.model_dump()
+        named_jobs: dict[str, dg.JobDefinition] = {}
+        if self._dagster_config.jobs is None:
+            return named_jobs
 
-        named_jobs = {}
-        for job_name, job_config in dagster_config["jobs"].items():
-            pipeline_config = job_config["pipeline"]
+        for job_name, job_config in self._dagster_config.jobs.items():
+            pipeline_config = job_config.pipeline
 
-            pipeline_name = pipeline_config.get("pipeline_name", "__default__")
-            filter_params = get_filter_params_dict(pipeline_config)
+            pipeline_name = pipeline_config.pipeline_name
+            filter_params = get_filter_params_dict(pipeline_config.model_dump())
             pipeline = pipelines.get(pipeline_name).filter(**filter_params)
 
             # Handle executor configuration (string reference or inline config)
             executor_def = None
-            executor_config = job_config["executor"]
+            executor_config = job_config.executor
             if executor_config is not None:
                 if isinstance(executor_config, str):
                     # String reference to named executor
                     if executor_config in self._named_executors:
                         executor_def = self._named_executors[executor_config]
                     else:
-                        raise ValueError(f"Executor `{executor_config}` not found.")
+                        raise ValueError(f"Executor '{executor_config}' not found.")
                 else:
                     # Inline executor configuration - look for job-specific executor
                     job_executor_name = f"{job_name}__executor"
                     if job_executor_name in self._named_executors:
                         executor_def = self._named_executors[job_executor_name]
                     else:
-                        raise ValueError(f"Job-specific executor `{job_executor_name}` not found.")
+                        raise ValueError(f"Job-specific executor '{job_executor_name}' not found.")
 
             # Handle logger configurations (string references and/or inline configs)
             logger_defs, logger_configs = {}, {}
-            if "loggers" in job_config:
-                for idx, logger_config in enumerate(job_config["loggers"]):
+            if job_config.loggers:
+                for idx, logger_config in enumerate(job_config.loggers):
                     if isinstance(logger_config, str):
                         # String reference to named logger
                         if logger_config in self._named_loggers:
                             logger_defs[logger_config] = self._named_loggers[logger_config]
                         else:
-                            raise ValueError(f"Logger `{logger_config}` not found.")
+                            raise ValueError(f"Logger '{logger_config}' not found.")
 
-                        logger_configs[logger_config] = dagster_config["loggers"][logger_config]
+                        # If logger_config exists in _named_loggers, then loggers must exist
+                        assert self._dagster_config.loggers is not None
+                        logger_configs[logger_config] = self._dagster_config.loggers[logger_config]
 
                     else:
                         # Inline logger configuration - look for job-specific logger

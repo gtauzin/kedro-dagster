@@ -85,7 +85,7 @@ class ExecutorCreator:
                 executor = self._OPTION_EXECUTOR_MAP.get(type(executor_config), None)
                 if executor is None:
                     raise ValueError(
-                        f"Executor {executor_name} not supported. "
+                        f"Executor `{executor_name}` not supported. "
                         "Please use one of the following executors: "
                         f"{', '.join([str(k) for k in self._OPTION_EXECUTOR_MAP.keys()])}"
                     )
@@ -102,22 +102,22 @@ class ExecutorCreator:
                         # String reference - validate it exists in available executors
                         if job_config.executor not in available_executor_names:
                             raise ValueError(
-                                f"Executor reference '{job_config.executor}' for job '{job_name}' not found in available executors. "
+                                f"Executor named '{job_config.executor}' for job '{job_name}' not found in available executors. "
                                 f"Available executors: {sorted(available_executor_names)}"
                             )
                     else:
                         # Inline executor configuration - create executor definition
-                        executor = self._OPTION_EXECUTOR_MAP.get(type(executor_config), None)
+                        executor = self._OPTION_EXECUTOR_MAP.get(type(job_config.executor), None)
                         if executor is None:
                             raise ValueError(
-                                f"Executor type {type(executor_config)} for job '{job_name}' not supported. "
+                                f"Executor type `{type(job_config.executor)}` for job '{job_name}' not supported. "
                                 "Please use one of the following executor types: "
                                 f"{', '.join([str(k) for k in self._OPTION_EXECUTOR_MAP.keys()])}"
                             )
 
                         # Create the executor with job-specific naming
                         executor_name = f"{job_name}__executor"
-                        executor_def = executor.configured(executor_config.model_dump())
+                        executor_def = executor.configured(job_config.executor.model_dump())
                         named_executors[executor_name] = executor_def
 
         return named_executors
@@ -147,6 +147,8 @@ class ScheduleCreator:
             for schedule_name, schedule_config in self._dagster_config.schedules.items():
                 named_schedule_config[schedule_name] = schedule_config.model_dump()
 
+        available_schedule_names = set(named_schedule_config.keys())
+
         named_schedules = {}
         if self._dagster_config.jobs is not None:
             for job_name, job_config in self._dagster_config.jobs.items():
@@ -161,15 +163,15 @@ class ScheduleCreator:
                             )
                         else:
                             raise ValueError(
-                                f"Schedule defined by {schedule_config} not found. "
-                                "Please make sure the schedule is defined in the configuration."
+                                f"Schedule named '{schedule_name}' for job '{job_name}' not found in available schedules. "
+                                f"Available schedules: {sorted(available_schedule_names)}"
                             )
                     else:
                         # If schedule_config is not a string, create schedule definition using inline config
                         schedule = dg.ScheduleDefinition(
                             name=f"{job_name}__schedule",
                             job=self._named_jobs[job_name],
-                            **schedule_config.model_dump(),
+                            **job_config.schedule.model_dump(),
                         )
 
                     named_schedules[job_name] = schedule
@@ -280,8 +282,8 @@ class LoggerCreator:
                     fmt_ref = hcfg.get("formatter")
                     if fmt_ref and formatter_registry.get(fmt_ref):
                         handler_inst.setFormatter(formatter_registry[fmt_ref])
-                    elif config_data.get("formatters") is None:
-                        # No formatter registry, attach default
+                    elif not fmt_ref:
+                        # No formatter specified for this handler, attach default
                         handler_inst.setFormatter(default_formatter)
 
                     # Attach filters

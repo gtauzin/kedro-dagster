@@ -279,9 +279,12 @@ def _make_translator_with(monkeypatch, named_loggers=None, named_executors=None)
 
     captured: dict[str, object] = {}
 
-    def _fake_translate(self, *, pipeline, pipeline_name, filter_params, job_name, executor_def, logger_defs):
+    def _fake_translate(
+        self, *, pipeline, pipeline_name, filter_params, job_name, executor_def, logger_defs, loggers_config=None
+    ):
         captured["logger_defs"] = logger_defs
         captured["executor_def"] = executor_def
+        captured["loggers_config"] = loggers_config
         # Return a harmless sentinel to satisfy to_dagster contract
         return f"job:{job_name}"
 
@@ -289,7 +292,7 @@ def _make_translator_with(monkeypatch, named_loggers=None, named_executors=None)
     _patch_minimal_kedro_pipelines(monkeypatch)
 
     translator = PipelineTranslator(
-        dagster_config=type("Cfg", (), {"jobs": {}})(),
+        dagster_config=type("Cfg", (), {"jobs": {}, "loggers": {}})(),
         context=_Ctx(),
         project_path="/tmp/project",
         env="dev",
@@ -312,6 +315,10 @@ def test_pipeline_translator_logger_string_reference_found(monkeypatch):
     # Arrange: a named logger exists and job references it by string
     ld = dg.LoggerDefinition(logger_fn=lambda ctx: logging.getLogger("t"))
     translator, captured = _make_translator_with(monkeypatch, {"console": ld})
+
+    # Create a mock logger config for the "console" logger
+    mock_logger_options = LoggerOptions(log_level="INFO")
+    translator._dagster_config.loggers = {"console": mock_logger_options}
 
     # Inject a single job with a string logger reference
     translator._dagster_config.jobs = {
@@ -350,7 +357,7 @@ def test_pipeline_translator_logger_string_reference_missing(monkeypatch):
     }
 
     # Act / Assert
-    with pytest.raises(ValueError, match=r"Logger `missing` not found\."):
+    with pytest.raises(ValueError, match=r"Logger 'missing' not found\."):
         translator.to_dagster()
 
 
@@ -442,7 +449,7 @@ def test_pipeline_translator_executor_string_reference_missing(monkeypatch):
     }
 
     # Act / Assert
-    with pytest.raises(ValueError, match=r"Executor `missing` not found\."):
+    with pytest.raises(ValueError, match=r"Executor 'missing' not found\."):
         translator.to_dagster()
 
 
@@ -490,5 +497,5 @@ def test_pipeline_translator_executor_inline_missing(monkeypatch):
     }
 
     # Act / Assert
-    with pytest.raises(ValueError, match=rf"Job-specific executor `{job_name}__executor` not found\."):
+    with pytest.raises(ValueError, match=rf"Job-specific executor '{job_name}__executor' not found\."):
         translator.to_dagster()

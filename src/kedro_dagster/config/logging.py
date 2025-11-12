@@ -75,7 +75,7 @@ class LoggerOptions(BaseModel):
 
     @field_validator("handlers")
     @classmethod
-    def validate_handlers(cls, v: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:
+    def validate_handlers(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate handler configurations.
 
         Args:
@@ -87,9 +87,6 @@ class LoggerOptions(BaseModel):
         Raises:
             ValueError: If handler configuration is invalid.
         """
-        if v is None:
-            return v
-
         for i, handler in enumerate(v):
             if "class" not in handler:
                 raise ValueError(f"Handler at index {i} must specify a 'class' field")
@@ -101,7 +98,7 @@ class LoggerOptions(BaseModel):
 
     @field_validator("formatters")
     @classmethod
-    def validate_formatters(cls, v: dict[str, dict[str, Any]] | None) -> dict[str, dict[str, Any]] | None:
+    def validate_formatters(cls, v: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
         """Validate formatter configurations.
 
         Args:
@@ -113,9 +110,6 @@ class LoggerOptions(BaseModel):
         Raises:
             ValueError: If formatter configuration is invalid.
         """
-        if v is None:
-            return v
-
         for name, formatter in v.items():
             # Require either 'format' for standard formatter or '()' for custom class
             has_format = "format" in formatter
@@ -135,7 +129,7 @@ class LoggerOptions(BaseModel):
 
     @field_validator("filters")
     @classmethod
-    def validate_filters(cls, v: dict[str, dict[str, Any]] | None) -> dict[str, dict[str, Any]] | None:
+    def validate_filters(cls, v: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
         """Validate filter configurations.
 
         Args:
@@ -147,9 +141,6 @@ class LoggerOptions(BaseModel):
         Raises:
             ValueError: If filter configuration is invalid.
         """
-        if v is None:
-            return v
-
         for name, filter_config in v.items():
             # Require either custom callable/class path via '()' or a class path via 'class'
             has_callable = "()" in filter_config

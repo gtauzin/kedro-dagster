@@ -18,7 +18,7 @@ class PipelineOptions(BaseModel):
     """Options for filtering and configuring Kedro pipelines within a Dagster job.
 
     Attributes:
-        pipeline_name (str | None): Name of the Kedro pipeline to run.
+        pipeline_name (str): Name of the Kedro pipeline to run. Defaults to `__default__`.
         from_nodes (list[str] | None): List of node names to start execution from.
         to_nodes (list[str] | None): List of node names to end execution at.
         node_names (list[str] | None): List of specific node names to include in the pipeline.
@@ -45,7 +45,7 @@ class PipelineOptions(BaseModel):
     ```
     """
 
-    pipeline_name: str | None = None
+    pipeline_name: str = "__default__"
     from_nodes: list[str] | None = None
     to_nodes: list[str] | None = None
     node_names: list[str] | None = None
