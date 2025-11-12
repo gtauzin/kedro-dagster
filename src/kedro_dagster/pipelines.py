@@ -245,8 +245,12 @@ class PipelineTranslator:
             kedro_run_resource = context.resources.kedro_run
             run_params = kedro_run_resource.run_params
 
+            # NOTE: We set run_results=None because, in the Dagster context, we do not have access
+            # to the Kedro run results dictionary (mapping dataset names to DatasetSaveError objects).
+            # This means that hooks relying on run_results for error reporting or post-processing
+            # will not receive this information. This is a known limitation of the Dagster integration.
             self._hook_manager.hook.after_pipeline_run(
-                run_results=None,  # We don't have run results in this context
+                run_results=None,
                 run_params=run_params,
                 pipeline=pipeline,
                 catalog=self._catalog,

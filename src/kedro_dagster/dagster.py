@@ -208,7 +208,12 @@ class LoggerCreator:
                     return getattr(module, attr)
                 else:
                     # no module specified, assume built‑in or current namespace
-                    return globals()[attr]
+                    obj = globals().get(attr)
+                    if obj is None:
+                        raise NameError(
+                            f"Reference '{attr}' could not be resolved in the global namespace."
+                        )
+                    return obj
             raise TypeError(f"Unable to resolve reference {ref!r}")
 
         def dagster_logger(context: dg.InitLoggerContext) -> logging.Logger:
