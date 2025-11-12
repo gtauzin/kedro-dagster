@@ -162,17 +162,20 @@ The `DYNAMIC_PIPELINES_MAPPING` is then used to build pipelines variants dynamic
 
 ### Custom logging integration
 
-Kedro-Dagster unifies Kedro and Dagster logging with minimal code change so that logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug. In order to achieve this, Kedro-Dagster provides a drop-in replacement for the `logging` module that redirects Kedro logs to Dagster's logging system. In the node files, simply replace:
+Kedro-Dagster unifies Kedro and Dagster logging with minimal code change so that logs from Kedro nodes appear in the Dagster UI and are easy to trace and debug. In order to achieve this, Kedro-Dagster provides a drop-in replacement for the `getLogger` function from the `logging` module that redirects Kedro logs to Dagster's logging system. In the node files, simply replace:
 
 ```python
-import logging
+from logging import getLogger
 ```
 
 by
 
 ```python
-from kedro_dagster import logging
+from kedro_dagster.logging import getLogger
 ```
+
+!!! note
+   The `getLogger` function call must happen within the Kedro node function so that the Dagster context is accessible. Avoid defining loggers at the module level.
 
 Additionally, Kedro-Dagster provides configuration to customize Dagster run loggers via the `dagster.yml` file.
 This is done by configuring a [`LoggerCreator`](reference.md#loggercreator) that reads the `loggers` section of `dagster.yml` and creates the corresponding Dagster `LoggerDefinition`.

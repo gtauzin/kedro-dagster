@@ -1,6 +1,5 @@
 import importlib
 import logging as std_logging
-import types
 from unittest.mock import patch
 
 import coloredlogs
@@ -56,20 +55,6 @@ def test_getLogger_uses_dagster_logger_when_context_active(monkeypatch):
     assert isinstance(logger, std_logging.Logger)
     assert isinstance(logger, DummyDagsterLogger)
     assert captured["called_with"] == "my.mod"
-
-
-def test_reexports_expose_stdlib_and_preserve_override():
-    kd_logging = _import_module()
-
-    # Re-exported names like INFO/basicConfig should exist
-    assert hasattr(kd_logging, "INFO")
-    assert isinstance(kd_logging.INFO, int)
-
-    assert hasattr(kd_logging, "basicConfig")
-    assert isinstance(kd_logging.basicConfig, types.BuiltinFunctionType) or callable(kd_logging.basicConfig)
-
-    # Our getLogger should be the module's override, not stdlib's
-    assert kd_logging.getLogger is not std_logging.getLogger
 
 
 def test_logging_config_yaml_structure():
