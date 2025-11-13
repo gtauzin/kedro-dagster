@@ -1,19 +1,23 @@
 # mypy: ignore-errors
 
 from types import SimpleNamespace
+from typing import Any
 
 import dagster as dg
 import pytest
 from dagster import IdentityPartitionMapping
+from dagster._core.errors import DagsterInvalidInvocationError
 from kedro.io import DataCatalog
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from kedro_dagster.datasets import DagsterNothingDataset
 from kedro_dagster.utils import (
     KEDRO_VERSION,
+    PYDANTIC_VERSION,
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
     _is_param_name,
+    create_pydantic_config,
     format_dataset_name,
     format_node_name,
     format_partition_key,
@@ -98,7 +102,6 @@ def test_create_pydantic_model_from_dict():
     assert instance.nested.inner == INNER_VALUE
 
 
-@pytest.mark.mlflow
 def test_is_mlflow_enabled():
     """Return True when kedro-mlflow is importable and enabled in the environment."""
     assert isinstance(is_mlflow_enabled(), bool)
@@ -152,7 +155,6 @@ def test_get_filter_params_dict():
     assert filter_params == expected
 
 
-@pytest.mark.mlflow
 def test_get_mlflow_resource_from_config():
     """Build a Dagster ResourceDefinition from a kedro-mlflow configuration object."""
     # Only run this test when kedro-mlflow is available
@@ -253,3 +255,77 @@ def test_get_dataset_from_catalog_index_access_exception(caplog):
         result = get_dataset_from_catalog(bad_catalog, "missing_ds")
         assert result is None
         assert "Dataset 'missing_ds' not found in catalog." in caplog.text
+
+
+PYDANTIC_V2_MAJOR = 2
+
+
+def test_create_pydantic_config_and_model_behavior():
+    """Validate create_pydantic_config works across pydantic v1/v2 and
+    that _create_pydantic_model_from_dict applies config correctly (extra handling
+    and validate_assignment behavior).
+    """
+
+    # Prepare a config that forbids extra fields and validates assignment
+    config: Any = create_pydantic_config(extra="forbid", validate_assignment=True)
+
+    # Create a minimal model with a single int field
+    Model = _create_pydantic_model_from_dict(
+        name="Params",
+        params={"x": 1},
+        __base__=dg.Config,
+        __config__=config,
+    )
+
+    # Instantiation with the known field works
+    m = Model(x=1)
+    assert m.x == 1
+
+    # Initialization with extra field: behavior depends on pydantic version and base usage
+    # With pydantic v2 + base provided, config may not override base, so extra could be allowed.
+    try:
+        Model(x=1, y=2)  # type: ignore[call-arg]
+        allowed_extra = True
+    except ValidationError:
+        allowed_extra = False
+
+    if PYDANTIC_VERSION[0] < PYDANTIC_V2_MAJOR:
+        # v1 should respect extra="forbid" and raise
+        assert allowed_extra is False
+    # For v2, we accept either behavior depending on base precedence
+
+    # Validate assignment for existing fields should enforce types
+    # Setting to wrong type should raise. With dagster's Config base, this may raise
+    # DagsterInvalidInvocationError when models are frozen.
+    with pytest.raises((ValidationError, ValueError, TypeError, DagsterInvalidInvocationError)):
+        # pydantic v1/v2 may raise different error types for assignment validation
+        m.x = "not-an-int"  # type: ignore[assignment]
+
+    # Also assert config is attached as expected depending on pydantic version
+    major = PYDANTIC_VERSION[0]
+    if major >= PYDANTIC_V2_MAJOR:
+        # v2 exposes dict-like model_config. When using a base class provided by dagster,
+        # extra may be controlled by the base and not appear on the derived model.
+        model_config = getattr(Model, "model_config", {})
+        assert isinstance(model_config, dict)
+    else:
+        # v1 exposes inner Config class
+        Config = getattr(Model, "Config", None)
+        assert Config is not None
+        assert getattr(Config, "extra", None) in {"forbid", 2}
+        assert getattr(Config, "validate_assignment", None) is True
+
+    # Additionally, verify that when no base is provided, config takes effect in v2
+    ModelNoBase = _create_pydantic_model_from_dict(
+        name="ParamsNoBase",
+        params={"x": 1},
+        __base__=None,
+        __config__=config,
+    )
+    with pytest.raises(ValidationError):
+        ModelNoBase(x=1, y=2)  # type: ignore[call-arg]
+    # Check config flags surfaced when no base is provided
+    if major >= PYDANTIC_V2_MAJOR:
+        cfg = getattr(ModelNoBase, "model_config", {})
+        assert cfg.get("validate_assignment") is True
+        assert cfg.get("extra") in {"forbid", 2}

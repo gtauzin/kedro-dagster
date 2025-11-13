@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 from kedro.config import MissingConfigException
 from pydantic import BaseModel, model_validator
 
+from kedro_dagster.utils import PYDANTIC_VERSION, create_pydantic_config
+
 from .automation import ScheduleOptions
 from .execution import EXECUTOR_MAP, ExecutorOptions
 from .job import JobOptions
@@ -37,11 +39,11 @@ class KedroDagsterConfig(BaseModel):
     schedules: dict[str, ScheduleOptions] | None = None
     jobs: dict[str, JobOptions] | None = None
 
-    class Config:
-        """Pydantic configuration enforcing strict fields and assignment validation."""
-
-        validate_assignment = True
-        extra = "forbid"
+    # Version-aware Pydantic configuration
+    if PYDANTIC_VERSION[0] >= 2:  # noqa: PLR2004
+        model_config = create_pydantic_config(validate_assignment=True, extra="forbid")
+    else:
+        Config = create_pydantic_config(validate_assignment=True, extra="forbid")
 
     @model_validator(mode="before")
     @classmethod

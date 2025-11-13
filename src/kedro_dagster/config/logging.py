@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from kedro_dagster.utils import PYDANTIC_VERSION, create_pydantic_config
+
 # Valid Python logging levels (normalized to uppercase)
 LogLevel = Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]
 
@@ -39,11 +41,11 @@ class LoggerOptions(BaseModel):
         description="Filter configurations mapped by name",
     )
 
-    class Config:
-        """Pydantic configuration enforcing strict fields and assignment validation."""
-
-        validate_assignment = True
-        extra = "forbid"
+    # Version-aware Pydantic configuration
+    if PYDANTIC_VERSION[0] >= 2:
+        model_config = create_pydantic_config(validate_assignment=True, extra="forbid")
+    else:
+        Config = create_pydantic_config(validate_assignment=True, extra="forbid")
 
     @field_validator("log_level", mode="before")
     @classmethod

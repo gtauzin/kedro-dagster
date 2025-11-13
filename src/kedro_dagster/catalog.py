@@ -13,12 +13,13 @@ from typing import TYPE_CHECKING, Any
 import dagster as dg
 from kedro.io import MemoryDataset
 from kedro.pipeline import Pipeline
-from pydantic import ConfigDict, create_model
+from pydantic import create_model
 
 from kedro_dagster.datasets.partitioned_dataset import DagsterPartitionedDataset
 from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _is_param_name,
+    create_pydantic_config,
     format_dataset_name,
     format_node_name,
     get_dataset_from_catalog,
@@ -76,7 +77,7 @@ class CatalogTranslator:
             name="DatasetConfig",
             params=params,
             __base__=dg.Config,
-            __config__=ConfigDict(arbitrary_types_allowed=True),
+            __config__=create_pydantic_config(arbitrary_types_allowed=True),
         )
         return DatasetConfig
 

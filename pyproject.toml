@@ -38,6 +38,7 @@ dependencies = [
     "dagster>=1.10,<2.0",
     "dagster-webserver",
     "dagster-dg-cli",
+    "pydantic>=1.0.0,<3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -114,6 +115,7 @@ ignore=[
     "PLR0913", # too many args in func def
     "PLR0915", # too many statements
     "PLR0912", # too many branches
+    "PLR2004", # magic value used in comparison
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -125,9 +127,15 @@ ignore=[
 addopts = "--color=yes"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
 norecursedirs = "src/kedro_dagster/templates"
+filterwarnings = [
+  # Ignore all Pydantic v2 deprecation warnings during tests
+  "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+  # Silence Kedro framework warnings about missing pipelines in test scenarios
+  "ignore:Your project does not contain any pipelines with nodes:UserWarning:kedro.framework.cli.starters",
+]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 strict = true
 ignore_missing_imports = true
 disable_error_code = ["misc", "import-untyped"]

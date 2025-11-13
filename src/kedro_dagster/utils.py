@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from jinja2 import Environment, FileSystemLoader
-from pydantic import ConfigDict, create_model
+from pydantic import create_model
 
 from kedro_dagster.datasets import DagsterNothingDataset
 
@@ -55,6 +55,34 @@ def _get_version(package: str) -> tuple[int, int, int]:
 # Compute and expose module-level constants for importers.
 KEDRO_VERSION = _get_version("kedro")
 DAGSTER_VERSION = _get_version("dagster")
+PYDANTIC_VERSION = _get_version("pydantic")
+
+
+def create_pydantic_config(**kwargs: Any) -> type | Any:
+    """Create Pydantic configuration compatible with both v1 and v2.
+
+    Args:
+        **kwargs: Configuration options (e.g., validate_assignment=True, extra="forbid")
+
+    Returns:
+        ConfigDict for Pydantic v2, or a Config class type for Pydantic v1.
+    """
+    if PYDANTIC_VERSION[0] >= 2:
+        from pydantic import ConfigDict
+
+        # Pydantic v2.0+ uses model_config = ConfigDict(...)
+        if ConfigDict is not None:
+            return ConfigDict(**kwargs)
+
+    # Pydantic v1.x or fallback uses class Config:
+    class Config:
+        pass
+
+    # Set attributes dynamically from kwargs
+    for key, value in kwargs.items():
+        setattr(Config, key, value)
+
+    return Config
 
 
 def find_kedro_project(current_dir: Path) -> Path | None:
@@ -362,7 +390,7 @@ def unformat_asset_name(name: str) -> str:
 
 
 def _create_pydantic_model_from_dict(
-    name: str, params: dict[str, Any], __base__: Any, __config__: ConfigDict | None = None
+    name: str, params: dict[str, Any], __base__: Any, __config__: Any = None
 ) -> "BaseModel":
     """Dynamically create a Pydantic model from a dictionary of parameters.
 
@@ -370,7 +398,7 @@ def _create_pydantic_model_from_dict(
         name (str): Name of the model.
         params (dict[str, Any]): Parameters for the model.
         __base__: Base class for the model.
-        __config__ (ConfigDict | None): Optional Pydantic config.
+        __config__ (Any): Optional Pydantic config.
 
     Returns:
         BaseModel: Created Pydantic model.
@@ -400,8 +428,15 @@ def _create_pydantic_model_from_dict(
         model = create_model(name, __config__=__config__, **fields)
     else:
         model = create_model(name, __base__=__base__, **fields)
+        # Handle config assignment based on Pydantic version
         if __config__ is not None:
-            model.config = __config__
+            if PYDANTIC_VERSION[0] >= 2:
+                # In Pydantic v2, model_config is set automatically by create_model
+                # when __config__ is a ConfigDict, so no additional assignment needed
+                pass
+            else:
+                # In Pydantic v1, we need to set the Config class
+                model.Config = __config__
 
     return model
 

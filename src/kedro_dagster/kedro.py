@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 import dagster as dg
 from kedro import __version__ as kedro_version
 
-from kedro_dagster.utils import KEDRO_VERSION, get_filter_params_dict
+from kedro_dagster.utils import KEDRO_VERSION, PYDANTIC_VERSION, create_pydantic_config, get_filter_params_dict
 
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
@@ -84,11 +84,11 @@ class KedroRunTranslator:
                 node_namespace: str | None = None
             tags: list[str] | None = None
 
-            class Config:
-                # force triggering type control when setting value instead of init
-                validate_assignment = True
-                # raise an error if an unknown key is passed to the constructor
-                extra = "forbid"
+            # Version-aware Pydantic configuration
+            if PYDANTIC_VERSION[0] >= 2:  # noqa: PLR2004
+                model_config = create_pydantic_config(validate_assignment=True, extra="forbid")
+            else:
+                Config = create_pydantic_config(validate_assignment=True, extra="forbid")
 
         class KedroRunResource(RunParamsModel, dg.ConfigurableResource):
             """Resource for Kedro context."""
