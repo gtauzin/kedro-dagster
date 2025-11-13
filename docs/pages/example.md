@@ -192,7 +192,22 @@ Example `conf/prod/dagster.yml` (trimmed):
 
 ```yaml
 loggers:
-  console:
+  file_logger:
+    log_level: INFO
+    formatters:
+      simple:
+        format: "[%(asctime)s] %(levelname)s - %(message)s"
+    handlers:
+      - class: logging.handlers.RotatingFileHandler
+        level: INFO
+        formatter: simple
+        filename: dagster_run_info.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+        delay: True
+
+  console_logger:
     log_level: INFO
     formatters:
       simple:
@@ -214,6 +229,18 @@ schedules:
   daily:
     cron_schedule: "30 2 * * *"
 
+executors:
+  sequential:
+    in_process:
+
+  multiprocessing:
+    multiprocess:
+      max_concurrent: 2
+
+schedules:
+  daily:
+    cron_schedule: "30 2 * * *"
+
 jobs:
   reviews_predictor_data_processing_base:
     pipeline:
@@ -222,7 +249,7 @@ jobs:
       - reviews_predictor
       tags:
       - base
-    loggers: ["console"]
+    loggers: ["console_logger", "file_logger"]
     executor: multiprocessing
     schedule: daily
 
@@ -233,7 +260,7 @@ jobs:
       - reviews_predictor
       tags:
       - base
-    loggers: ["console"]
+    loggers: ["console_logger", "file_logger"]
     executor: multiprocessing
     schedule: daily
 ```

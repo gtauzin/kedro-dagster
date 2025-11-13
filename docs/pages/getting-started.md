@@ -75,7 +75,7 @@ The Kedro‑Dagster configuration file `dagster.yml` includes the following sect
 Let's edit the automatically generated `conf/local/dagster.yml` to customize jobs, loggers, executors, and schedules:
 ```yaml
 loggers:
-  console:
+  console_logger:
     log_level: INFO
     formatters:
       simple:
@@ -109,14 +109,14 @@ jobs:
       node_names:
       - preprocess_companies_node
       - preprocess_shuttles_node
-    loggers: ["console"]
+    loggers: ["console_logger"]
     schedule: daily
     executor: multiprocess
 
   data_science:
     pipeline:
       pipeline_name: data_science
-    loggers: ["console"]
+    loggers: ["console logger"]
     schedule: daily
     executor: sequential
 ```
