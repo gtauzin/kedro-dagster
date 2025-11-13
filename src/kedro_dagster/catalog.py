@@ -72,13 +72,13 @@ class CatalogTranslator:
             else:
                 params[param] = value
 
-        DatasetModel = _create_pydantic_model_from_dict(
-            name="DatasetModel",
+        DatasetConfig = _create_pydantic_model_from_dict(
+            name="DatasetConfig",
             params=params,
             __base__=dg.Config,
             __config__=ConfigDict(arbitrary_types_allowed=True),
         )
-        return DatasetModel
+        return DatasetConfig
 
     def _translate_dataset(
         self, dataset: "AbstractDataset", dataset_name: str
@@ -101,12 +101,12 @@ class CatalogTranslator:
             partitions_def = dataset._get_partitions_definition()
             partition_mappings = dataset._get_partition_mappings()
 
-        DatasetModel = self._create_dataset_config(dataset)
+        DatasetConfig = self._create_dataset_config(dataset)
 
         hook_manager = self._hook_manager
         named_nodes = {format_node_name(node.name): node for node in sum(self._pipelines, start=Pipeline([])).nodes}
 
-        class ConfigurableDatasetIOManager(DatasetModel, dg.ConfigurableIOManager):  # type: ignore[valid-type]
+        class ConfigurableDatasetIOManager(DatasetConfig, dg.ConfigurableIOManager):  # type: ignore[valid-type]
             def handle_output(self, context: dg.OutputContext, obj) -> None:  # type: ignore[no-untyped-def]
                 node_name = context.op_def.name
                 is_node_op = node_name in named_nodes
@@ -194,7 +194,7 @@ class CatalogTranslator:
         ConfigurableDatasetIOManagerClass = create_model(dataset_type_short, __base__=ConfigurableDatasetIOManager)
         ConfigurableDatasetIOManagerClass.__doc__ = f"IO Manager for Kedro dataset `{dataset_name}`."
 
-        # Instantiate without args; defaults are embedded in the DatasetModel
+        # Instantiate without args; defaults are embedded in the DatasetConfig
         io_manager_instance = ConfigurableDatasetIOManagerClass()
 
         return io_manager_instance, partitions_def, partition_mappings

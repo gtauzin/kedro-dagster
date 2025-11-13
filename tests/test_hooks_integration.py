@@ -15,7 +15,7 @@ from kedro.pipeline import Pipeline, node
 
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
-from kedro_dagster.dagster import ExecutorCreator
+from kedro_dagster.dagster import ExecutorCreator, LoggerCreator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 
@@ -106,6 +106,9 @@ def test_hooks_are_invoked_end_to_end(env, request):
     executor_creator = ExecutorCreator(dagster_config=dagster_config)
     named_executors = executor_creator.create_executors()
 
+    logger_creator = LoggerCreator(dagster_config=dagster_config)
+    named_loggers = logger_creator.create_loggers()
+
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
         context=context,
@@ -116,6 +119,7 @@ def test_hooks_are_invoked_end_to_end(env, request):
         named_op_factories=named_op_factories,
         named_resources={**named_io_managers, "io_manager": dg.fs_io_manager},
         named_executors=named_executors,
+        named_loggers=named_loggers,
         enable_mlflow=False,
         run_id=session.session_id,
     )
@@ -175,6 +179,7 @@ def _make_pipeline_translator(named_resources: dict | None = None) -> PipelineTr
         named_op_factories={},
         named_resources=named_resources or {},
         named_executors={},
+        named_loggers={},
         enable_mlflow=False,
     )
 

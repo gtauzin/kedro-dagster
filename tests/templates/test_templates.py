@@ -3,6 +3,9 @@ from __future__ import annotations
 import ast
 from importlib.resources import files
 
+import yaml
+
+from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
 from kedro_dagster.utils import render_jinja_template
 
 
@@ -58,3 +61,96 @@ def test_dg_toml_template_placeholders_and_renders(tmp_path):
     assert 'code_location_name = "My Project"' in rendered
     # Ensure defs_module remains the constant used by the integration
     assert 'defs_module = "kedro_dagster_example"' in rendered
+
+
+def test_dagster_yml_template_contains_file_logger_configuration():
+    """dagster.yml template includes file_logger with RotatingFileHandler configuration."""
+    text = _read_text_from_package("templates/dagster.yml")
+
+    # Check for the new file_logger structure
+    assert "file_logger:" in text
+    assert "log_level: INFO" in text
+    assert "formatters:" in text
+    assert "simple:" in text
+    assert 'format: "[%(asctime)s] %(levelname)s - %(message)s"' in text
+    assert "handlers:" in text
+    assert "class: logging.handlers.RotatingFileHandler" in text
+    assert "filename: dagster_run_info.log" in text
+    assert "maxBytes: 10485760" in text  # 10MB
+    assert "backupCount: 20" in text
+    assert "encoding: utf8" in text
+    assert "delay: True" in text
+
+    # Check that console logger is removed
+    assert "console:" not in text or text.count("console:") == 0
+
+
+def test_dagster_yml_template_default_job_uses_file_logger():
+    """dagster.yml template default job configuration references file_logger."""
+    text = _read_text_from_package("templates/dagster.yml")
+
+    # Check that the default job includes the file_logger
+    assert 'loggers: ["file_logger"]' in text
+
+    # Verify the structure around the default job
+    default_job_section = text[text.find("default:") :]
+    assert "pipeline:" in default_job_section
+    assert "pipeline_name: __default__" in default_job_section
+    assert 'loggers: ["file_logger"]' in default_job_section
+    assert "schedule: daily" in default_job_section
+    assert "executor: sequential" in default_job_section
+
+
+def test_dagster_yml_template_is_valid_yaml():
+    """dagster.yml template is valid YAML that can be parsed."""
+    # Constants for file handler configuration
+    MAX_BYTES = 10485760  # 10MB
+    BACKUP_COUNT = 20
+
+    text = _read_text_from_package("templates/dagster.yml")
+
+    # Should parse without errors
+    config = yaml.safe_load(text)
+
+    # Check the structure is as expected
+    assert "loggers" in config
+    assert "file_logger" in config["loggers"]
+    assert "jobs" in config
+    assert "default" in config["jobs"]
+    assert "loggers" in config["jobs"]["default"]
+    assert config["jobs"]["default"]["loggers"] == ["file_logger"]
+
+    # Check file_logger configuration
+    file_logger = config["loggers"]["file_logger"]
+    assert file_logger["log_level"] == "INFO"
+    assert "formatters" in file_logger
+    assert "simple" in file_logger["formatters"]
+    assert "handlers" in file_logger
+    assert len(file_logger["handlers"]) == 1
+
+    handler = file_logger["handlers"][0]
+    assert handler["class"] == "logging.handlers.RotatingFileHandler"
+    assert handler["filename"] == "dagster_run_info.log"
+    assert handler["maxBytes"] == MAX_BYTES
+    assert handler["backupCount"] == BACKUP_COUNT
+
+
+def test_dagster_yml_template_parses_with_kedro_dagster_config():
+    """dagster.yml template can be successfully parsed by KedroDagsterConfig."""
+    text = _read_text_from_package("templates/dagster.yml")
+    config_dict = yaml.safe_load(text)
+
+    # Should parse without validation errors
+    dagster_config = KedroDagsterConfig(**config_dict)
+
+    # Verify the parsed structure
+    assert "file_logger" in dagster_config.loggers
+    assert dagster_config.loggers["file_logger"].log_level == "INFO"
+
+    # Verify job configuration
+    assert "default" in dagster_config.jobs
+    default_job = dagster_config.jobs["default"]
+    assert default_job.loggers == ["file_logger"]
+    assert default_job.pipeline.pipeline_name == "__default__"
+    assert default_job.schedule == "daily"
+    assert default_job.executor == "sequential"

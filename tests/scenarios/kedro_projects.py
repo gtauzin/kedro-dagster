@@ -17,7 +17,19 @@ def dagster_executors_config() -> dict[str, Any]:
 
 def dagster_loggers_config() -> dict[str, Any]:
     return {
-        "console": {"console": {"log_level": "INFO"}},
+        "console": {
+            "log_level": "INFO",
+        },
+        "file_logger": {
+            "log_level": "DEBUG",
+            "handlers": [
+                {
+                    "class": "logging.FileHandler",
+                    "filename": "test.log",
+                    "level": "DEBUG",
+                }
+            ],
+        },
     }
 
 
@@ -100,6 +112,7 @@ def options_exec_filebacked(env: str) -> KedroProjectOptions:
     }
 
     dagster = {
+        "loggers": dagster_loggers_config(),
         "executors": dagster_executors_config(),
         "schedules": dagster_schedules_config(),
         "jobs": make_jobs_config(pipeline_name="__default__", executor="seq", schedule="daily"),

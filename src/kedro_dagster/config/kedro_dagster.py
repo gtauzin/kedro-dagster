@@ -6,15 +6,18 @@ KedroDagsterConfig object.
 """
 
 from logging import getLogger
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from kedro.config import MissingConfigException
-from kedro.framework.context import KedroContext
 from pydantic import BaseModel, model_validator
 
 from .automation import ScheduleOptions
 from .execution import EXECUTOR_MAP, ExecutorOptions
 from .job import JobOptions
+from .logging import LoggerOptions
+
+if TYPE_CHECKING:
+    from kedro.framework.context import KedroContext
 
 LOGGER = getLogger(__name__)
 
@@ -23,11 +26,13 @@ class KedroDagsterConfig(BaseModel):
     """Main configuration class representing the `dagster.yml` structure.
 
     Attributes:
+        loggers (dict[str, LoggerOptions] | None): Mapping of logger names to logger options.
         executors (dict[str, ExecutorOptions] | None): Mapping of executor names to executor options.
         schedules (dict[str, ScheduleOptions] | None): Mapping of schedule names to schedule options.
         jobs (dict[str, JobOptions] | None): Mapping of job names to job options.
     """
 
+    loggers: dict[str, LoggerOptions] | None = None
     executors: dict[str, ExecutorOptions] | None = None
     schedules: dict[str, ScheduleOptions] | None = None
     jobs: dict[str, JobOptions] | None = None
@@ -64,7 +69,7 @@ class KedroDagsterConfig(BaseModel):
         return values
 
 
-def get_dagster_config(context: KedroContext) -> KedroDagsterConfig:
+def get_dagster_config(context: "KedroContext") -> KedroDagsterConfig:
     """Get the Dagster configuration from the `dagster.yml` file.
 
     Args:

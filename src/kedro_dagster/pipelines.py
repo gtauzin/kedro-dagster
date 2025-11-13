@@ -9,7 +9,6 @@ overrides per job.
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
-from kedro.framework.project import pipelines
 from kedro.pipeline import Pipeline
 
 from kedro_dagster.kedro import KedroRunTranslator
@@ -29,12 +28,14 @@ if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
     from kedro.pipeline.node import Node
 
+    from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
+
 
 class PipelineTranslator:
     """Translator for Kedro pipelines to Dagster jobs.
 
     Args:
-        dagster_config (dict[str, Any]): Parsed configuration of the Dagster repository.
+        dagster_config (KedroDagsterConfig): Parsed configuration of the Dagster repository.
         context (KedroContext): Active Kedro context (provides catalog and hooks).
         project_path (str): Path to the Kedro project.
         env (str): Kedro environment used for namespacing.
@@ -44,12 +45,13 @@ class PipelineTranslator:
         named_op_factories (dict[str, dg.OpDefinition]): Mapping of graph-op name -> op factory.
         named_resources (dict[str, dg.ResourceDefinition]): Mapping of resource name -> resource def.
         named_executors (dict[str, dg.ExecutorDefinition]): Mapping of executor name -> executor def.
+        named_loggers (dict[str, dg.LoggerDefinition]): Mapping of logger name -> logger def.
         enable_mlflow (bool): Whether MLflow integration is enabled.
     """
 
     def __init__(
         self,
-        dagster_config: dict[str, Any],
+        dagster_config: "KedroDagsterConfig",
         context: "KedroContext",
         project_path: str,
         env: str,
@@ -59,6 +61,7 @@ class PipelineTranslator:
         named_op_factories: dict[str, dg.OpDefinition],
         named_resources: dict[str, dg.ResourceDefinition],
         named_executors: dict[str, dg.ExecutorDefinition],
+        named_loggers: dict[str, dg.LoggerDefinition],
         enable_mlflow: bool,
     ):
         self._dagster_config = dagster_config
@@ -73,6 +76,7 @@ class PipelineTranslator:
         self._named_op_factories = named_op_factories
         self._named_resources = named_resources
         self._named_executors = named_executors
+        self._named_loggers = named_loggers
         self._enable_mlflow = enable_mlflow
 
     def _enumerate_partition_keys(self, partitions_def: dg.PartitionsDefinition | None) -> list[str]:
@@ -241,7 +245,12 @@ class PipelineTranslator:
             kedro_run_resource = context.resources.kedro_run
             run_params = kedro_run_resource.run_params
 
+            # NOTE: We set run_results=None because, in the Dagster context, we do not have access
+            # to the Kedro run results dictionary (mapping dataset names to DatasetSaveError objects).
+            # This means that hooks relying on run_results for error reporting or post-processing
+            # will not receive this information. This is a known limitation of the Dagster integration.
             self._hook_manager.hook.after_pipeline_run(
+                run_results=None,
                 run_params=run_params,
                 pipeline=pipeline,
                 catalog=self._catalog,
@@ -257,6 +266,7 @@ class PipelineTranslator:
         job_name: str,
         executor_def: dg.ExecutorDefinition | None = None,
         logger_defs: dict[str, dg.LoggerDefinition] | None = None,
+        loggers_config: dict[str, Any] | None = None,
     ) -> dg.JobDefinition:
         """Translate a Kedro pipeline into a Dagster job with partition support.
 
@@ -272,6 +282,7 @@ class PipelineTranslator:
             job_name (str): Name of the job.
             executor_def (ExecutorDefinition | None): Executor definition.
             logger_defs (dict[str, LoggerDefinition] | None): Logger definitions.
+            loggers_config (dict[str, Any] | None): Logger configurations.
 
         Returns:
             dg.JobDefinition: Dagster job definition with partition-aware ops.
@@ -442,6 +453,7 @@ class PipelineTranslator:
             resource_defs=resource_defs,
             executor_def=executor_def,
             logger_defs=logger_defs,
+            config=loggers_config,
         )
 
         return job
@@ -452,19 +464,72 @@ class PipelineTranslator:
         Returns:
             dict[str, dg.JobDefinition]: Translated Dagster jobs.
         """
-        named_jobs = {}
-        for job_name, job_config in self._dagster_config.jobs.items():  # type: ignore[attr-defined]
-            pipeline_config = job_config.pipeline.model_dump()
+        # Lazy import to avoid circular dependency
+        from kedro.framework.project import pipelines
 
-            pipeline_name = pipeline_config.get("pipeline_name", "__default__")
-            filter_params = get_filter_params_dict(pipeline_config)
+        named_jobs: dict[str, dg.JobDefinition] = {}
+        if self._dagster_config.jobs is None:
+            return named_jobs
+
+        for job_name, job_config in self._dagster_config.jobs.items():
+            pipeline_config = job_config.pipeline
+
+            pipeline_name = pipeline_config.pipeline_name
+            filter_params = get_filter_params_dict(pipeline_config.model_dump())
             pipeline = pipelines.get(pipeline_name).filter(**filter_params)
 
+            # Handle executor configuration (string reference or inline config)
+            executor_def = None
             executor_config = job_config.executor
-            if executor_config in self._named_executors:
-                executor_def = self._named_executors[executor_config]
-            else:
-                raise ValueError(f"Executor `{executor_config}` not found.")
+            if executor_config is not None:
+                if isinstance(executor_config, str):
+                    # String reference to named executor
+                    if executor_config in self._named_executors:
+                        executor_def = self._named_executors[executor_config]
+                    else:
+                        raise ValueError(f"Executor '{executor_config}' not found.")
+                else:
+                    # Inline executor configuration - look for job-specific executor
+                    job_executor_name = f"{job_name}__executor"
+                    if job_executor_name in self._named_executors:
+                        executor_def = self._named_executors[job_executor_name]
+                    else:
+                        raise ValueError(f"Job-specific executor '{job_executor_name}' not found.")
+
+            # Handle logger configurations (string references and/or inline configs)
+            logger_defs, logger_configs = {}, {}
+            if job_config.loggers:
+                for idx, logger_config in enumerate(job_config.loggers):
+                    if isinstance(logger_config, str):
+                        # String reference to named logger
+                        if logger_config in self._named_loggers:
+                            logger_defs[logger_config] = self._named_loggers[logger_config]
+                        else:
+                            raise ValueError(f"Logger '{logger_config}' not found.")
+
+                        # If logger_config exists in _named_loggers, then loggers must exist - we assert for mypy
+                        assert self._dagster_config.loggers is not None
+                        logger_configs[logger_config] = self._dagster_config.loggers[logger_config]
+
+                    else:
+                        # Inline logger configuration - look for job-specific logger
+                        job_logger_name = f"{job_name}__logger_{idx}"
+                        if job_logger_name in self._named_loggers:
+                            logger_defs[job_logger_name] = self._named_loggers[job_logger_name]
+                        else:
+                            raise ValueError(
+                                f"Job-specific logger '{job_logger_name}' for inline logger configuration not found."
+                            )
+
+                        logger_configs[job_logger_name] = logger_config
+
+            loggers_config = {}
+            if logger_configs:
+                loggers_config = {
+                    "loggers": {
+                        name: {"config": logger_config.model_dump()} for name, logger_config in logger_configs.items()
+                    }
+                }
 
             job = self.translate_pipeline(
                 pipeline=pipeline,
@@ -472,6 +537,8 @@ class PipelineTranslator:
                 filter_params=filter_params,
                 job_name=job_name,
                 executor_def=executor_def,
+                logger_defs=logger_defs,
+                loggers_config=loggers_config,
             )
 
             named_jobs[job_name] = job

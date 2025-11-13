@@ -35,6 +35,7 @@ def _make_translator(catalog: DataCatalog, asset_partitions: dict[str, dict] | N
         named_op_factories={},
         named_resources={},
         named_executors={},
+        named_loggers={},
         enable_mlflow=False,
     )
 

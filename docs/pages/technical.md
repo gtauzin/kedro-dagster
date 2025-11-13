@@ -76,6 +76,79 @@ Dagster enforces strong constraints for asset, op, and job names  as they must m
 
 These rules are implemented in `src/kedro_dagster/utils.py` by `format_dataset_name`, `format_node_name`, and `unformat_asset_name` and are intentionally minimal and deterministic so names remain readable while complying with Dagster's requirements.
 
+### Logging
+
+Any configuration of Dagster loggers should not be directly attempted as Dagster CLI and API will override them. Therefore, one cannot use Kedro's `logging.yml` configuration file to configure `dagster` loggers. In place, Kedro-Dagster provides ways to integrate Dagster logging into Kedro projects.
+
+#### CLI
+
+It is possible to run Dagster CLI commands from within a Kedro project using the `kedro dagster <dg command>` wrapper. This ensures that the Kedro environment is properly set up when running Dagster commands. Those commands accept the `--log-level` and `--log-format` options to configure logging, where `--log-format` supports `colored`, `json`, and `rich`.
+
+!!! note
+    The `rich` formatter is not based on the `rich` library like the Kedro logging handler of the same name. It should be understood as a simple formatter with enhanced readability.
+
+To ensure homogeneity in log formatting between Kedro, Kedro-Dagster, Dagster, and any third-party libraries used, Kedro-Dagster provides implementations of the Dagster formatters. They can be used directly in the Kedro's `logging.yml` configuration file as follows:
+
+```yaml
+
+formatters:
+  simple:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+  colored:
+    "()": kedro_dagster.dagster_colored_formatter
+
+  json:
+    "()": kedro_dagster.dagster_json_formatter
+
+  rich:
+    "()": kedro_dagster.dagster_rich_formatter
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    stream: ext://sys.stdout
+    formatter: colored
+
+loggers:
+  kedro:
+    level: INFO
+
+  kedro_dagster:
+    level: INFO
+
+root:
+  handlers: [console]
+```
+
+#### In-code logging
+
+Logs generated within Kedro nodes are captured if `getLogger` is imported from the `kedro_dagster.logging` module instead of the `logging` package and the `getLogger` calls are made inside the node functions. These logs are then displayed in the Dagster UI, allowing for easier tracing and debugging of pipeline executions.  To configure logging within Dagster runs, use the Kedro-Dagster `loggers` section of the `dagster.yml` configuration file to define and customize loggers for your Dagster runs:
+
+```yaml
+loggers:
+  console_logger: # Logger name
+    log_level: INFO
+    handlers:
+      - class: logging.StreamHandler
+        level: INFO
+        stream: ext://sys.stdout
+        formatter: simple
+    formatters:
+      simple:
+        format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+jobs:
+  my_job:
+    pipeline:
+      pipeline_name: __default__
+    executor: sequential
+    loggers: [console_logger]
+```
+
+See the [Example page](example.md#custom-logging-integration) for a complete example of configuring logging in Kedro-Dagster.
+
 ## Kedro datasets for Dagster partitioning
 
 Kedro-Dagster provides two custom datasets to enable Dagster partitioning and asset management within Kedro projects:

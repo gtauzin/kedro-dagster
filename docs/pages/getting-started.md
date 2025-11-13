@@ -63,17 +63,28 @@ This creates:
 
 There's no need to modify the Dagster `definitions.py` file to get started, so here we'll have a deeper look on the `dagster.yml` file.
 
-## 4. Configure jobs, executors, and schedules
+## 4. Configure jobs, loggers, executors, and schedules
 
 The Kedro‑Dagster configuration file `dagster.yml` includes the following sections:
 
 - **schedules:** Used to set up cron schedules for jobs.
 - **executors:** Used to specify the compute targets for jobs (in-process, multiprocess, k8s, etc).
+- **loggers:** Used to configure logging for jobs.
 - **jobs:** Used to describe jobs through the filtering of Kedro pipelines.
 
-Let's edit the automatically generated `conf/local/dagster.yml` to customize jobs, executors, and schedules:
-
+Let's edit the automatically generated `conf/local/dagster.yml` to customize jobs, loggers, executors, and schedules:
 ```yaml
+loggers:
+  console_logger:
+    log_level: INFO
+    formatters:
+      simple:
+        format: "[%(asctime)s] %(levelname)s - %(message)s"
+    handlers:
+      - class: logging.StreamHandler
+        stream: ext://sys.stdout
+        formatter: simple
+
 schedules:
   daily: # Schedule name
     cron_schedule: "0 0 * * *" # Schedule parameters
@@ -98,12 +109,14 @@ jobs:
       node_names:
       - preprocess_companies_node
       - preprocess_shuttles_node
+    loggers: ["console_logger"]
     schedule: daily
     executor: multiprocess
 
   data_science:
     pipeline:
       pipeline_name: data_science
+    loggers: ["console logger"]
     schedule: daily
     executor: sequential
 ```
@@ -122,7 +135,8 @@ kedro dagster dev --env local
 
 The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000) by default.
 
-You can inspect assets, jobs, and resources, trigger or automate jobs, and monitor runs from the UI.
+!!! note
+    You may have noticed that by default, logs from Kedro/Kedro-Dagster and Dagster are displayed in different formats on the terminal. You can configure Kedro/Kedro-Dagster logging to match Dagster's format by making use of Dagster formatters in your Kedro project's `logging.yml`. For more information, see the [Logging](technical.md#logging) section in the technical documentation.
 
 ### Assets
 

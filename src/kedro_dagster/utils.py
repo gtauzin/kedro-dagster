@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from jinja2 import Environment, FileSystemLoader
-from kedro.framework.project import find_pipelines
 from pydantic import ConfigDict, create_model
 
 from kedro_dagster.datasets import DagsterNothingDataset
@@ -443,6 +442,8 @@ def _get_node_pipeline_name(node: "Node") -> str:
     Returns:
         str: Name of the pipeline the node belongs to.
     """
+    from kedro.framework.project import find_pipelines
+
     pipelines: dict[str, Pipeline] = find_pipelines()
 
     for pipeline_name, pipeline in pipelines.items():

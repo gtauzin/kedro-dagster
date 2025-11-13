@@ -109,7 +109,7 @@ def test_get_node_pipeline_name(monkeypatch):
     mock_node = SimpleNamespace(name="test.node")
     mock_pipeline = SimpleNamespace(nodes=[mock_node])
 
-    monkeypatch.setattr("kedro_dagster.utils.find_pipelines", lambda: {"pipeline": mock_pipeline})
+    monkeypatch.setattr("kedro.framework.project.find_pipelines", lambda: {"pipeline": mock_pipeline})
 
     pipeline_name = _get_node_pipeline_name(mock_node)
     assert pipeline_name == "test__pipeline"
@@ -119,7 +119,7 @@ def test_get_node_pipeline_name_default(monkeypatch, caplog):
     """Return '__none__' and log a warning when the node isn't in any pipeline."""
     mock_node = SimpleNamespace(name="orphan.node")
     # Only __default__ pipeline or empty mapping means no match
-    monkeypatch.setattr("kedro_dagster.utils.find_pipelines", lambda: {"__default__": SimpleNamespace(nodes=[])})
+    monkeypatch.setattr("kedro.framework.project.find_pipelines", lambda: {"__default__": SimpleNamespace(nodes=[])})
     with caplog.at_level("WARNING"):
         result = _get_node_pipeline_name(mock_node)
         assert result == "__none__"

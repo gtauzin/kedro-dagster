@@ -65,10 +65,10 @@ def test_translator_uses_cwd_when_find_kedro_project_returns_none(monkeypatch, t
 
     # Provide a minimal settings object with dict-like _CONFIG_LOADER_ARGS to avoid import-time errors
     monkeypatch.setattr(
-        "kedro_dagster.translator.settings",
+        "kedro.framework.project.settings",
         SimpleNamespace(_CONFIG_LOADER_ARGS={"default_run_env": ""}),
     )
 
-    translator = KedroProjectTranslator(project_path=None)
+    translator = KedroProjectTranslator(env="local", project_path=None)
 
     assert translator._project_path == Path.cwd()

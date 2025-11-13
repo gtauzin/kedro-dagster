@@ -61,13 +61,13 @@ Kedro‑Dagster is designed so that Kedro hooks are preserved and called at the 
 
 Harness the capabilities of MLflow using [Kedro-MLflow](https://github.com/Galileo-Galilei/kedro-mlflow) in conjunction with Dagster’s [MLflow integration](https://dagster.io/integrations/dagster-mlflow). Whether you run your pipelines using Kedro or Dagster, you can track experiments, log models, and register artifacts automatically through the `mlflow.yml` configuration file.
 
+### Logger integration
+
+Kedro and Dagster logging is unified to provide a consistent logging experience across both frameworks, so logs from Kedro nodes appear together in the Dagster UI and are easy to configure.
+
 ### (Experimental) Dagster partitions support
 
 Enable time- or key-based [Dagster partitions](https://docs.dagster.io/guides/build/partitions-and-backfills) to backfill, schedule, and process incremental slices of your pipelines.
-
-### (Experimental) Logger integration
-
-Kedro and Dagster logging is unified to provide a consistent logging experience across both frameworks, so logs from Kedro nodes appear together in the Dagster UI and are easy to trace and debug.
 
 ## Limitations and considerations
 

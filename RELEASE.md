@@ -3,11 +3,16 @@
 
 ## Major features and improvements
 - Wrap all Dagster `dg` CLI commands to be run from within a Kedro project with `kedro dagster <dg command>`.
-- Remove `dev` config in `dagster.yml`.
+- Add a `kedro_dagster.logging` meant to replace `logging` imports in Kedro nodes so loggers are captured and integrated with Dagster.
+- Add `loggers` section to `dagster.yml` configuration file to configure Dagster run loggers.
+- Rename `LoggerTranslator` to `LoggerCreator` for consistency with `ExecutorCreator` and `SchedulerCreator`.
 
 ## Bug fixes and other changes
+- Fix how `LoggerCreator` creates loggers for Dagster runs. Generic logging configuration is now supported from `dagster.yml`.
 
 ## Breaking changes to the API
+- `env` is now a required parameter of `KedroProjectTranslator`.
+- Remove `dev` config in `dagster.yml`.
 
 ## Thanks for supporting contributions
 
