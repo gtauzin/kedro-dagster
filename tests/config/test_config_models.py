@@ -168,7 +168,7 @@ def test_logger_options_normalize_log_level_validation():
         KedroDagsterConfig(
             loggers={
                 "bad": LoggerOptions(
-                    log_level=123,  # type: ignore[arg-type]
+                    log_level=123,
                 )
             }
         )
@@ -202,7 +202,7 @@ def test_logger_options_validate_handlers():
 
     # Non-string class
     with pytest.raises(ValidationError, match="must be a string"):
-        LoggerOptions(handlers=[{"class": 123}])  # type: ignore[list-item]
+        LoggerOptions(handlers=[{"class": 123}])
 
     # Not a dictionary entry
     with pytest.raises(
@@ -212,7 +212,7 @@ def test_logger_options_validate_handlers():
         KedroDagsterConfig(
             loggers={
                 "bad": LoggerOptions(
-                    handlers=["not-a-dict"],  # type: ignore[list-item]
+                    handlers=["not-a-dict"],
                 )
             }
         )
@@ -237,7 +237,7 @@ def test_logger_options_validate_formatters():
 
     # Not a dict value
     with pytest.raises(ValidationError, match=r"Input should be a valid dictionary"):
-        LoggerOptions(formatters={"bad": "not_a_dict"})  # type: ignore[dict-item]
+        LoggerOptions(formatters={"bad": "not_a_dict"})
 
     # Non-string 'format'
     with pytest.raises(ValidationError, match=r"'format' must be a string"):
@@ -265,7 +265,7 @@ def test_logger_options_validate_filters():
 
     # Not a dict
     with pytest.raises(ValidationError, match=r"Input should be a valid dictionary"):
-        LoggerOptions(filters={"bad": "not_a_dict"})  # type: ignore[dict-item]
+        LoggerOptions(filters={"bad": "not_a_dict"})
 
     # Missing both '()' and 'class'
     with pytest.raises(ValidationError, match=r"must specify either '\(\)'.* or 'class'"):

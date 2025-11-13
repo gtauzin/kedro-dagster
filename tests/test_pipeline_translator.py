@@ -85,12 +85,7 @@ def test_pipeline_translator_to_dagster_with_executor(env, request):
 
 @pytest.mark.parametrize("env", ["base", "local"])
 def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
-    """Ensure the after-pipeline-run hook op declares a Nothing input per partition.
-
-    We configure a partitioned path intermediate -> output2 with identity mapping,
-    then build the job and introspect the hook op input names to confirm they include
-    the per-partition fan-in inputs (e.g., node2__p1_after_pipeline_run_hook_input).
-    """
+    """Test that after-pipeline-run hook op declares a Nothing input per partition."""
     options = request.getfixturevalue(f"kedro_project_partitioned_intermediate_output2_{env}")
     project_path = options.project_path
 
@@ -312,7 +307,7 @@ def _make_translator_with(monkeypatch, named_loggers=None, named_executors=None)
 
 
 def test_pipeline_translator_logger_string_reference_found(monkeypatch):
-    # Arrange: a named logger exists and job references it by string
+    """Test that pipeline translator resolves logger string references correctly."""
     ld = dg.LoggerDefinition(logger_fn=lambda ctx: logging.getLogger("t"))
     translator, captured = _make_translator_with(monkeypatch, {"console": ld})
 
@@ -342,7 +337,7 @@ def test_pipeline_translator_logger_string_reference_found(monkeypatch):
 
 
 def test_pipeline_translator_logger_string_reference_missing(monkeypatch):
-    # Arrange: no named loggers; job references a missing name
+    """Test that pipeline translator raises error for missing logger string references."""
     translator, _ = _make_translator_with(monkeypatch, {})
     translator._dagster_config.jobs = {
         "jobA": type(
@@ -362,7 +357,7 @@ def test_pipeline_translator_logger_string_reference_missing(monkeypatch):
 
 
 def test_pipeline_translator_inline_logger_found(monkeypatch):
-    # Arrange: a job has an inline logger (non-string), and a job-specific named logger exists
+    """Test that pipeline translator resolves inline logger configurations correctly."""
     job_name = "jobB"
     specific_name = f"{job_name}__logger_0"
     ld = dg.LoggerDefinition(logger_fn=lambda ctx: logging.getLogger("t"))
@@ -388,7 +383,7 @@ def test_pipeline_translator_inline_logger_found(monkeypatch):
 
 
 def test_pipeline_translator_inline_logger_missing(monkeypatch):
-    # Arrange: a job has an inline logger (non-string), but the job-specific named logger is absent
+    """Test that pipeline translator raises error for missing inline logger configurations."""
     job_name = "jobC"
     translator, _ = _make_translator_with(monkeypatch, {})
     translator._dagster_config.jobs = {
@@ -411,7 +406,7 @@ def test_pipeline_translator_inline_logger_missing(monkeypatch):
 
 
 def test_pipeline_translator_executor_string_reference_found(monkeypatch):
-    # Arrange: a named executor exists and job references it by string
+    """Test that pipeline translator resolves executor string references correctly."""
     exec_def = object()
     translator, captured = _make_translator_with(monkeypatch, named_executors={"seq": exec_def})
 
@@ -436,7 +431,7 @@ def test_pipeline_translator_executor_string_reference_found(monkeypatch):
 
 
 def test_pipeline_translator_executor_string_reference_missing(monkeypatch):
-    # Arrange: job references a missing executor by string
+    """Test that pipeline translator raises error for missing executor string references."""
     translator, _ = _make_translator_with(monkeypatch)
     translator._dagster_config.jobs = {
         "jobA": type(
@@ -456,7 +451,7 @@ def test_pipeline_translator_executor_string_reference_missing(monkeypatch):
 
 
 def test_pipeline_translator_executor_inline_found(monkeypatch):
-    # Arrange: job uses inline executor (non-string), job-specific executor name exists in registry
+    """Test that pipeline translator resolves inline executor configurations correctly."""
     job_name = "jobB"
     job_exec_name = f"{job_name}__executor"
     exec_def = object()
@@ -482,7 +477,7 @@ def test_pipeline_translator_executor_inline_found(monkeypatch):
 
 
 def test_pipeline_translator_executor_inline_missing(monkeypatch):
-    # Arrange: job uses inline executor but job-specific executor is not present
+    """Test that pipeline translator raises error for missing inline executor configurations."""
     job_name = "jobC"
     translator, _ = _make_translator_with(monkeypatch)
 

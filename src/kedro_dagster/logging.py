@@ -33,6 +33,16 @@ def getLogger(name: str | None = None) -> _logging.Logger:
 
 
 def dagster_rich_formatter() -> structlog.stdlib.ProcessorFormatter:
+    """Create a rich console formatter for Dagster logging.
+
+    This formatter provides human-readable, colorized console output suitable
+    for development and interactive use. It includes timestamps, logger names,
+    log levels, and stack info when available.
+
+    Returns:
+        structlog.stdlib.ProcessorFormatter: A formatter configured for rich
+        console output with automatic fallback for older structlog versions.
+    """
     foreign_pre_chain = [
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -63,6 +73,16 @@ def dagster_rich_formatter() -> structlog.stdlib.ProcessorFormatter:
 
 
 def dagster_json_formatter() -> structlog.stdlib.ProcessorFormatter:
+    """Create a JSON formatter for Dagster logging.
+
+    This formatter produces structured JSON output suitable for log aggregation
+    systems, monitoring tools, and production environments. Each log entry is
+    a single JSON object with consistent field names and ISO timestamps.
+
+    Returns:
+        structlog.stdlib.ProcessorFormatter: A formatter configured for JSON
+        output with automatic fallback for older structlog versions.
+    """
     foreign_pre_chain = [
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -92,6 +112,17 @@ def dagster_json_formatter() -> structlog.stdlib.ProcessorFormatter:
 
 
 def dagster_colored_formatter() -> coloredlogs.ColoredFormatter:
+    """Create a colored formatter for Dagster logging using coloredlogs.
+
+    This formatter provides colorized console output with customizable field
+    and level styling. It uses a traditional logging format with timestamps,
+    logger names, log levels, and messages, but with color highlighting for
+    better readability in terminal environments.
+
+    Returns:
+        coloredlogs.ColoredFormatter: A formatter with blue level names,
+        green timestamps, and red error messages.
+    """
     fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     datefmt = "%Y-%m-%d %H:%M:%S %z"
     field_styles = {

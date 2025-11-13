@@ -291,7 +291,7 @@ def test_logger_with_file_handler():
                 handlers=[
                     {
                         "class": "logging.FileHandler",
-                        "args": ["test.log"],
+                        "filename": "test.log",
                         "level": "DEBUG",
                     }
                 ],
@@ -465,7 +465,7 @@ def test_logger_complex_configuration():
                     {"class": "logging.StreamHandler", "level": "INFO", "formatter": "console_format"},
                     {
                         "class": "logging.FileHandler",
-                        "args": ["test.log"],
+                        "filename": "test.log",
                         "level": "DEBUG",
                         "formatter": "file_format",
                     },
@@ -909,7 +909,7 @@ def test_logger_runtime_basic_configuration():
     # Simulate Dagster calling the logger_fn with proper logger configuration
     logger_config = cfg.loggers["basic"].model_dump()
     context = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(context)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(context)
 
     assert logger_obj.name == "basic"
     assert logger_obj.level == logging.DEBUG
@@ -940,7 +940,7 @@ def test_logger_runtime_formatters_and_filters(tmp_path):
                 handlers=[
                     {
                         "class": "logging.FileHandler",
-                        "filename": str(log_file),  # Use direct kwargs instead of args
+                        "filename": str(log_file),
                         "level": "INFO",
                         "formatter": "plain",
                         "filters": ["kw"],
@@ -959,7 +959,7 @@ def test_logger_runtime_formatters_and_filters(tmp_path):
     logger_def = _build_logger_definition(cfg, "rich")
     logger_config = cfg.loggers["rich"].model_dump()
     context = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(context)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(context)
 
     # Validate two handlers attached
     EXPECTED_HANDLER_COUNT = 2
@@ -1003,14 +1003,14 @@ def test_logger_runtime_job_inline_logger_isolated_handlers():
     base_ctx = type("Ctx", (), {"logger_config": base_config})()
 
     # First creation with base config
-    base_logger = base_def.logger_fn(base_ctx)  # type: ignore[attr-defined]
+    base_logger = base_def.logger_fn(base_ctx)
     assert base_logger.level == logging.INFO
     first_handler_ids = [id(h) for h in base_logger.handlers]
 
     # Second creation with inline config overrides the same named logger
     inline_config = job_inline.model_dump()
     inline_ctx = type("Ctx", (), {"logger_config": inline_config})()
-    inline_logger = inline_def.logger_fn(inline_ctx)  # type: ignore[attr-defined]
+    inline_logger = inline_def.logger_fn(inline_ctx)
     assert inline_logger.level == logging.ERROR
 
     # The underlying logger object is the same; handlers should have been replaced
@@ -1034,7 +1034,7 @@ def test_logger_runtime_override_context_config():
     # Simulate Dagster providing dynamic config overriding level
     dynamic_conf = {"log_level": "debug"}
     ctx = type("Ctx", (), {"logger_config": dynamic_conf})()
-    dyn_logger = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    dyn_logger = logger_def.logger_fn(ctx)
 
     assert dyn_logger.name == "override"
     assert dyn_logger.level == logging.DEBUG
@@ -1057,7 +1057,7 @@ def test_logger_runtime_default_handler_when_none_specified():
     logger_def = _build_logger_definition(cfg, "default_handler")
     logger_config = cfg.loggers["default_handler"].model_dump()
     ctx = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(ctx)
 
     # Should attach exactly one default StreamHandler with a formatter
     assert len(logger_obj.handlers) == 1
@@ -1081,7 +1081,7 @@ def test_logger_runtime_all_levels(level):
     logger_def = _build_logger_definition(cfg, "lv")
     logger_config = cfg.loggers["lv"].model_dump()
     ctx = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(ctx)
     assert logger_obj.level == getattr(logging, level)
 
 
@@ -1093,16 +1093,15 @@ def test_logger_runtime_filter_class_path(tmp_path):
             "class_filter_logger": LoggerOptions(
                 log_level="INFO",
                 filters={
-                    # Use class path branch (no '()') with direct kwargs
                     "kw": {
                         "class": "tests.test_dagster_creators.DummyFilter",
-                        "keyword": "keep",  # Direct kwargs instead of params dict
+                        "keyword": "keep",
                     }
                 },
                 handlers=[
                     {
                         "class": "logging.FileHandler",
-                        "filename": str(log_file),  # Use direct kwargs instead of args
+                        "filename": str(log_file),
                         "level": "INFO",
                         "filters": ["kw"],
                     }
@@ -1114,7 +1113,7 @@ def test_logger_runtime_filter_class_path(tmp_path):
     logger_def = _build_logger_definition(cfg, "class_filter_logger")
     logger_config = cfg.loggers["class_filter_logger"].model_dump()
     ctx = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(ctx)
 
     # Ensure handler has the filter attached (branch executed)
     assert len(logger_obj.handlers) == 1
@@ -1156,7 +1155,7 @@ def test_logger_runtime_handler_callable_path():
 
     logger_def = _build_logger_definition(cfg, "callable_handler")
     ctx = type("Ctx", (), {"logger_config": override})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(ctx)
 
     # Should have exactly one StreamHandler with our stream and a default formatter
     assert len(logger_obj.handlers) == 1
@@ -1178,7 +1177,7 @@ def test_logger_reference_invalid_typeerror():
     override = {"handlers": [{"()": 123}]}
     ctx = type("Ctx", (), {"logger_config": override})()
     with pytest.raises(TypeError):
-        logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+        logger_def.logger_fn(ctx)
 
 
 def test_logger_formatter_class_key_support():
@@ -1202,7 +1201,7 @@ def test_logger_formatter_class_key_support():
     logger_def = _build_logger_definition(cfg, "class_formatter")
     logger_config = cfg.loggers["class_formatter"].model_dump()
     ctx = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(ctx)
 
     # Should have one handler with the custom formatter
     assert len(logger_obj.handlers) == 1
@@ -1212,7 +1211,7 @@ def test_logger_formatter_class_key_support():
 
 
 def test_logger_filter_params_backward_compatibility():
-    """Test that filters support direct kwargs (current implementation)."""
+    """Test that filters support direct kwargs."""
     cfg = KedroDagsterConfig(
         loggers={
             "filter_params": LoggerOptions(
@@ -1220,7 +1219,7 @@ def test_logger_filter_params_backward_compatibility():
                 filters={
                     "test_filter": {
                         "class": "tests.test_dagster_creators.DummyFilter",
-                        "keyword": "compatible",  # Direct kwargs instead of params dict
+                        "keyword": "compatible",
                     }
                 },
                 handlers=[{"class": "logging.StreamHandler", "level": "INFO", "filters": ["test_filter"]}],
@@ -1231,7 +1230,7 @@ def test_logger_filter_params_backward_compatibility():
     logger_def = _build_logger_definition(cfg, "filter_params")
     logger_config = cfg.loggers["filter_params"].model_dump()
     ctx = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(ctx)
 
     # Should have one handler with the filter attached
     assert len(logger_obj.handlers) == 1
@@ -1250,7 +1249,7 @@ def test_logger_filter_direct_kwargs_support():
                 filters={
                     "test_filter": {
                         "class": "tests.test_dagster_creators.DummyFilter",
-                        "keyword": "direct",  # Direct keyword argument instead of params dict
+                        "keyword": "direct",
                     }
                 },
                 handlers=[{"class": "logging.StreamHandler", "level": "INFO", "filters": ["test_filter"]}],
@@ -1261,7 +1260,7 @@ def test_logger_filter_direct_kwargs_support():
     logger_def = _build_logger_definition(cfg, "filter_kwargs")
     logger_config = cfg.loggers["filter_kwargs"].model_dump()
     ctx = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(ctx)
 
     # Should have one handler with the filter attached
     assert len(logger_obj.handlers) == 1
@@ -1272,7 +1271,7 @@ def test_logger_filter_direct_kwargs_support():
 
 
 def test_logger_handler_args_kwargs_support(tmp_path):
-    """Test that handlers support direct kwargs (current implementation)."""
+    """Test that handlers support direct kwargs."""
     log_file = tmp_path / "args_test.log"
     cfg = KedroDagsterConfig(
         loggers={
@@ -1281,8 +1280,8 @@ def test_logger_handler_args_kwargs_support(tmp_path):
                 handlers=[
                     {
                         "class": "logging.FileHandler",
-                        "filename": str(log_file),  # Using direct kwargs instead of args
-                        "mode": "w",  # Direct kwargs for parameters
+                        "filename": str(log_file),
+                        "mode": "w",
                         "level": "INFO",
                     }
                 ],
@@ -1293,7 +1292,7 @@ def test_logger_handler_args_kwargs_support(tmp_path):
     logger_def = _build_logger_definition(cfg, "handler_args")
     logger_config = cfg.loggers["handler_args"].model_dump()
     ctx = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(ctx)
 
     # Should have one FileHandler
     assert len(logger_obj.handlers) == 1
@@ -1317,8 +1316,8 @@ def test_logger_handler_direct_kwargs_support(tmp_path):
                 handlers=[
                     {
                         "class": "logging.FileHandler",
-                        "filename": str(log_file),  # Direct keyword argument
-                        "mode": "w",  # Another direct keyword argument
+                        "filename": str(log_file),
+                        "mode": "w",
                         "level": "INFO",
                     }
                 ],
@@ -1329,7 +1328,7 @@ def test_logger_handler_direct_kwargs_support(tmp_path):
     logger_def = _build_logger_definition(cfg, "handler_direct")
     logger_config = cfg.loggers["handler_direct"].model_dump()
     ctx = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(ctx)
 
     # Should have one FileHandler
     assert len(logger_obj.handlers) == 1
@@ -1344,7 +1343,7 @@ def test_logger_handler_direct_kwargs_support(tmp_path):
 
 
 def test_logger_handler_mixed_args_kwargs_direct():
-    """Test that handlers support direct kwargs (current implementation)."""
+    """Test that handlers support direct kwargs."""
     cfg = KedroDagsterConfig(
         loggers={
             "handler_mixed": LoggerOptions(
@@ -1352,8 +1351,8 @@ def test_logger_handler_mixed_args_kwargs_direct():
                 handlers=[
                     {
                         "class": "logging.StreamHandler",
-                        "stream": io.StringIO(),  # Direct kwargs instead of args/kwargs
-                        "level": "DEBUG",  # Direct config level (filtered out by special keys)
+                        "stream": io.StringIO(),
+                        "level": "DEBUG",
                     }
                 ],
             )
@@ -1363,7 +1362,7 @@ def test_logger_handler_mixed_args_kwargs_direct():
     logger_def = _build_logger_definition(cfg, "handler_mixed")
     logger_config = cfg.loggers["handler_mixed"].model_dump()
     ctx = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
+    logger_obj = logger_def.logger_fn(ctx)
 
     # Should have one StreamHandler
     assert len(logger_obj.handlers) == 1

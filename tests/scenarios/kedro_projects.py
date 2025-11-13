@@ -25,7 +25,7 @@ def dagster_loggers_config() -> dict[str, Any]:
             "handlers": [
                 {
                     "class": "logging.FileHandler",
-                    "args": ["test.log"],
+                    "filename": "test.log",
                     "level": "DEBUG",
                 }
             ],

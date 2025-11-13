@@ -20,6 +20,7 @@ def _import_module():
 
 
 def test_getLogger_falls_back_to_stdlib_when_no_dagster_context(monkeypatch):
+    """Test that getLogger returns stdlib logger when no Dagster context is active."""
     kd_logging = _import_module()
 
     # Ensure OpExecutionContext.get() returns None (no active Dagster run)
@@ -33,6 +34,7 @@ def test_getLogger_falls_back_to_stdlib_when_no_dagster_context(monkeypatch):
 
 
 def test_getLogger_uses_dagster_logger_when_context_active(monkeypatch):
+    """Test that getLogger returns Dagster logger when context is active."""
     kd_logging = _import_module()
 
     # Pretend an active context exists
@@ -90,11 +92,7 @@ def test_getLogger_falls_back_when_context_get_raises_exception(monkeypatch):
 
 
 def test_logging_config_yaml_structure():
-    """Test that the expected YAML structure from the user requirement matches the actual config.
-
-    This test verifies that the logging configuration matches the expected structure from the Dagster source code at:
-    https://github.com/dagster-io/dagster/blob/32540319b69dd175f8bbcd5655f5fc25e10cf88b/python_modules/dagster/dagster/_utils/log.py#L251
-    """
+    """Test that the expected YAML structure from the user requirement matches the actual config."""
     expected_yaml_structure = {
         "version": 1,
         "disable_existing_loggers": False,
