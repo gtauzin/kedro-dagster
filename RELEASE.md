@@ -6,6 +6,7 @@
 - Add a `kedro_dagster.logging` meant to replace `logging` imports in Kedro nodes so loggers are captured and integrated with Dagster.
 - Add `loggers` section to `dagster.yml` configuration file to configure Dagster run loggers.
 - Rename `LoggerTranslator` to `LoggerCreator` for consistency with `ExecutorCreator` and `SchedulerCreator`.
+- Declared direct dependency on `pydantic>=1.0.0,<3.0.0` and enable version-agnostic Pydantic configuration.
 
 ## Bug fixes and other changes
 - Fix how `LoggerCreator` creates loggers for Dagster runs. Generic logging configuration is now supported from `dagster.yml`.

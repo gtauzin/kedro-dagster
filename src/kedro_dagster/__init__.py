@@ -1,10 +1,4 @@
-"""Kedro plugin for running a project with Dagster.
-
-This library automatically suppresses pydantic deprecation warnings from external
-dependencies (like Dagster). To disable this behavior, set the environment variable:
-
-    SUPPRESS_DAGSTER_PYDANTIC_WARNINGS=false
-"""
+"""Kedro plugin for running a project with Dagster."""
 
 import logging as _logging
 
