@@ -232,6 +232,12 @@ class LoggerCreator:
                         # remove the special key for constructor params
                         init_kwargs = {k: v for k, v in fcfg.items() if k != "()"}
                         fmt_inst = formatter_callable(**init_kwargs)
+                    elif "class" in fcfg:
+                        # Assume class path given in "class" key
+                        cls_path = fcfg.get("class")
+                        formatter_cls = _resolve_reference(cls_path)
+                        init_kwargs = {k: v for k, v in fcfg.items() if k != "class"}
+                        fmt_inst = formatter_cls(**init_kwargs)
                     else:
                         # Use standard logging.Formatter
                         fmt_str = fcfg.get("format", None)
@@ -251,14 +257,17 @@ class LoggerCreator:
                     else:
                         # assume class path in "class" key
                         cls_path = fcfg.get("class")
-                        params = fcfg.get("params", {})
                         filter_cls = _resolve_reference(cls_path)
-                        filter_inst = filter_cls(**params)
+                        init_kwargs = {k: v for (k, v) in fcfg.items() if k != "class"}
+                        filter_inst = filter_cls(**init_kwargs)
                     filter_registry[fname] = filter_inst
 
             # Build handlers
             if config_data.get("handlers"):
                 for hcfg in config_data["handlers"]:
+                    fmt_ref = hcfg.get("formatter", None)
+                    filter_refs = hcfg.get("filters", [])
+                    h_level = hcfg.get("level", level).upper()
                     # Resolve handler class
                     if "()" in hcfg:
                         handler_callable = _resolve_reference(hcfg["()"])
@@ -267,25 +276,22 @@ class LoggerCreator:
                     else:
                         cls_path = hcfg.get("class", "logging.StreamHandler")
                         handler_cls = _resolve_reference(cls_path)
-                        args = hcfg.get("args", []) or []
-                        kwargs = hcfg.get("kwargs", {}) or {}
-                        handler_inst = handler_cls(*args, **kwargs)
+                        init_kwargs = {
+                            k: v for (k, v) in hcfg.items() if k not in ("class", "level", "formatter", "filters")
+                        }
+                        handler_inst = handler_cls(**init_kwargs)
 
                     # Set handler level
-                    h_level = hcfg.get("level")
-                    if h_level:
-                        handler_inst.setLevel(h_level.upper())
+                    handler_inst.setLevel(h_level)
 
                     # Attach formatter
-                    fmt_ref = hcfg.get("formatter")
-                    if fmt_ref and formatter_registry.get(fmt_ref):
+                    if fmt_ref is not None and formatter_registry.get(fmt_ref):
                         handler_inst.setFormatter(formatter_registry[fmt_ref])
-                    elif not fmt_ref:
+                    elif fmt_ref is None:
                         # No formatter specified for this handler, attach default
                         handler_inst.setFormatter(default_formatter)
 
                     # Attach filters
-                    filter_refs = hcfg.get("filters") or []
                     for fref in filter_refs:
                         if fref in filter_registry:
                             handler_inst.addFilter(filter_registry[fref])
