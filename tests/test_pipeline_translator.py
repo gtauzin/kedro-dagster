@@ -404,7 +404,9 @@ def test_pipeline_translator_inline_logger_missing(monkeypatch):
     }
 
     # Act / Assert
-    with pytest.raises(ValueError, match=rf"Job-specific logger '{job_name}__logger_0' not found\."):
+    with pytest.raises(
+        ValueError, match=rf"Job-specific logger '{job_name}__logger_0' for inline logger configuration not found."
+    ):
         translator.to_dagster()
 
 
