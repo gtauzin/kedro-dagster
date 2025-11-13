@@ -523,6 +523,14 @@ class PipelineTranslator:
 
                         logger_configs[job_logger_name] = logger_config
 
+            loggers_config = {}
+            if logger_configs:
+                loggers_config = {
+                    "loggers": {
+                        name: {"config": logger_config.model_dump()} for name, logger_config in logger_configs.items()
+                    }
+                }
+
             job = self.translate_pipeline(
                 pipeline=pipeline,
                 pipeline_name=pipeline_name,
@@ -530,9 +538,7 @@ class PipelineTranslator:
                 job_name=job_name,
                 executor_def=executor_def,
                 logger_defs=logger_defs,
-                loggers_config={
-                    "loggers": {name: {"config": logger_config} for name, logger_config in logger_configs.items()}
-                },
+                loggers_config=loggers_config,
             )
 
             named_jobs[job_name] = job
