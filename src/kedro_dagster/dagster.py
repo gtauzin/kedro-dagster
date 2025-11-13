@@ -85,7 +85,7 @@ class ExecutorCreator:
                 executor = self._OPTION_EXECUTOR_MAP.get(type(executor_config), None)
                 if executor is None:
                     raise ValueError(
-                        f"Executor `{executor_name}` not supported. "
+                        f"Executor '{executor_name}' not supported. "
                         "Please use one of the following executors: "
                         f"{', '.join([str(k) for k in self._OPTION_EXECUTOR_MAP.keys()])}"
                     )

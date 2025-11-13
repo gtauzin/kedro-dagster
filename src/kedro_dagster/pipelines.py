@@ -517,7 +517,7 @@ class PipelineTranslator:
                         if job_logger_name in self._named_loggers:
                             logger_defs[job_logger_name] = self._named_loggers[job_logger_name]
                         else:
-                            raise ValueError(f"Job-specific logger `{job_logger_name}` not found.")
+                            raise ValueError(f"Job-specific logger '{job_logger_name}' for inline logger configuration not found.")
 
                         logger_configs[job_logger_name] = logger_config
 
