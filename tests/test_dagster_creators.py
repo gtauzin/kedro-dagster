@@ -12,7 +12,6 @@ from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 from pydantic import ValidationError
 
-from kedro_dagster import dagster as dagster_module
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
 from kedro_dagster.config.automation import ScheduleOptions
@@ -1169,53 +1168,6 @@ def test_logger_runtime_handler_callable_path():
     logger_obj.info("hello world")
     handler.flush()
     assert "hello world" in stream.getvalue()
-
-
-def test_logger_reference_globals_resolution(monkeypatch, tmp_path):
-    """Ensure _resolve_reference fallback to globals()[attr] works when providing bare symbol name."""
-
-    # Inject a DummyFilter symbol directly into module globals for bare-name resolution
-    class GlobalDummyFilter(logging.Filter):
-        def __init__(self, keyword: str):
-            super().__init__()
-            self.keyword = keyword
-
-        def filter(self, record: logging.LogRecord) -> bool:  # pragma: no cover
-            return self.keyword in record.getMessage()
-
-    monkeypatch.setattr(dagster_module, "GlobalDummyFilter", GlobalDummyFilter, raising=False)
-
-    log_file = tmp_path / "global_filter.log"
-    cfg = KedroDagsterConfig(
-        loggers={
-            "global_filter_logger": LoggerOptions(
-                log_level="INFO",
-                filters={"gf": {"()": "GlobalDummyFilter", "keyword": "accept"}},
-                handlers=[
-                    {
-                        "class": "logging.FileHandler",
-                        "args": [str(log_file)],
-                        "level": "INFO",
-                        "filters": ["gf"],
-                    }
-                ],
-            )
-        }
-    )
-
-    logger_def = _build_logger_definition(cfg, "global_filter_logger")
-    logger_config = cfg.loggers["global_filter_logger"].model_dump()
-    ctx = type("Ctx", (), {"logger_config": logger_config})()
-    logger_obj = logger_def.logger_fn(ctx)  # type: ignore[attr-defined]
-    logger_obj.info("should accept this")
-    logger_obj.info("reject")
-    for h in logger_obj.handlers:
-        if isinstance(h, logging.FileHandler):
-            h.flush()
-
-    lines = log_file.read_text(encoding="utf-8").strip().splitlines()
-    assert len(lines) == 1
-    assert "accept" in lines[0]
 
 
 def test_logger_reference_invalid_typeerror():
