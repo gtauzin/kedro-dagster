@@ -57,6 +57,38 @@ def test_getLogger_uses_dagster_logger_when_context_active(monkeypatch):
     assert captured["called_with"] == "my.mod"
 
 
+def test_getLogger_falls_back_when_context_get_raises_exception(monkeypatch):
+    """Test that getLogger falls back to stdlib logging when OpExecutionContext.get() raises an exception."""
+    kd_logging = _import_module()
+
+    # Mock OpExecutionContext.get() to raise an exception
+    def mock_context_get():
+        raise RuntimeError("No execution context available")
+
+    monkeypatch.setattr(kd_logging.dg.OpExecutionContext, "get", staticmethod(mock_context_get), raising=True)
+
+    # Mock the debug logging to capture the fallback message
+    debug_calls = []
+    original_debug = kd_logging._logging.debug
+
+    def mock_debug(msg):
+        debug_calls.append(msg)
+        return original_debug(msg)
+
+    monkeypatch.setattr(kd_logging._logging, "debug", mock_debug)
+
+    logger = kd_logging.getLogger("test.logger")
+
+    # Should fall back to standard logging
+    assert isinstance(logger, std_logging.Logger)
+    assert logger.name == "test.logger"
+
+    # Should have logged the debug message about no active Dagster context
+    assert len(debug_calls) == 1
+    assert "No active Dagster context:" in debug_calls[0]
+    assert "RuntimeError" in debug_calls[0] or "No execution context available" in debug_calls[0]
+
+
 def test_logging_config_yaml_structure():
     """Test that the expected YAML structure from the user requirement matches the actual config.
 
