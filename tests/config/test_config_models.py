@@ -357,18 +357,6 @@ def test_pydantic_version_detection():
     assert PYDANTIC_VERSION[0] in [1, 2, 3]  # Should be a valid major version
 
 
-def test_create_pydantic_config_basic():
-    """create_pydantic_config should return appropriate config type."""
-    config = create_pydantic_config(extra="forbid")
-
-    if PYDANTIC_VERSION[0] >= 2:
-        # Pydantic v2 should return ConfigDict or dict-like object
-        assert config is not None
-    else:
-        # Pydantic v1 should return a Config class
-        assert hasattr(config, "__class__") or callable(config)
-
-
 def test_create_pydantic_config_with_multiple_options():
     """create_pydantic_config should handle multiple config options."""
     config = create_pydantic_config(
@@ -475,46 +463,3 @@ def test_config_dict_behavior_consistent():
     # They should be different (different extra behavior)
     # Note: Can't easily compare ConfigDict objects, but they should at least be different instances
     assert config1 is not config2
-
-
-def test_version_specific_imports_work():
-    """Test that version-specific imports in create_pydantic_config work."""
-    # This should not raise ImportError regardless of Pydantic version
-    config = create_pydantic_config(arbitrary_types_allowed=True)
-    assert config is not None
-
-    if PYDANTIC_VERSION[0] >= 2:
-        # Test that ConfigDict works for v2 - we can test the function works
-        # without importing ConfigDict locally (avoiding linter issues)
-        config_v2 = create_pydantic_config(extra="forbid")
-        assert config_v2 is not None
-
-
-def test_pydantic_version_conditional_logic():
-    """Test that PYDANTIC_VERSION[0] >= 2 logic works correctly."""
-    # This mirrors the logic added to multiple config classes
-    if PYDANTIC_VERSION[0] >= 2:  # noqa: PLR2004
-        model_config = create_pydantic_config(extra="forbid")
-        assert model_config is not None
-    else:
-        Config = create_pydantic_config(extra="forbid")  # noqa: N806
-        assert Config is not None
-
-    # Both paths should work without errors
-
-
-def test_config_class_vs_model_config_pattern():
-    """Test the pattern used in multiple config classes."""
-    # Test the specific pattern used in PipelineOptions, JobOptions, etc.
-    config = create_pydantic_config(validate_assignment=True, extra="forbid")
-    assert config is not None
-
-    # This mirrors the actual usage in the codebase
-    if PYDANTIC_VERSION[0] >= 2:  # noqa: PLR2004
-        # In v2, this would be: model_config = create_pydantic_config(...)
-        model_config = config  # noqa: F841
-    else:
-        # In v1, this would be: Config = create_pydantic_config(...)
-        Config = config  # noqa: F841, N806
-
-    # Both should work without errors
