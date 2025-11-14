@@ -981,6 +981,13 @@ def test_logger_runtime_formatters_and_filters(tmp_path):
     assert len(contents) == 1
     assert "keep" in contents[0]
 
+    # Cleanup: close handlers to avoid ResourceWarning for unclosed files
+    for h in list(logger_obj.handlers):
+        try:
+            h.close()
+        finally:
+            logger_obj.removeHandler(h)
+
 
 def test_logger_runtime_job_inline_logger_isolated_handlers():
     # Inline logger in job should receive unique handler instances even if logger name collides
@@ -1129,6 +1136,13 @@ def test_logger_runtime_filter_class_path(tmp_path):
     contents = log_file.read_text(encoding="utf-8").strip().splitlines()
     assert len(contents) == 1
     assert "keep" in contents[0]
+
+    # Cleanup: close handlers to avoid ResourceWarning for unclosed files
+    for h in list(logger_obj.handlers):
+        try:
+            h.close()
+        finally:
+            logger_obj.removeHandler(h)
 
 
 def test_logger_runtime_handler_callable_path():
@@ -1305,6 +1319,10 @@ def test_logger_handler_args_kwargs_support(tmp_path):
     assert log_file.exists()
     assert "test message" in log_file.read_text()
 
+    # Cleanup: close handler to avoid ResourceWarning
+    handler.close()
+    logger_obj.removeHandler(handler)
+
 
 def test_logger_handler_direct_kwargs_support(tmp_path):
     """Test that handlers support direct kwargs (new feature from git diff)."""
@@ -1340,6 +1358,10 @@ def test_logger_handler_direct_kwargs_support(tmp_path):
     handler.flush()
     assert log_file.exists()
     assert "direct kwargs test" in log_file.read_text()
+
+    # Cleanup: close handler to avoid ResourceWarning
+    handler.close()
+    logger_obj.removeHandler(handler)
 
 
 def test_logger_handler_mixed_args_kwargs_direct():

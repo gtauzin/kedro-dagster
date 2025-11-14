@@ -1,5 +1,7 @@
 # mypy: ignore-errors
 
+import warnings
+
 import pytest
 from pydantic import ValidationError
 
@@ -16,7 +18,7 @@ from kedro_dagster.config.execution import (
 from kedro_dagster.config.job import JobOptions, PipelineOptions
 from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
 from kedro_dagster.config.logging import LoggerOptions
-from kedro_dagster.utils import KEDRO_VERSION
+from kedro_dagster.utils import KEDRO_VERSION, PYDANTIC_VERSION, create_pydantic_config
 
 
 def test_schedule_options_happy_path():
@@ -345,3 +347,119 @@ def test_logger_options_forbid_extra_fields():
         LoggerOptions(log_level="INFO", unknown_field="should_fail")
     # Check that extra inputs are not permitted
     assert "Extra inputs are not permitted" in str(exc_info.value)
+
+
+def test_pydantic_version_detection():
+    """PYDANTIC_VERSION should be correctly detected as a tuple of integers."""
+    assert isinstance(PYDANTIC_VERSION, tuple)
+    assert len(PYDANTIC_VERSION) >= 2
+    assert all(isinstance(v, int) for v in PYDANTIC_VERSION)
+    assert PYDANTIC_VERSION[0] in [1, 2, 3]  # Should be a valid major version
+
+
+def test_create_pydantic_config_with_multiple_options():
+    """create_pydantic_config should handle multiple config options."""
+    config = create_pydantic_config(
+        extra="forbid", validate_assignment=True, arbitrary_types_allowed=True, frozen=False
+    )
+
+    assert config is not None
+    # Just verify we can create config with multiple options without errors
+
+
+def test_pipeline_options_config_compatibility():
+    """PipelineOptions should work with version-aware Pydantic config."""
+    # Should work without errors regardless of Pydantic version
+    options = PipelineOptions(pipeline_name="test", tags=["tag1"])
+    assert options.pipeline_name == "test"
+    assert options.tags == ["tag1"]
+
+    # Should still forbid extra fields
+    with pytest.raises(ValidationError):
+        PipelineOptions(unknown_field="should_fail")
+
+
+def test_job_options_config_compatibility():
+    """JobOptions should work with version-aware Pydantic config."""
+    pipeline_opts = PipelineOptions()
+    job_opts = JobOptions(pipeline=pipeline_opts)
+    assert isinstance(job_opts.pipeline, PipelineOptions)
+
+    # Should still forbid extra fields
+    with pytest.raises(ValidationError):
+        JobOptions(pipeline=pipeline_opts, unknown_field="should_fail")
+
+
+def test_kedro_dagster_config_compatibility():
+    """KedroDagsterConfig should work with version-aware Pydantic config."""
+    config = KedroDagsterConfig(executors={"local": {"in_process": {}}}, loggers={"test": LoggerOptions()})
+    assert config.executors is not None
+    assert config.loggers is not None
+
+    # Should still forbid extra fields and validate assignment
+    with pytest.raises(ValidationError):
+        KedroDagsterConfig(unknown_field="should_fail")
+
+
+def test_logger_options_config_compatibility():
+    """LoggerOptions should work with version-aware Pydantic config."""
+    logger = LoggerOptions(
+        log_level="DEBUG",
+        handlers=[{"class": "logging.StreamHandler"}],
+        formatters={"simple": {"format": "%(message)s"}},
+    )
+    assert logger.log_level == "DEBUG"
+    assert len(logger.handlers) == 1
+
+    # Should still forbid extra fields
+    with pytest.raises(ValidationError):
+        LoggerOptions(unknown_field="should_fail")
+
+
+def test_warning_filtering_context_manager():
+    """Test that warnings.catch_warnings context manager works and capture the expected warning."""
+    # Test that we can catch and validate the specific warning
+    with warnings.catch_warnings(record=True) as captured_warnings:
+        warnings.simplefilter("always")  # Capture all warnings
+
+        # This should trigger the warning we want to validate
+        warnings.warn(
+            "Argument(s) 'run_result' which are declared in the hookspec cannot be found in this hook call", UserWarning
+        )
+
+        # Validate that the warning was captured
+        assert len(captured_warnings) == 1
+        warning = captured_warnings[0]
+        assert issubclass(warning.category, UserWarning)
+        assert "run_result" in str(warning.message)
+        assert "hookspec" in str(warning.message)
+        assert "cannot be found in this hook call" in str(warning.message)
+
+
+def test_existing_pydantic_models_still_work():
+    """Ensure that existing Pydantic model usage patterns still work."""
+    # Test basic model creation
+    options = PipelineOptions()
+    assert options.pipeline_name == "__default__"
+
+    # Test validation still works
+    with pytest.raises(ValidationError):
+        PipelineOptions(invalid_field="value")
+
+    # Test nested models still work
+    job = JobOptions(pipeline=options)
+    assert job.pipeline == options
+
+
+def test_config_dict_behavior_consistent():
+    """Test that config behavior is consistent across Pydantic versions."""
+    config1 = create_pydantic_config(extra="forbid")
+    config2 = create_pydantic_config(extra="allow")
+
+    # Both should be valid config objects
+    assert config1 is not None
+    assert config2 is not None
+
+    # They should be different (different extra behavior)
+    # Note: Can't easily compare ConfigDict objects, but they should at least be different instances
+    assert config1 is not config2

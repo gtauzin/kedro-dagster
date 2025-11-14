@@ -6,6 +6,7 @@ partitioned nodes, Kedro hook invocation via dedicated hook ops, and resource
 overrides per job.
 """
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
@@ -249,12 +250,21 @@ class PipelineTranslator:
             # to the Kedro run results dictionary (mapping dataset names to DatasetSaveError objects).
             # This means that hooks relying on run_results for error reporting or post-processing
             # will not receive this information. This is a known limitation of the Dagster integration.
-            self._hook_manager.hook.after_pipeline_run(
-                run_results=None,
-                run_params=run_params,
-                pipeline=pipeline,
-                catalog=self._catalog,
-            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    r"Argument(s) 'run_result' which are declared in the hookspec cannot be found in this hook call",
+                    UserWarning,
+                    # NOTE: This filter depends on pluggy internals ('pluggy._hooks').
+                    # If pluggy changes its internal structure, this filter may need to be updated.
+                    "pluggy._hooks",
+                )
+                self._hook_manager.hook.after_pipeline_run(
+                    run_results=None,
+                    run_params=run_params,
+                    pipeline=pipeline,
+                    catalog=self._catalog,
+                )
 
         return after_pipeline_run_hook_op
 

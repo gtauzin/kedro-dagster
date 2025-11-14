@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, Any
 import dagster as dg
 from kedro.io import MemoryDataset
 from kedro.pipeline import Pipeline
-from pydantic import ConfigDict
 
 from kedro_dagster.datasets.nothing_dataset import NOTHING_OUTPUT
 from kedro_dagster.utils import (
@@ -26,6 +25,7 @@ from kedro_dagster.utils import (
     _create_pydantic_model_from_dict,
     _get_node_pipeline_name,
     _is_param_name,
+    create_pydantic_config,
     format_dataset_name,
     format_node_name,
     get_asset_key_from_dataset_name,
@@ -139,7 +139,7 @@ class NodeTranslator:
             name="ParametersConfig",
             params=params,
             __base__=dg.Config,
-            __config__=ConfigDict(extra="allow", frozen=False),
+            __config__=create_pydantic_config(extra="allow", frozen=False),
         )
 
     def _get_in_asset_params(self, dataset_name: str, asset_name: str, out_dataset_names: list[str]) -> dict[str, Any]:

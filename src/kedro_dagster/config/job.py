@@ -7,7 +7,7 @@ executor/schedule selection.
 
 from pydantic import BaseModel
 
-from kedro_dagster.utils import KEDRO_VERSION
+from kedro_dagster.utils import KEDRO_VERSION, PYDANTIC_VERSION, create_pydantic_config
 
 from .automation import ScheduleOptions
 from .execution import ExecutorOptions
@@ -60,10 +60,11 @@ class PipelineOptions(BaseModel):
         node_namespace: str | None = None
     tags: list[str] | None = None
 
-    class Config:
-        """Pydantic configuration enforcing strict fields."""
-
-        extra = "forbid"
+    # Version-aware Pydantic configuration
+    if PYDANTIC_VERSION[0] >= 2:  # noqa: PLR2004
+        model_config = create_pydantic_config(extra="forbid")
+    else:  # pragma: no cover
+        Config = create_pydantic_config(extra="forbid")
 
 
 class JobOptions(BaseModel):
@@ -96,7 +97,8 @@ class JobOptions(BaseModel):
     schedule: ScheduleOptions | str | None = None
     loggers: list[LoggerOptions | str] | None = None
 
-    class Config:
-        """Pydantic configuration enforcing strict fields."""
-
-        extra = "forbid"
+    # Version-aware Pydantic configuration
+    if PYDANTIC_VERSION[0] >= 2:  # noqa: PLR2004
+        model_config = create_pydantic_config(extra="forbid")
+    else:  # pragma: no cover
+        Config = create_pydantic_config(extra="forbid")
