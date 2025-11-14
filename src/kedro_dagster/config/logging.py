@@ -44,7 +44,7 @@ class LoggerOptions(BaseModel):
     # Version-aware Pydantic configuration
     if PYDANTIC_VERSION[0] >= 2:
         model_config = create_pydantic_config(validate_assignment=True, extra="forbid")
-    else:
+    else:  # pragma: no cover
         Config = create_pydantic_config(validate_assignment=True, extra="forbid")
 
     @field_validator("log_level", mode="before")

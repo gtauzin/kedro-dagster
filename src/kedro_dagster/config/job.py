@@ -63,7 +63,7 @@ class PipelineOptions(BaseModel):
     # Version-aware Pydantic configuration
     if PYDANTIC_VERSION[0] >= 2:  # noqa: PLR2004
         model_config = create_pydantic_config(extra="forbid")
-    else:
+    else:  # pragma: no cover
         Config = create_pydantic_config(extra="forbid")
 
 
@@ -100,5 +100,5 @@ class JobOptions(BaseModel):
     # Version-aware Pydantic configuration
     if PYDANTIC_VERSION[0] >= 2:  # noqa: PLR2004
         model_config = create_pydantic_config(extra="forbid")
-    else:
+    else:  # pragma: no cover
         Config = create_pydantic_config(extra="forbid")

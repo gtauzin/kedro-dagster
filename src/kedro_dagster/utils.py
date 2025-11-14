@@ -71,18 +71,20 @@ def create_pydantic_config(**kwargs: Any) -> type | Any:
         from pydantic import ConfigDict
 
         # Pydantic v2.0+ uses model_config = ConfigDict(...)
-        if ConfigDict is not None:
-            return ConfigDict(**kwargs)
+        config = ConfigDict(**kwargs)
 
-    # Pydantic v1.x or fallback uses class Config:
-    class Config:
-        pass
+    else:  # pragma: no cover
+        # Pydantic v1.x or fallback uses class Config:
+        class Config:
+            pass
 
-    # Set attributes dynamically from kwargs
-    for key, value in kwargs.items():
-        setattr(Config, key, value)
+        # Set attributes dynamically from kwargs
+        for key, value in kwargs.items():
+            setattr(Config, key, value)
 
-    return Config
+        config = Config
+
+    return config
 
 
 def find_kedro_project(current_dir: Path) -> Path | None:
@@ -434,7 +436,7 @@ def _create_pydantic_model_from_dict(
                 # In Pydantic v2, model_config is set automatically by create_model
                 # when __config__ is a ConfigDict, so no additional assignment needed
                 pass
-            else:
+            else:  # pragma: no cover
                 # In Pydantic v1, we need to set the Config class
                 model.Config = __config__
 
