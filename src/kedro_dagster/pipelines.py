@@ -258,6 +258,7 @@ class PipelineTranslator:
                     # NOTE: This filter depends on pluggy internals ('pluggy._hooks').
                     # If pluggy changes its internal structure, this filter may need to be updated.
                     "pluggy._hooks",
+                )
                 self._hook_manager.hook.after_pipeline_run(
                     run_results=None,
                     run_params=run_params,

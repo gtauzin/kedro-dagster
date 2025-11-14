@@ -58,7 +58,7 @@ DAGSTER_VERSION = _get_version("dagster")
 PYDANTIC_VERSION = _get_version("pydantic")
 
 
-def create_pydantic_config(**kwargs: Any) -> type | Any:
+def create_pydantic_config(**kwargs: Any) -> Any:
     """Create Pydantic configuration compatible with both v1 and v2.
 
     Args:
