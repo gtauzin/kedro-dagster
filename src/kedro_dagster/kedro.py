@@ -87,7 +87,7 @@ class KedroRunTranslator:
             # Version-aware Pydantic configuration
             if PYDANTIC_VERSION[0] >= 2:  # noqa: PLR2004
                 model_config = create_pydantic_config(validate_assignment=True, extra="forbid")
-            else:
+            else:  # pragma: no cover
                 Config = create_pydantic_config(validate_assignment=True, extra="forbid")
 
         class KedroRunResource(RunParamsModel, dg.ConfigurableResource):
