@@ -426,19 +426,19 @@ def _create_pydantic_model_from_dict(
 
             fields[param_name] = (param_type, param_value)
 
+    # In Pydantic v2, when both a base class and config are provided, we must
+    # pass __config__ through to create_model so that it is merged/applied to
+    # the resulting model.
     if __base__ is None:
         model = create_model(name, __config__=__config__, **fields)
-    else:
+    elif PYDANTIC_VERSION[0] >= 2:
+        model = create_model(name, __base__=__base__, __config__=__config__, **fields)
+    else:  # pragma: no cover
         model = create_model(name, __base__=__base__, **fields)
-        # Handle config assignment based on Pydantic version
+        # Handle config assignment based on Pydantic v1 behaviour
         if __config__ is not None:
-            if PYDANTIC_VERSION[0] >= 2:
-                # In Pydantic v2, model_config is set automatically by create_model
-                # when __config__ is a ConfigDict, so no additional assignment needed
-                pass
-            else:  # pragma: no cover
-                # In Pydantic v1, we need to set the Config class
-                model.Config = __config__
+            # In Pydantic v1, we need to set the Config class manually
+            model.Config = __config__
 
     return model
 
