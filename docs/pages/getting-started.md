@@ -33,6 +33,18 @@ or with `uv`:
 uv pip install kedro-dagster
 ```
 
+or with `conda`:
+
+```bash
+conda install -c conda-forge kedro-dagster
+```
+
+or with `mamba`:
+
+```bash
+mamba install -c conda-forge kedro-dagster
+```
+
 alternatively, you can install it from GitHub:
 
 ```bash

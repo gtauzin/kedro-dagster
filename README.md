@@ -52,6 +52,18 @@ or using `uv`:
 uv pip install kedro-dagster
 ```
 
+or using `conda`:
+
+```bash
+conda install -c conda-forge kedro-dagster
+```
+
+or using `mamba`:
+
+```bash
+mamba install -c conda-forge kedro-dagster
+```
+
 or alternatively, add `kedro-dagster` to your `requirements.txt` or `pyproject.toml` file.
 
 ## How to get started with Kedro-Dagster?

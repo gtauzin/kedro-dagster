@@ -7,6 +7,7 @@
 - Add `loggers` section to `dagster.yml` configuration file to configure Dagster run loggers.
 - Rename `LoggerTranslator` to `LoggerCreator` for consistency with `ExecutorCreator` and `SchedulerCreator`.
 - Declared direct dependency on `pydantic>=1.0.0,<3.0.0` and enable version-agnostic Pydantic configuration.
+- Kedro-Dagster is now available on conda-forge and can be installed with `conda` or `mamba`.
 
 ## Bug fixes and other changes
 - Fix how `LoggerCreator` creates loggers for Dagster runs. Generic logging configuration is now supported from `dagster.yml`.
