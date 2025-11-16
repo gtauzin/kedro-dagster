@@ -24,33 +24,44 @@ pip install -r requirements.txt
 The Kedro-Dagster plugin can be installed using different package managers.
 
 === "pip"
+    To install the plugin using `pip`, run:
 
     ```bash
     pip install kedro-dagster
     ```
 
+    Alternatively, you can install the latest development version directly from GitHub:
+
+    ```bash
+    pip install --upgrade git+https://github.com/gtauzin/kedro-dagster.git
+    ```
+
 === "uv"
+
+    To install the plugin using `uv`, run:
 
     ```bash
     uv pip install kedro-dagster
     ```
 
-=== "conda"
+    Alternatively, you can install the latest development version directly from GitHub:
+
+    ```bash
+    uv pip install --upgrade git+https://github.com/gtauzin/kedro-dagster.git
+    ```
+
+=== "conda-forge"
+
+    To install the plugin using `conda` or `mamba`, run one of the following commands:
 
     ```bash
     conda install -c conda-forge kedro-dagster
     ```
 
-=== "mamba"
+    or
 
     ```bash
     mamba install -c conda-forge kedro-dagster
-    ```
-
-=== "GitHub"
-
-    ```bash
-    pip install --upgrade git+https://github.com/gtauzin/kedro-dagster.git
     ```
 
 ## 3. Initialize the Kedro-Dagster plugin
