@@ -9,11 +9,11 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
 [![License](https://img.shields.io/github/license/gtauzin/kedro-dagster)](https://github.com/gtauzin/kedro-dagster/blob/main/LICENSE.md)
 [![PyPI Version](https://img.shields.io/pypi/v/kedro-dagster)](https://pypi.org/project/kedro-dagster/)
-[![Tests](https://github.com/gtauzin/kedro-dagster/actions/workflows/tests-os-coverage.yml/badge.svg)](https://github.com/gtauzin/kedro-dagster/actions/workflows/tests-os-coverage.yml)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/kedro-dagster.svg)](https://anaconda.org/conda-forge/kedro-dagster)
 [![CodeCov](https://codecov.io/gh/gtauzin/kedro-dagster/branch/main/graph/badge.svg)](https://codecov.io/gh/gtauzin/kedro-dagster/branch/main)
-[![Slack Organisation](https://img.shields.io/badge/slack-chat-blueviolet.svg?label=Kedro%20Slack&logo=slack)](https://slack.kedro.org)
 
 [![Powered by Kedro](https://img.shields.io/badge/powered_by-kedro-ffc900?logo=kedro)](https://kedro.org)
+[![Slack Organisation](https://img.shields.io/badge/slack-chat-blueviolet.svg?label=Kedro%20Slack&logo=slack)](https://slack.kedro.org)
 
 ## What is Kedro-Dagster?
 
@@ -50,6 +50,18 @@ or using `uv`:
 
 ```bash
 uv pip install kedro-dagster
+```
+
+or using `conda`:
+
+```bash
+conda install -c conda-forge kedro-dagster
+```
+
+or using `mamba`:
+
+```bash
+mamba install -c conda-forge kedro-dagster
 ```
 
 or alternatively, add `kedro-dagster` to your `requirements.txt` or `pyproject.toml` file.
