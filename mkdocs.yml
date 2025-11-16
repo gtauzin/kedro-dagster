@@ -66,6 +66,7 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.highlight
   - pymdownx.superfences
+  - pymdownx.tabbed
   - pymdownx.snippets:
       base_path: ["."]  # for root of repo
 
