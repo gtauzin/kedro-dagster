@@ -9,6 +9,7 @@
 - Declared direct dependency on `pydantic>=1.0.0,<3.0.0` and enable version-agnostic Pydantic configuration.
 - Kedro-Dagster is now available on conda-forge and can be installed with `conda` or `mamba`.
 - Allow setting `group_name` in a dataset's `metadata` to override the pipeline-derived group name; `group_name` is also applied per-AssetOut for multi-assets so each asset can have an individual group.
+- Add links to MLflow run in Dagster asset metadata.
 
 ## Bug fixes and other changes
 - Fix how `LoggerCreator` creates loggers for Dagster runs. Generic logging configuration is now supported from `dagster.yml`.
