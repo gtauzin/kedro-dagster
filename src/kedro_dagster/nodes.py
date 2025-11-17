@@ -194,6 +194,7 @@ class NodeTranslator:
             dict[str, Any]: Keyword arguments to pass to :class:`dagster.AssetOut`.
         """
         metadata, description = None, None
+        group_name = _get_node_pipeline_name(node)
         io_manager_key = "io_manager"
 
         if asset_name in self.asset_names:
@@ -201,7 +202,7 @@ class NodeTranslator:
             if dataset is not None:
                 metadata = getattr(dataset, "metadata", None) or {}
                 description = metadata.pop("description", "")
-                group_name = metadata.pop("group_name", _get_node_pipeline_name(node))
+                group_name = metadata.pop("group_name", group_name)
                 if not isinstance(dataset, MemoryDataset):
                     candidate_key = f"{self._env}__{asset_name}_io_manager"
                     if candidate_key in self._named_resources:
