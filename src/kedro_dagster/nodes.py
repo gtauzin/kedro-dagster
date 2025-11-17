@@ -473,13 +473,16 @@ class NodeTranslator:
             asset_name = format_dataset_name(dataset_name)
             asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
 
-            if is_nothing_asset_name(self._catalog, dataset_name):
-                outs[asset_name] = dg.AssetOut(key=asset_key, dagster_type=dg.Nothing)
-                continue
-
             out_asset_params = self._get_out_asset_params(
                 dataset_name, asset_name, node=node, return_group_name=True, return_kinds=True
             )
+
+            if is_nothing_asset_name(self._catalog, dataset_name):
+                outs[asset_name] = dg.AssetOut(
+                    key=asset_key, dagster_type=dg.Nothing, group_name=out_asset_params["group_name"]
+                )
+                continue
+
             outs[asset_name] = dg.AssetOut(key=asset_key, **out_asset_params)
 
         NodeParametersConfig = self._get_node_parameters_config(node)
