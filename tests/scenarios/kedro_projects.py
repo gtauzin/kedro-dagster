@@ -472,3 +472,55 @@ def options_nothing_assets(env: str) -> KedroProjectOptions:
     return KedroProjectOptions(
         env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_nothing_assets()
     )
+
+
+def pipeline_registry_group_name_metadata() -> str:
+    """Pipeline with nodes that have datasets with group_name metadata."""
+    return """
+from kedro.pipeline import Pipeline, node
+
+
+def identity(arg):
+    return arg
+
+
+def register_pipelines():
+    pipeline = Pipeline(
+        [
+            node(identity, ["input_ds"], "intermediate_ds", name="node0"),
+            node(identity, ["intermediate_ds"], "output_custom_group", name="node1"),
+            node(identity, ["intermediate_ds"], "output_default_group", name="node2"),
+        ]
+    )
+    return {
+        "__default__": pipeline,
+        "test_pipeline": pipeline,
+    }
+"""
+
+
+def options_group_name_metadata(env: str) -> KedroProjectOptions:
+    """Catalog with datasets that have group_name in metadata."""
+    catalog = {
+        "input_ds": {
+            "type": "MemoryDataset",
+            "metadata": {
+                "group_name": "custom_external_group",
+            },
+        },
+        "intermediate_ds": {"type": "MemoryDataset"},
+        "output_custom_group": {
+            "type": "MemoryDataset",
+            "metadata": {
+                "group_name": "custom_output_group",
+            },
+        },
+        "output_default_group": {"type": "MemoryDataset"},
+    }
+    dagster = {
+        "executors": {"seq": {"in_process": {}}},
+        "jobs": {"default": {"pipeline": {"pipeline_name": "__default__"}, "executor": "seq"}},
+    }
+    return KedroProjectOptions(
+        env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_group_name_metadata()
+    )

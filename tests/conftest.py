@@ -14,6 +14,7 @@ from .scenarios.kedro_projects import (
     dagster_executors_config,
     make_jobs_config,
     options_exec_filebacked,
+    options_group_name_metadata,
     options_hooks_filebacked,
     options_multiple_inputs,
     options_multiple_outputs_dict,
@@ -345,3 +346,17 @@ def kedro_project_multi_in_out_env(request, project_scenario_factory) -> KedroPr
     opts = builder_map[scenario_key](env)
     project_name = f"kedro-project-{scenario_key.replace('_', '-')}-{env}"
     return project_scenario_factory(opts, project_name=project_name)
+
+
+@fixture(scope="function")
+def kedro_project_group_name_metadata_base(project_scenario_factory) -> KedroProjectOptions:
+    return project_scenario_factory(
+        options_group_name_metadata(env="base"), project_name="kedro-project-group-name-metadata-base"
+    )
+
+
+@fixture(scope="function")
+def kedro_project_group_name_metadata_local(project_scenario_factory) -> KedroProjectOptions:
+    return project_scenario_factory(
+        options_group_name_metadata(env="local"), project_name="kedro-project-group-name-metadata-local"
+    )

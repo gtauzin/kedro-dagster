@@ -175,7 +175,14 @@ class NodeTranslator:
 
         return in_asset_params
 
-    def _get_out_asset_params(self, dataset_name: str, asset_name: str, return_kinds: bool = False) -> dict[str, Any]:
+    def _get_out_asset_params(
+        self,
+        dataset_name: str,
+        asset_name: str,
+        node: "Node",
+        return_group_name: bool = False,
+        return_kinds: bool = False,
+    ) -> dict[str, Any]:
         """Compute :class:`dagster.AssetOut` kwargs for an output dataset.
 
         This inspects the Kedro catalog entry to propagate metadata and to select
@@ -185,12 +192,15 @@ class NodeTranslator:
         Args:
             dataset_name (str): Kedro dataset name for the output.
             asset_name (str): Dagster-safe asset name for the output.
+            node (Node): Kedro node being wrapped.
+            return_group_name (bool): Whether to include ``group_name`` in the returned params.
             return_kinds (bool): Whether to include an explicit ``kinds`` set.
 
         Returns:
             dict[str, Any]: Keyword arguments to pass to :class:`dagster.AssetOut`.
         """
         metadata, description = None, None
+        group_name = _get_node_pipeline_name(node)
         io_manager_key = "io_manager"
 
         if asset_name in self.asset_names:
@@ -198,6 +208,7 @@ class NodeTranslator:
             if dataset is not None:
                 metadata = getattr(dataset, "metadata", None) or {}
                 description = metadata.pop("description", "")
+                group_name = metadata.pop("group_name", group_name)
                 if not isinstance(dataset, MemoryDataset):
                     candidate_key = f"{self._env}__{asset_name}_io_manager"
                     if candidate_key in self._named_resources:
@@ -208,6 +219,9 @@ class NodeTranslator:
             metadata=metadata,
             description=description,
         )
+
+        if return_group_name:
+            out_asset_params["group_name"] = group_name
 
         if return_kinds:
             kinds = {"kedro"}
@@ -295,7 +309,9 @@ class NodeTranslator:
             if is_nothing_asset_name(self._catalog, dataset_name):
                 out[asset_name] = dg.Out(dagster_type=dg.Nothing)
             else:
-                out_asset_params = self._get_out_asset_params(dataset_name, asset_name)
+                out_asset_params = self._get_out_asset_params(
+                    dataset_name=dataset_name, asset_name=asset_name, node=node
+                )
                 out[asset_name] = dg.Out(**out_asset_params)
 
         if is_in_last_layer:
@@ -456,14 +472,18 @@ class NodeTranslator:
         for dataset_name in node.outputs:
             asset_name = format_dataset_name(dataset_name)
             asset_key = get_asset_key_from_dataset_name(dataset_name, self._env)
-            group_name = _get_node_pipeline_name(node)
+
+            out_asset_params = self._get_out_asset_params(
+                dataset_name, asset_name, node=node, return_group_name=True, return_kinds=True
+            )
 
             if is_nothing_asset_name(self._catalog, dataset_name):
-                outs[asset_name] = dg.AssetOut(key=asset_key, dagster_type=dg.Nothing, group_name=group_name)
+                outs[asset_name] = dg.AssetOut(
+                    key=asset_key, dagster_type=dg.Nothing, group_name=out_asset_params["group_name"]
+                )
                 continue
 
-            out_asset_params = self._get_out_asset_params(dataset_name, asset_name, return_kinds=True)
-            outs[asset_name] = dg.AssetOut(key=asset_key, group_name=group_name, **out_asset_params)
+            outs[asset_name] = dg.AssetOut(key=asset_key, **out_asset_params)
 
         NodeParametersConfig = self._get_node_parameters_config(node)
 
@@ -477,7 +497,6 @@ class NodeTranslator:
         @dg.multi_asset(
             name=f"{format_node_name(node.name)}_asset",
             description=f"Kedro node {node.name} wrapped as a Dagster multi asset.",
-            group_name=_get_node_pipeline_name(node),
             ins=ins,
             outs=outs,
             partitions_def=partitions_def,
@@ -549,19 +568,21 @@ class NodeTranslator:
                 if not isinstance(dataset, MemoryDataset):
                     io_manager_key = f"{self._env}__{external_asset_name}_io_manager"
 
-                # All pipeline inputs are not necessarily external. A partition that is an input of a node
-                # along with a DagsterNothingDataset is most likely part of the pipeline itself and its
-                # group name should match that of the node's pipeline.
-                # Note that this is a best-effort attempt and may not cover all cases (e.g. same node part
-                # of multiple pipelines).
-                group_name = "external"
-                for pipeline in self._pipelines:
-                    for pipeline_node in pipeline.nodes:
-                        if external_dataset_name in pipeline_node.inputs and any(
-                            is_nothing_asset_name(self._catalog, ds) for ds in pipeline_node.inputs
-                        ):
-                            group_name = _get_node_pipeline_name(pipeline_node)
-                            break
+                group_name = metadata.pop("group_name", None)
+                if group_name is None:
+                    # All pipeline inputs are not necessarily external. A partition that is an input of a node
+                    # along with a DagsterNothingDataset is most likely part of the pipeline itself and its
+                    # group name should match that of the node's pipeline.
+                    # Note that this is a best-effort attempt and may not cover all cases (e.g. same node part
+                    # of multiple pipelines).
+                    group_name = "external"
+                    for pipeline in self._pipelines:
+                        for pipeline_node in pipeline.nodes:
+                            if external_dataset_name in pipeline_node.inputs and any(
+                                is_nothing_asset_name(self._catalog, ds) for ds in pipeline_node.inputs
+                            ):
+                                group_name = _get_node_pipeline_name(pipeline_node)
+                                break
 
                 partitions_def = None
                 asset_partition = self._asset_partitions.get(external_asset_name, None)

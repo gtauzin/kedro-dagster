@@ -38,6 +38,10 @@ See the API reference for [`CatalogTranslator`](reference.md#catalogtranslator) 
 !!! note
     Each Kedro dataset can take a `metadata` parameter to define additional metadata for the corresponding Dagster asset, such as a description. This description will appear in the Dagster UI.
 
+### Group name metadata
+
+In addition to common metadata like `description`, a Kedro dataset's `metadata` can include a `group_name` field. When present, `group_name` is used to set the asset's group in Dagster and overrides the default group inferred from the node's pipeline. For multi-asset translations, `group_name` is applied per-AssetOut, allowing each asset produced by a multi-asset to belong to its own group when needed.
+
 ### Node
 
 Kedro nodes are translated into Dagster ops and assets. Each node becomes a Dagster op, and, additionally, nodes that return outputs are mapped to Dagster multi-assets.

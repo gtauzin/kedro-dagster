@@ -302,3 +302,118 @@ def test_node_translator_handles_no_output_node(env, request):
     op = node_translator.create_op(no_out_node)
     out_keys = list(getattr(op, "outs").keys())
     assert len(out_keys) == 1 and out_keys[0].endswith("_after_pipeline_run_hook_input")
+
+
+@pytest.mark.parametrize("env", ["base", "local"])
+def test_get_out_asset_params_includes_group_name(env, request):
+    """Test that _get_out_asset_params returns group_name when requested."""
+    options = request.getfixturevalue(f"kedro_project_group_name_metadata_{env}")
+    project_path = options.project_path
+    package_name = options.package_name
+
+    bootstrap_project(project_path)
+    session = KedroSession.create(project_path=project_path, env=env)
+    context = session.load_context()
+
+    project_module = importlib.import_module("kedro.framework.project")
+    project_module.configure_project(package_name)
+
+    pipeline = project_module.pipelines.get("__default__")
+
+    # Build named_resources via CatalogTranslator
+    catalog_translator = CatalogTranslator(
+        catalog=context.catalog,
+        pipelines=[pipeline],
+        hook_manager=context._hook_manager,
+        env=env,
+    )
+    named_io_managers, asset_partitions = catalog_translator.to_dagster()
+
+    node_translator = NodeTranslator(
+        pipelines=[pipeline],
+        catalog=context.catalog,
+        hook_manager=context._hook_manager,
+        asset_partitions=asset_partitions,
+        named_resources=named_io_managers,
+        env=env,
+        run_id=session.session_id,
+    )
+
+    # Get a node from the pipeline
+    node = next(n for n in pipeline.nodes if n.name == "node1")
+
+    # Test _get_out_asset_params with return_group_name=True
+    out_params = node_translator._get_out_asset_params(
+        dataset_name="output_custom_group",
+        asset_name="output_custom_group",
+        node=node,
+        return_group_name=True,
+    )
+
+    assert "group_name" in out_params, "group_name should be in params when return_group_name=True"
+    assert out_params["group_name"] == "custom_output_group", (
+        f"Expected group_name 'custom_output_group', got '{out_params['group_name']}'"
+    )
+
+    # Test _get_out_asset_params with return_group_name=False (default)
+    out_params_no_group = node_translator._get_out_asset_params(
+        dataset_name="output_custom_group",
+        asset_name="output_custom_group",
+        node=node,
+        return_group_name=False,
+    )
+
+    assert "group_name" not in out_params_no_group, "group_name should not be in params when return_group_name=False"
+
+
+@pytest.mark.parametrize("env", ["base", "local"])
+def test_group_name_metadata_removed_from_asset_metadata(env, request):
+    """Test that group_name is removed from metadata dict and not duplicated."""
+    options = request.getfixturevalue(f"kedro_project_group_name_metadata_{env}")
+    project_path = options.project_path
+    package_name = options.package_name
+
+    bootstrap_project(project_path)
+    session = KedroSession.create(project_path=project_path, env=env)
+    context = session.load_context()
+
+    project_module = importlib.import_module("kedro.framework.project")
+    project_module.configure_project(package_name)
+
+    pipeline = project_module.pipelines.get("__default__")
+
+    # Build named_resources via CatalogTranslator
+    catalog_translator = CatalogTranslator(
+        catalog=context.catalog,
+        pipelines=[pipeline],
+        hook_manager=context._hook_manager,
+        env=env,
+    )
+    named_io_managers, asset_partitions = catalog_translator.to_dagster()
+
+    node_translator = NodeTranslator(
+        pipelines=[pipeline],
+        catalog=context.catalog,
+        hook_manager=context._hook_manager,
+        asset_partitions=asset_partitions,
+        named_resources=named_io_managers,
+        env=env,
+        run_id=session.session_id,
+    )
+
+    # Get all assets created by the translator
+    _, named_assets = node_translator.to_dagster()
+
+    # Find the asset with custom group_name
+    node1_asset = named_assets.get("node1")
+    assert node1_asset is not None, f"Asset node1 not found. Available: {list(named_assets.keys())}"
+
+    # Check asset specs
+    for spec in node1_asset.specs:
+        if "output_custom_group" in spec.key.path:
+            # Verify group_name is not in the metadata dict
+            # (it should have been popped and set as group_name attribute)
+            if spec.metadata:
+                assert "group_name" not in spec.metadata, (
+                    "group_name should be removed from metadata dict and set as attribute"
+                )
