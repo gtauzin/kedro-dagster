@@ -497,7 +497,6 @@ class NodeTranslator:
         @dg.multi_asset(
             name=f"{format_node_name(node.name)}_asset",
             description=f"Kedro node {node.name} wrapped as a Dagster multi asset.",
-            # group_name=_get_node_pipeline_name(node),
             ins=ins,
             outs=outs,
             partitions_def=partitions_def,
