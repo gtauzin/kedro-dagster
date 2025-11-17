@@ -351,7 +351,7 @@ def kedro_project_multi_in_out_env(request, project_scenario_factory) -> KedroPr
 @fixture(scope="function")
 def kedro_project_group_name_metadata_base(project_scenario_factory) -> KedroProjectOptions:
     return project_scenario_factory(
-        options_group_name_metadata(env="base"), project_name="kedro-project-group-name-metadata"
+        options_group_name_metadata(env="base"), project_name="kedro-project-group-name-metadata-base"
     )
 
 
