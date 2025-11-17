@@ -176,7 +176,12 @@ class NodeTranslator:
         return in_asset_params
 
     def _get_out_asset_params(
-        self, dataset_name: str, asset_name: str, node: "Node", return_kinds: bool = False
+        self,
+        dataset_name: str,
+        asset_name: str,
+        node: "Node",
+        return_group_name: bool = False,
+        return_kinds: bool = False,
     ) -> dict[str, Any]:
         """Compute :class:`dagster.AssetOut` kwargs for an output dataset.
 
@@ -188,6 +193,7 @@ class NodeTranslator:
             dataset_name (str): Kedro dataset name for the output.
             asset_name (str): Dagster-safe asset name for the output.
             node (Node): Kedro node being wrapped.
+            return_group_name (bool): Whether to include ``group_name`` in the returned params.
             return_kinds (bool): Whether to include an explicit ``kinds`` set.
 
         Returns:
@@ -212,8 +218,10 @@ class NodeTranslator:
             io_manager_key=io_manager_key,
             metadata=metadata,
             description=description,
-            group_name=group_name,
         )
+
+        if return_group_name:
+            out_asset_params["group_name"] = group_name
 
         if return_kinds:
             kinds = {"kedro"}
@@ -301,7 +309,9 @@ class NodeTranslator:
             if is_nothing_asset_name(self._catalog, dataset_name):
                 out[asset_name] = dg.Out(dagster_type=dg.Nothing)
             else:
-                out_asset_params = self._get_out_asset_params(dataset_name, asset_name, node)
+                out_asset_params = self._get_out_asset_params(
+                    dataset_name=dataset_name, asset_name=asset_name, node=node
+                )
                 out[asset_name] = dg.Out(**out_asset_params)
 
         if is_in_last_layer:
@@ -467,7 +477,9 @@ class NodeTranslator:
                 outs[asset_name] = dg.AssetOut(key=asset_key, dagster_type=dg.Nothing)
                 continue
 
-            out_asset_params = self._get_out_asset_params(dataset_name, asset_name, node=node, return_kinds=True)
+            out_asset_params = self._get_out_asset_params(
+                dataset_name, asset_name, node=node, return_group_name=True, return_kinds=True
+            )
             outs[asset_name] = dg.AssetOut(key=asset_key, **out_asset_params)
 
         NodeParametersConfig = self._get_node_parameters_config(node)
