@@ -13,7 +13,7 @@ Additionally, the project features:
 
 - **Multi-environment support**: Easily switch between `local`, `dev`, `staging`, and `prod` environments. Each environment has its own `dagster.yml` and `catalog.yml` in `conf/<ENV_NAME>/`.
 - **MLflow integration**: [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow) is used for experiment tracking and model registry. Configure MLflow in your Kedro project and Kedro-Dagster will make it available as a Dagster resource.
-- **Hyperparameter tuning with Optuna**: Integrate Optuna for distributed hyperparameter optimization via the [`optuna.StudyDataset`](https://docs.kedro.org/projects/kedro-datasets/en/latest/api/kedro_datasets_experimental.optuna.StudyDataset.html) Kedro dataset.
+- **Hyperparameter tuning with Optuna**: Integrate Optuna for distributed hyperparameter optimization via the [`optuna.StudyDataset`](https://docs.kedro.org/projects/kedro-datasets/en/kedro-datasets-9.0.0/api/kedro_datasets_experimental/optuna.StudyDataset/) Kedro dataset.
 
 ## Quick start
 
@@ -63,7 +63,7 @@ Additionally, the project features:
    The `dev` environment requires a Postgres database. You can run one locally using Docker:
 
    ```bash
-   docker compose -f docker/pipelines-dev.docker-compose.yml up -d
+   docker compose -f docker/dev.docker-compose.yml up -d
    ```
 
    Then, set the appropriate environment variables so that the Kedro catalog can connect to the database:
@@ -373,7 +373,7 @@ In this example, two backends are demonstrated:
 
 For the `dev` environment you must:
 
-1) Start Postgres: `docker compose -f docker/pipelines-dev.docker-compose.yml up -d`
+1) Start Postgres: `docker compose -f docker/dev.docker-compose.yml up -d`
 2) Export connection env vars (username/password/host/port)
 
    ```bash
