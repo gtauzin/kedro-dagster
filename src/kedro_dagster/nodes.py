@@ -361,7 +361,7 @@ class NodeTranslator:
             inputs = {unformat_asset_name(in_asset_name): in_asset for in_asset_name, in_asset in inputs.items()}
 
             mlflow_run, mlflow_metadata = None, None
-            if "mlflow" in self._named_resources:
+            if "mlflow" in context.resources:
                 import mlflow
 
                 mlflow_run = mlflow.active_run()
