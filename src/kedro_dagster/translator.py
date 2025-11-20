@@ -105,7 +105,9 @@ class KedroProjectTranslator:
         self._project_metadata = bootstrap_project(self._project_path)
         LOGGER.info("Project name: %s", self._project_metadata.project_name)
 
-        LOGGER.info("Creating Kedro session...")
+        LOGGER.info(
+            f"Creating Kedro session with project path: {self._project_path}, environment: {self._env}, conf_source: {conf_source}"
+        )
         self._session = KedroSession.create(
             project_path=self._project_path,
             env=self._env,
