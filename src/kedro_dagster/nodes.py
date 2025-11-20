@@ -393,7 +393,7 @@ class NodeTranslator:
 
                     context.instance.add_run_tags(
                         context.run_id,
-                        metadata=mlflow_metadata,
+                        mlflow_metadata,
                     )
 
                 else:
