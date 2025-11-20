@@ -272,6 +272,16 @@ class LoggerCreator:
                     if "()" in hcfg:
                         handler_callable = _resolve_reference(hcfg["()"])
                         init_kwargs = {k: v for (k, v) in hcfg.items() if k != "()"}
+                        # Handle special case for stream parameter
+                        if "stream" in init_kwargs and isinstance(init_kwargs["stream"], str):
+                            stream_name = init_kwargs["stream"]
+                            if stream_name == "stdout":
+                                init_kwargs["stream"] = sys.stdout
+                            elif stream_name == "stderr":
+                                init_kwargs["stream"] = sys.stderr
+                            else:
+                                # Try to resolve as a reference
+                                init_kwargs["stream"] = _resolve_reference(stream_name)
                         handler_inst = handler_callable(**init_kwargs)
                     else:
                         cls_path = hcfg.get("class", "logging.StreamHandler")
@@ -279,6 +289,16 @@ class LoggerCreator:
                         init_kwargs = {
                             k: v for (k, v) in hcfg.items() if k not in ("class", "level", "formatter", "filters")
                         }
+                        # Handle special case for stream parameter
+                        if "stream" in init_kwargs and isinstance(init_kwargs["stream"], str):
+                            stream_name = init_kwargs["stream"]
+                            if stream_name == "stdout":
+                                init_kwargs["stream"] = sys.stdout
+                            elif stream_name == "stderr":
+                                init_kwargs["stream"] = sys.stderr
+                            else:
+                                # Try to resolve as a reference
+                                init_kwargs["stream"] = _resolve_reference(stream_name)
                         handler_inst = handler_cls(**init_kwargs)
 
                     # Set handler level
