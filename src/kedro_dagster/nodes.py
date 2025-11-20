@@ -79,7 +79,7 @@ class NodeTranslator:
         asset_partitions: dict[str, Any],
         named_resources: dict[str, dg.ResourceDefinition],
         env: str,
-        mlflow_config: "BaseModel" | None = None,
+        mlflow_config: BaseModel | None = None,
     ):
         self._pipelines = pipelines
         self._catalog = catalog
@@ -372,20 +372,23 @@ class NodeTranslator:
                 mlflow_run = mlflow.active_run()
 
                 if mlflow_run is not None:
+                    mlflow_experiment_id = mlflow_run.info.experiment_id
                     mlflow_run_id = mlflow_run.info.run_id
-                    tracking_uri = mlflow.get_tracking_uri()
+                    mlflow_tracking_uri = mlflow.get_tracking_uri()
                     # Build a URL to MLflow UI for this run
                     # This is a simple heuristic; adjust to your MLflow server UI format if needed
                     mlflow_run_url = get_mlflow_run_url(self._mlflow_config)
                     mlflow_metadata = {
+                        "mlflow_experiment_id": mlflow_experiment_id,
                         "mlflow_run_id": mlflow_run_id,
-                        "mlflow_experiment_id": mlflow_run.info.experiment_id,
-                        "mlflow_tracking_uri": tracking_uri,
+                        "mlflow_tracking_uri": mlflow_tracking_uri,
                         "mlflow_run_url": mlflow_run_url,
                     }
 
                     context.log.info(
-                        f"Active MLflow run detected. Run ID = {mlflow_run_id}, run URL = {mlflow_run_url}"
+                        f"Active MLflow run detected. Experiment ID = {mlflow_experiment_id}, "
+                        f"run ID = {mlflow_run_id}, run URL = {mlflow_run_url}, "
+                        f"tracking URI = {mlflow_tracking_uri}"
                     )
 
                     context.instance.add_run_tags(
