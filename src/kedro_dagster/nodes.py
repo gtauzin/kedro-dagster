@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 import dagster as dg
 from kedro.io import MemoryDataset
 from kedro.pipeline import Pipeline
+from pydantic import BaseModel
 
 from kedro_dagster.datasets.nothing_dataset import NOTHING_OUTPUT
 from kedro_dagster.utils import (
@@ -30,6 +31,7 @@ from kedro_dagster.utils import (
     format_node_name,
     get_asset_key_from_dataset_name,
     get_dataset_from_catalog,
+    get_mlflow_run_url,
     get_partition_mapping,
     is_nothing_asset_name,
     unformat_asset_name,
@@ -65,6 +67,7 @@ class NodeTranslator:
         asset_partitions (dict[str, Any]): Mapping of asset name -> {"partitions_def", "partition_mappings"}.
         named_resources (dict[str, dg.ResourceDefinition]): Pre-created Dagster resources keyed by name.
         env (str): Kedro environment (used for namespacing asset keys/resources).
+        mlflow_config (BaseModel | None): Optional MLflow configuration from the Kedro context.
     """
 
     def __init__(
@@ -76,6 +79,7 @@ class NodeTranslator:
         asset_partitions: dict[str, Any],
         named_resources: dict[str, dg.ResourceDefinition],
         env: str,
+        mlflow_config: "BaseModel" | None = None,
     ):
         self._pipelines = pipelines
         self._catalog = catalog
@@ -84,6 +88,7 @@ class NodeTranslator:
         self._asset_partitions = asset_partitions
         self._named_resources = named_resources
         self._env = env
+        self._mlflow_config = mlflow_config
 
     def _get_node_partitions_definition(self, node: "Node") -> dg.PartitionsDefinition | None:
         """Infer the partitions definition for a node's outputs.
@@ -361,7 +366,7 @@ class NodeTranslator:
             inputs = {unformat_asset_name(in_asset_name): in_asset for in_asset_name, in_asset in inputs.items()}
 
             mlflow_run, mlflow_metadata = None, None
-            if "mlflow" in context.resources:
+            if hasattr(context.resources, "mlflow"):
                 import mlflow
 
                 mlflow_run = mlflow.active_run()
@@ -371,9 +376,7 @@ class NodeTranslator:
                     tracking_uri = mlflow.get_tracking_uri()
                     # Build a URL to MLflow UI for this run
                     # This is a simple heuristic; adjust to your MLflow server UI format if needed
-                    mlflow_run_url = (
-                        f"{tracking_uri}/#/experiments/{mlflow_run.info.experiment_id}/runs/{mlflow_run_id}"
-                    )
+                    mlflow_run_url = get_mlflow_run_url(self._mlflow_config)
                     mlflow_metadata = {
                         "mlflow_run_id": mlflow_run_id,
                         "mlflow_experiment_id": mlflow_run.info.experiment_id,
@@ -392,6 +395,9 @@ class NodeTranslator:
 
                 else:
                     context.log.info("No active MLflow run detected.")
+
+            else:
+                context.log.debug("MLflow resource not available in context.resources.")
 
             for in_dataset_name in node.inputs:
                 if is_nothing_asset_name(self._catalog, in_dataset_name):

@@ -547,3 +547,37 @@ def get_mlflow_resource_from_config(mlflow_config: "BaseModel") -> dg.ResourceDe
     })
 
     return mlflow_resource
+
+
+def get_mlflow_run_url(mlflow_config: "BaseModel") -> str:
+    """Returns a fully functional MLflow UI URL for the currently active run.
+
+    Args:
+        mlflow_config (BaseModel): MLflow configuration.
+
+    Returns:
+        str: URL to the MLflow UI for the active run.
+    """
+    import mlflow
+
+    run = mlflow.active_run()
+    if run is None:
+        raise RuntimeError("No active MLflow run.")
+
+    exp_id = run.info.experiment_id
+    run_id = run.info.run_id
+    tracking_uri = mlflow.get_tracking_uri()
+
+    # Remote tracking server
+    if tracking_uri.startswith(("http://", "https://")):
+        base = tracking_uri.rstrip("/")
+        return f"{base}/#/experiments/{exp_id}/runs/{run_id}"
+
+    # Local file-based tracking URI: UI must be configured separately
+    if tracking_uri.startswith("file://"):
+        host = mlflow_config.ui.host
+        port = mlflow_config.ui.port
+        base = f"http://{host}:{port}"
+        return f"{base}/#/experiments/{exp_id}/runs/{run_id}"
+
+    raise ValueError(f"Unsupported MLflow tracking URI: {tracking_uri}")
