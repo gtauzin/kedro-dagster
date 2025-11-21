@@ -14,11 +14,11 @@ We are also grateful to everyone who advised and supported us, filed issues or h
 
 ## Major features and improvements
 - Wrap all Dagster `dg` CLI commands to be run from within a Kedro project with `kedro dagster <dg command>` by @gtauzin.
-- Add a `kedro_dagster.logging` meant to replace `logging` imports in Kedro nodes so loggers are captured and integrated with Dagster by @gtauzin.
+- Add a `kedro_dagster.logging` module meant to replace `logging` imports in Kedro nodes so loggers are captured and integrated with Dagster by @gtauzin.
 - Add `loggers` section to `dagster.yml` configuration file to configure Dagster run loggers by @gtauzin.
 - Rename `LoggerTranslator` to `LoggerCreator` for consistency with `ExecutorCreator` and `SchedulerCreator` by @gtauzin.
-- Declared direct dependency on `pydantic>=1.0.0,<3.0.0` and enable version-agnostic Pydantic configuration by @gtauzin.
-- Kedro-Dagster is now available on conda-forge and can be installed with `conda` or `mamba` by @rxm7706 and @gtauzin.
+- Declare direct dependency on `pydantic>=1.0.0,<3.0.0` and enable version-agnostic Pydantic configuration by @gtauzin.
+- Add conda-forge support for Kedro-Dagster, allowing installation with `conda` or `mamba` by @rxm7706 and @gtauzin.
 - Allow setting `group_name` in a dataset's `metadata` to override the pipeline-derived group name; `group_name` is also applied per-AssetOut for multi-assets so each asset can have an individual group by @gtauzin.
 - Add links to MLflow run in Dagster run logs, run tags, and materialized asset metadata by @gtauzin.
 
@@ -26,7 +26,7 @@ We are also grateful to everyone who advised and supported us, filed issues or h
 - Fix how `LoggerCreator` creates loggers for Dagster runs. Generic logging configuration is now supported from `dagster.yml` by @gtauzin.
 
 ## Breaking changes to the API
-- `env` is now a required parameter of `KedroProjectTranslator` by @gtauzin.
+- Make `env` a required parameter of `KedroProjectTranslator` by @gtauzin.
 - Remove `dev` config in `dagster.yml` by @gtauzin.
 
 ## Thanks for supporting contributions
