@@ -376,7 +376,7 @@ class NodeTranslator:
                     mlflow_run_id = mlflow_run.info.run_id
                     mlflow_tracking_uri = mlflow.get_tracking_uri()
                     # Build a URL to MLflow UI for this run
-                    # This is a simple heuristic; adjust to your MLflow server UI format if needed
+
                     mlflow_run_url = get_mlflow_run_url(self._mlflow_config)
                     mlflow_metadata = {
                         "mlflow_experiment_id": mlflow_experiment_id,
