@@ -25,6 +25,7 @@ from kedro_dagster.utils import (
     get_dataset_from_catalog,
     get_filter_params_dict,
     get_mlflow_resource_from_config,
+    get_mlflow_run_url,
     get_partition_mapping,
     is_mlflow_enabled,
     is_nothing_asset_name,
@@ -428,3 +429,80 @@ def test_model_creation_preserves_validation_behavior():
     except (ValidationError, ValueError, TypeError):
         # This is expected - validation should catch the type error
         pass
+
+
+def test_get_mlflow_run_url_remote_tracking_uri(monkeypatch):
+    """Test get_mlflow_run_url with remote HTTP tracking URI."""
+    pytest.importorskip("mlflow")
+    import mlflow  # noqa: F401
+
+    # Mock active run with remote tracking URI
+    mock_run = SimpleNamespace(info=SimpleNamespace(experiment_id="123", run_id="abc456def"))
+
+    monkeypatch.setattr("mlflow.active_run", lambda: mock_run)
+    monkeypatch.setattr("mlflow.get_tracking_uri", lambda: "http://mlflow.example.com:5000")
+
+    mock_config = SimpleNamespace()
+
+    url = get_mlflow_run_url(mock_config)
+    assert url == "http://mlflow.example.com:5000/#/experiments/123/runs/abc456def"
+
+
+def test_get_mlflow_run_url_https_tracking_uri(monkeypatch):
+    """Test get_mlflow_run_url with HTTPS tracking URI."""
+    pytest.importorskip("mlflow")
+    import mlflow  # noqa: F401
+
+    mock_run = SimpleNamespace(info=SimpleNamespace(experiment_id="456", run_id="xyz789ghi"))
+
+    monkeypatch.setattr("mlflow.active_run", lambda: mock_run)
+    monkeypatch.setattr("mlflow.get_tracking_uri", lambda: "https://secure-mlflow.com/")
+
+    mock_config = SimpleNamespace()
+
+    url = get_mlflow_run_url(mock_config)
+    assert url == "https://secure-mlflow.com/#/experiments/456/runs/xyz789ghi"
+
+
+def test_get_mlflow_run_url_local_file_tracking_uri(monkeypatch):
+    """Test get_mlflow_run_url with local file-based tracking URI."""
+    pytest.importorskip("mlflow")
+    import mlflow  # noqa: F401
+
+    mock_run = SimpleNamespace(info=SimpleNamespace(experiment_id="789", run_id="local123run"))
+
+    monkeypatch.setattr("mlflow.active_run", lambda: mock_run)
+    monkeypatch.setattr("mlflow.get_tracking_uri", lambda: "file:///home/user/mlruns")
+
+    # Mock config with UI settings
+    mock_config = SimpleNamespace(ui=SimpleNamespace(host="localhost", port=5000))
+
+    url = get_mlflow_run_url(mock_config)
+    assert url == "http://localhost:5000/#/experiments/789/runs/local123run"
+
+
+def test_get_mlflow_run_url_no_active_run(monkeypatch):
+    """Test get_mlflow_run_url raises error when no active run."""
+    pytest.importorskip("mlflow")
+
+    monkeypatch.setattr("mlflow.active_run", lambda: None)
+
+    mock_config = SimpleNamespace()
+
+    with pytest.raises(RuntimeError, match="No active MLflow run"):
+        get_mlflow_run_url(mock_config)
+
+
+def test_get_mlflow_run_url_unsupported_tracking_uri(monkeypatch):
+    """Test get_mlflow_run_url raises error for unsupported tracking URI."""
+    pytest.importorskip("mlflow")
+
+    mock_run = SimpleNamespace(info=SimpleNamespace(experiment_id="999", run_id="unsupported"))
+
+    monkeypatch.setattr("mlflow.active_run", lambda: mock_run)
+    monkeypatch.setattr("mlflow.get_tracking_uri", lambda: "databricks://profile")
+
+    mock_config = SimpleNamespace()
+
+    with pytest.raises(ValueError, match="Unsupported MLflow tracking URI"):
+        get_mlflow_run_url(mock_config)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import logging
+import sys
 
 import dagster as dg
 import pytest
@@ -1396,3 +1397,158 @@ def test_logger_handler_mixed_args_kwargs_direct():
     # Test that it works by logging a message
     logger_obj.debug("mixed params test")
     # Can't easily verify stream content due to Dagster internals, but handler creation worked
+
+
+def test_logger_handler_stream_ext_reference():
+    """Test that handlers support ext:// stream references like ext://sys.stdout."""
+    cfg = KedroDagsterConfig(
+        loggers={
+            "ext_stream": LoggerOptions(
+                log_level="INFO",
+                handlers=[
+                    {
+                        "class": "logging.StreamHandler",
+                        "stream": "ext://sys.stdout",
+                        "level": "INFO",
+                    }
+                ],
+            )
+        }
+    )
+
+    logger_def = _build_logger_definition(cfg, "ext_stream")
+    logger_config = cfg.loggers["ext_stream"].model_dump()
+    ctx = type("Ctx", (), {"logger_config": logger_config})()
+    logger_obj = logger_def.logger_fn(ctx)
+
+    # Should have one StreamHandler with sys.stdout as the stream
+    assert len(logger_obj.handlers) == 1
+    handler = logger_obj.handlers[0]
+    assert isinstance(handler, logging.StreamHandler)
+    assert handler.stream is sys.stdout
+
+
+def test_logger_handler_stream_ext_stderr_reference():
+    """Test that handlers support ext:// stream references for stderr."""
+    cfg = KedroDagsterConfig(
+        loggers={
+            "ext_stderr": LoggerOptions(
+                log_level="ERROR",
+                handlers=[
+                    {
+                        "class": "logging.StreamHandler",
+                        "stream": "ext://sys.stderr",
+                        "level": "ERROR",
+                    }
+                ],
+            )
+        }
+    )
+
+    logger_def = _build_logger_definition(cfg, "ext_stderr")
+    logger_config = cfg.loggers["ext_stderr"].model_dump()
+    ctx = type("Ctx", (), {"logger_config": logger_config})()
+    logger_obj = logger_def.logger_fn(ctx)
+
+    # Should have one StreamHandler with sys.stderr as the stream
+    assert len(logger_obj.handlers) == 1
+    handler = logger_obj.handlers[0]
+    assert isinstance(handler, logging.StreamHandler)
+    assert handler.stream is sys.stderr
+
+
+def test_logger_handler_stream_callable_ext_reference():
+    """Test that handlers support ext:// references when using () callable syntax."""
+    cfg = KedroDagsterConfig(
+        loggers={
+            "callable_ext": LoggerOptions(
+                log_level="INFO",
+            )
+        }
+    )
+
+    # Provide context override using '()' style with ext:// stream reference
+    override = {
+        "log_level": "INFO",
+        "handlers": [
+            {
+                "()": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+            }
+        ],
+    }
+
+    logger_def = _build_logger_definition(cfg, "callable_ext")
+    ctx = type("Ctx", (), {"logger_config": override})()
+    logger_obj = logger_def.logger_fn(ctx)
+
+    # Should have one StreamHandler with sys.stdout
+    assert len(logger_obj.handlers) == 1
+    handler = logger_obj.handlers[0]
+    assert isinstance(handler, logging.StreamHandler)
+    assert handler.stream is sys.stdout
+
+
+def test_logger_resolve_reference_ext_protocol():
+    """Test that _resolve_reference properly handles ext:// protocol prefix."""
+    cfg = KedroDagsterConfig(
+        loggers={
+            "test": LoggerOptions(
+                log_level="INFO",
+                handlers=[
+                    {
+                        "class": "logging.StreamHandler",
+                        "stream": "ext://sys.stdout",
+                        "level": "INFO",
+                    }
+                ],
+            )
+        }
+    )
+
+    logger_def = _build_logger_definition(cfg, "test")
+    logger_config = cfg.loggers["test"].model_dump()
+    ctx = type("Ctx", (), {"logger_config": logger_config})()
+    logger_obj = logger_def.logger_fn(ctx)
+
+    # Verify the stream was properly resolved
+    handler = logger_obj.handlers[0]
+    assert handler.stream is sys.stdout
+
+
+def test_logger_resolve_reference_without_ext_protocol():
+    """Test that _resolve_reference works with regular module.attr references."""
+    cfg = KedroDagsterConfig(
+        loggers={
+            "test": LoggerOptions(
+                log_level="INFO",
+            )
+        }
+    )
+
+    # Provide a formatter using direct module path (without ext://)
+    override = {
+        "log_level": "INFO",
+        "formatters": {
+            "custom": {
+                "()": "logging.Formatter",
+                "fmt": "%(message)s",
+            }
+        },
+        "handlers": [
+            {
+                "class": "logging.StreamHandler",
+                "level": "INFO",
+                "formatter": "custom",
+            }
+        ],
+    }
+
+    logger_def = _build_logger_definition(cfg, "test")
+    ctx = type("Ctx", (), {"logger_config": override})()
+    logger_obj = logger_def.logger_fn(ctx)
+
+    # Should successfully create handler with formatter
+    assert len(logger_obj.handlers) == 1
+    handler = logger_obj.handlers[0]
+    assert handler.formatter is not None

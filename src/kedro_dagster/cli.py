@@ -161,8 +161,8 @@ def init(env: str, force: bool, silent: bool) -> None:
                 is_cookiecutter=False,
                 dst=dg_toml_path,
                 # Map template variables appropriately
-                project_name=package_name,  # Python module name
-                package_name=project_metadata.project_name,  # Display project name
+                project_name=package_name,
+                package_name=project_metadata.project_name,
             )
             if not silent:
                 click.secho(
