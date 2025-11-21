@@ -136,7 +136,7 @@ filterwarnings = [
   # Ignore dagster-mlflow BetaWarning
   "ignore:Function `_create_mlflow_run_hook` is currently in beta:dagster.BetaWarning:dagster_mlflow.hooks",
   # Ignore pluggy `run_result` UserWarning
-  "ignore:Argument(s) 'run_result' which are declared in the hookspec cannot be found in this hook call:UserWarning:pluggy._hooks",
+  "ignore:Argument\\(s\\) 'run_result' which are declared in the hookspec cannot be found in this hook call:UserWarning",
 ]
 
 [tool.mypy]
