@@ -1,6 +1,5 @@
 import importlib
 import logging as std_logging
-from unittest.mock import patch
 
 import coloredlogs
 import pytest
@@ -19,12 +18,12 @@ def _import_module():
     return importlib.import_module("kedro_dagster.logging")
 
 
-def test_getLogger_falls_back_to_stdlib_when_no_dagster_context(monkeypatch):
+def test_getLogger_falls_back_to_stdlib_when_no_dagster_context(mocker):
     """Test that getLogger returns stdlib logger when no Dagster context is active."""
     kd_logging = _import_module()
 
     # Ensure OpExecutionContext.get() returns None (no active Dagster run)
-    monkeypatch.setattr(kd_logging.dg.OpExecutionContext, "get", staticmethod(lambda: None), raising=True)
+    mocker.patch.object(kd_logging.dg.OpExecutionContext, "get", staticmethod(lambda: None))
 
     logger = kd_logging.getLogger(__name__)
 
@@ -33,12 +32,12 @@ def test_getLogger_falls_back_to_stdlib_when_no_dagster_context(monkeypatch):
     assert logger.name == __name__
 
 
-def test_getLogger_uses_dagster_logger_when_context_active(monkeypatch):
+def test_getLogger_uses_dagster_logger_when_context_active(mocker):
     """Test that getLogger returns Dagster logger when context is active."""
     kd_logging = _import_module()
 
     # Pretend an active context exists
-    monkeypatch.setattr(kd_logging.dg.OpExecutionContext, "get", staticmethod(object), raising=True)
+    mocker.patch.object(kd_logging.dg.OpExecutionContext, "get", staticmethod(object))
 
     captured = {}
 
@@ -50,7 +49,7 @@ def test_getLogger_uses_dagster_logger_when_context_active(monkeypatch):
         captured["called_with"] = name
         return DummyDagsterLogger(name or "dagster")
 
-    monkeypatch.setattr(kd_logging.dg, "get_dagster_logger", fake_get_dagster_logger, raising=True)
+    mocker.patch.object(kd_logging.dg, "get_dagster_logger", fake_get_dagster_logger)
 
     logger = kd_logging.getLogger("my.mod")
 
@@ -59,7 +58,7 @@ def test_getLogger_uses_dagster_logger_when_context_active(monkeypatch):
     assert captured["called_with"] == "my.mod"
 
 
-def test_getLogger_falls_back_when_context_get_raises_exception(monkeypatch):
+def test_getLogger_falls_back_when_context_get_raises_exception(mocker):
     """Test that getLogger falls back to stdlib logging when OpExecutionContext.get() raises an exception."""
     kd_logging = _import_module()
 
@@ -67,7 +66,7 @@ def test_getLogger_falls_back_when_context_get_raises_exception(monkeypatch):
     def mock_context_get():
         raise RuntimeError("No execution context available")
 
-    monkeypatch.setattr(kd_logging.dg.OpExecutionContext, "get", staticmethod(mock_context_get), raising=True)
+    mocker.patch.object(kd_logging.dg.OpExecutionContext, "get", staticmethod(mock_context_get))
 
     # Mock the debug logging to capture the fallback message
     debug_calls = []
@@ -77,7 +76,7 @@ def test_getLogger_falls_back_when_context_get_raises_exception(monkeypatch):
         debug_calls.append(msg)
         return original_debug(msg)
 
-    monkeypatch.setattr(kd_logging._logging, "debug", mock_debug)
+    mocker.patch.object(kd_logging._logging, "debug", mock_debug)
 
     logger = kd_logging.getLogger("test.logger")
 
@@ -91,7 +90,7 @@ def test_getLogger_falls_back_when_context_get_raises_exception(monkeypatch):
     assert "RuntimeError" in debug_calls[0] or "No execution context available" in debug_calls[0]
 
 
-def test_logging_config_yaml_structure():
+def test_logging_config_yaml_structure(mocker):
     """Test that the expected YAML structure from the user requirement matches the actual config."""
     expected_yaml_structure = {
         "version": 1,
@@ -155,8 +154,8 @@ def test_logging_config_yaml_structure():
     def capture_dictConfig(config):
         captured_config.update(config)
 
-    with patch.object(std_logging.config, "dictConfig", side_effect=capture_dictConfig):
-        configure_loggers()
+    mocker.patch.object(std_logging.config, "dictConfig", side_effect=capture_dictConfig)
+    configure_loggers()
 
     # Check core structure matches
     assert captured_config["version"] == expected_yaml_structure["version"]
@@ -226,7 +225,7 @@ def test_dagster_rich_formatter_with_new_api():
         assert "processor" not in str(e).lower()
 
 
-def test_dagster_rich_formatter_fallback_compatibility():
+def test_dagster_rich_formatter_fallback_compatibility(mocker):
     """Test that dagster_rich_formatter handles older structlog API gracefully."""
     # Mock ProcessorFormatter to raise TypeError on processors argument
     original_init = structlog.stdlib.ProcessorFormatter.__init__
@@ -236,10 +235,10 @@ def test_dagster_rich_formatter_fallback_compatibility():
             raise TypeError("ProcessorFormatter() got an unexpected keyword argument 'processors'")
         return original_init(self, *args, **kwargs)
 
-    with patch.object(structlog.stdlib.ProcessorFormatter, "__init__", mock_init_old_api):
-        # Should fallback to single processor argument
-        formatter = dagster_rich_formatter()
-        assert isinstance(formatter, std_logging.Formatter)
+    mocker.patch.object(structlog.stdlib.ProcessorFormatter, "__init__", mock_init_old_api)
+    # Should fallback to single processor argument
+    formatter = dagster_rich_formatter()
+    assert isinstance(formatter, std_logging.Formatter)
 
 
 def test_dagster_json_formatter_creation():
@@ -277,7 +276,7 @@ def test_dagster_json_formatter_with_new_api():
         assert "processor" not in str(e).lower()
 
 
-def test_dagster_json_formatter_fallback_compatibility():
+def test_dagster_json_formatter_fallback_compatibility(mocker):
     """Test that dagster_json_formatter handles older structlog API gracefully."""
     # Mock ProcessorFormatter to raise TypeError on processors argument
     original_init = structlog.stdlib.ProcessorFormatter.__init__
@@ -287,10 +286,10 @@ def test_dagster_json_formatter_fallback_compatibility():
             raise TypeError("ProcessorFormatter() got an unexpected keyword argument 'processors'")
         return original_init(self, *args, **kwargs)
 
-    with patch.object(structlog.stdlib.ProcessorFormatter, "__init__", mock_init_old_api):
-        # Should fallback to single processor argument
-        formatter = dagster_json_formatter()
-        assert isinstance(formatter, std_logging.Formatter)
+    mocker.patch.object(structlog.stdlib.ProcessorFormatter, "__init__", mock_init_old_api)
+    # Should fallback to single processor argument
+    formatter = dagster_json_formatter()
+    assert isinstance(formatter, std_logging.Formatter)
 
 
 def test_dagster_colored_formatter_creation():

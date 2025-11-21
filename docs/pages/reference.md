@@ -28,6 +28,9 @@ if Dagster version >= 1.10.6, the command maps to the more recente `dg dev` Dags
 
 Kedro-Dagster also provides wrappers around all [Dagster `dg`](https://docs.dagster.io/api/clis/dg-cli/dg-cli-reference) CLI commands to facilitate working within a Kedro project context. These commands are extended to include an `--env, -e` option to automatically load the Kedro project and the configuration associated with the specified Kedro environment.
 
+!!! danger
+    These commands relies on passing down the `KEDRO_ENV` environment variable based on the passed `--env` option to the child Dagster CLI process. Dagster CLI might override this environment variable if it is defined in `.env` or other environment management tools. Make sure to avoid conflicts when using these commands.
+
 **Examples:**
 
 This command lists all Dagster assets, jobs, sensors, and resources generated from the Kedro pipelines in the project, using the `local` Kedro environment for configuration:

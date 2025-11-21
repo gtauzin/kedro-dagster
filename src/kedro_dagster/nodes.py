@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 import dagster as dg
 from kedro.io import MemoryDataset
 from kedro.pipeline import Pipeline
+from pydantic import BaseModel
 
 from kedro_dagster.datasets.nothing_dataset import NOTHING_OUTPUT
 from kedro_dagster.utils import (
@@ -30,6 +31,7 @@ from kedro_dagster.utils import (
     format_node_name,
     get_asset_key_from_dataset_name,
     get_dataset_from_catalog,
+    get_mlflow_run_url,
     get_partition_mapping,
     is_nothing_asset_name,
     unformat_asset_name,
@@ -65,6 +67,7 @@ class NodeTranslator:
         asset_partitions (dict[str, Any]): Mapping of asset name -> {"partitions_def", "partition_mappings"}.
         named_resources (dict[str, dg.ResourceDefinition]): Pre-created Dagster resources keyed by name.
         env (str): Kedro environment (used for namespacing asset keys/resources).
+        mlflow_config (BaseModel | None): Optional MLflow configuration from the Kedro context.
     """
 
     def __init__(
@@ -76,6 +79,7 @@ class NodeTranslator:
         asset_partitions: dict[str, Any],
         named_resources: dict[str, dg.ResourceDefinition],
         env: str,
+        mlflow_config: BaseModel | None = None,
     ):
         self._pipelines = pipelines
         self._catalog = catalog
@@ -84,6 +88,7 @@ class NodeTranslator:
         self._asset_partitions = asset_partitions
         self._named_resources = named_resources
         self._env = env
+        self._mlflow_config = mlflow_config
 
     def _get_node_partitions_definition(self, node: "Node") -> dg.PartitionsDefinition | None:
         """Infer the partitions definition for a node's outputs.
@@ -353,13 +358,49 @@ class NodeTranslator:
             Returns:
                 Any | tuple[Any, ...] | None: Node outputs as a single value, tuple, or ``None`` when no outputs.
             """
-            context.log.info(f"Running node `{node.name}` in graph.")
-
+            context.log.info(f"Running node `{node.name}` in graph. Dagster run_id = {context.run_id}")
             config_values = config.model_dump()  # type: ignore[attr-defined]
 
             # Merge params into inputs provided by Dagster
             inputs |= config_values
             inputs = {unformat_asset_name(in_asset_name): in_asset for in_asset_name, in_asset in inputs.items()}
+
+            mlflow_run, mlflow_metadata = None, None
+            if hasattr(context.resources, "mlflow"):
+                import mlflow
+
+                mlflow_run = mlflow.active_run()
+
+                if mlflow_run is not None:
+                    mlflow_experiment_id = mlflow_run.info.experiment_id
+                    mlflow_run_id = mlflow_run.info.run_id
+                    mlflow_tracking_uri = mlflow.get_tracking_uri()
+                    # Build a URL to MLflow UI for this run
+
+                    mlflow_run_url = get_mlflow_run_url(self._mlflow_config)
+                    mlflow_metadata = {
+                        "mlflow_experiment_id": mlflow_experiment_id,
+                        "mlflow_run_id": mlflow_run_id,
+                        "mlflow_tracking_uri": mlflow_tracking_uri,
+                        "mlflow_run_url": mlflow_run_url,
+                    }
+
+                    context.log.info(
+                        f"Active MLflow run detected. Experiment ID = {mlflow_experiment_id}, "
+                        f"run ID = {mlflow_run_id}, run URL = {mlflow_run_url}, "
+                        f"tracking URI = {mlflow_tracking_uri}"
+                    )
+
+                    context.instance.add_run_tags(
+                        context.run_id,
+                        mlflow_metadata,
+                    )
+
+                else:
+                    context.log.info("No active MLflow run detected.")
+
+            else:
+                context.log.debug("MLflow resource not available in context.resources.")
 
             for in_dataset_name in node.inputs:
                 if is_nothing_asset_name(self._catalog, in_dataset_name):
@@ -421,7 +462,19 @@ class NodeTranslator:
             # Emit materializations and attach partition metadata when available
             for out_dataset_name in node.outputs:
                 out_asset_key = get_asset_key_from_dataset_name(out_dataset_name, self._env)
-                context.log_event(dg.AssetMaterialization(asset_key=out_asset_key, partition=partition_key))
+
+                asset_metadata = None
+                if mlflow_metadata is not None:
+                    asset_metadata = mlflow_metadata.copy()
+                    asset_metadata["mlflow_run_url"] = dg.MetadataValue.url(asset_metadata["mlflow_run_url"])
+
+                context.log_event(
+                    dg.AssetMaterialization(
+                        asset_key=out_asset_key,
+                        partition=partition_key,
+                        metadata=asset_metadata,
+                    )
+                )
 
                 if (
                     is_nothing_asset_name(self._catalog, out_dataset_name)

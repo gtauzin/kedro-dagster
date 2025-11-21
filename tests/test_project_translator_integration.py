@@ -72,3 +72,172 @@ def test_translator_uses_cwd_when_find_kedro_project_returns_none(monkeypatch, t
     translator = KedroProjectTranslator(env="local", project_path=None)
 
     assert translator._project_path == Path.cwd()
+
+
+def test_translator_passes_mlflow_config_to_node_translator(monkeypatch):
+    """Test that KedroProjectTranslator extracts mlflow_config and passes it to NodeTranslator."""
+    pytest.importorskip("mlflow")
+    import mlflow  # noqa: F401
+
+    # Create a mock project path
+    tmp_project = Path(__file__).parent / "scenarios"
+
+    # Mock MLflow configuration
+    mock_mlflow_config = SimpleNamespace(
+        tracking=SimpleNamespace(experiment=SimpleNamespace(name="test_exp")),
+        server=SimpleNamespace(mlflow_tracking_uri="http://localhost:5000"),
+        ui=SimpleNamespace(host="localhost", port=5000),
+    )
+
+    # Mock context with MLflow config
+    mock_context = SimpleNamespace(
+        mlflow=mock_mlflow_config,
+        catalog=SimpleNamespace(list=lambda: []),
+        _hook_manager=SimpleNamespace(),
+    )
+
+    # Patch is_mlflow_enabled to return True
+    monkeypatch.setattr("kedro_dagster.translator.is_mlflow_enabled", lambda: True)
+
+    # Patch initialize_kedro to avoid bootstrapping but set required attributes
+    def mock_initialize_kedro(self, conf_source=None):
+        self._context = mock_context
+        self._session_id = "test_session_123"
+
+    monkeypatch.setattr(
+        "kedro_dagster.translator.KedroProjectTranslator.initialize_kedro",
+        mock_initialize_kedro,
+    )
+
+    # Mock get_dagster_config to avoid config loading errors
+    from kedro_dagster.config.kedro_dagster import KedroDagsterConfig  # noqa: F401
+
+    mock_dagster_config = KedroDagsterConfig(jobs={})
+    monkeypatch.setattr(
+        "kedro_dagster.translator.get_dagster_config",
+        lambda context: mock_dagster_config,
+    )
+
+    # We don't need to patch KedroSession since initialize_kedro is mocked
+
+    # Mock pipelines
+    monkeypatch.setattr(
+        "kedro.framework.project.pipelines",
+        SimpleNamespace(
+            get=lambda name: SimpleNamespace(nodes=[], tags=set()),
+            __contains__=lambda self, name: True,
+        ),
+    )
+
+    # Track calls to NodeTranslator
+    node_translator_calls = []
+
+    def mock_node_translator_init(self, *args, **kwargs):
+        node_translator_calls.append(kwargs)
+        # Store the mlflow_config parameter
+        self._mlflow_config = kwargs.get("mlflow_config")
+        # Create minimal attributes to avoid errors
+        self._pipelines = kwargs.get("pipelines", [])
+        self._catalog = kwargs.get("catalog")
+        self._hook_manager = kwargs.get("hook_manager")
+        self._asset_partitions = kwargs.get("asset_partitions", {})
+        self._named_resources = kwargs.get("named_resources", {})
+        self._env = kwargs.get("env", "base")
+
+    from kedro_dagster.nodes import NodeTranslator
+
+    # Patch NodeTranslator.__init__
+    monkeypatch.setattr(NodeTranslator, "__init__", mock_node_translator_init)
+
+    # Also mock to_dagster to return empty results
+    monkeypatch.setattr(NodeTranslator, "to_dagster", lambda self: ({}, {}))
+
+    # Create translator
+    translator = KedroProjectTranslator(project_path=tmp_project, env="base")
+
+    # This should trigger initialization
+    try:
+        _ = translator.to_dagster()
+    except Exception:
+        # We may get errors during full translation, but we just need to check
+        # that NodeTranslator was called with mlflow_config
+        pass
+
+    # Verify NodeTranslator was called with mlflow_config
+    assert len(node_translator_calls) > 0
+    assert "mlflow_config" in node_translator_calls[0]
+    assert node_translator_calls[0]["mlflow_config"] == mock_mlflow_config
+
+
+def test_translator_mlflow_config_none_when_not_configured(monkeypatch):
+    """Test that mlflow_config is None when MLflow is not configured on context."""
+    pytest.importorskip("mlflow")
+    import mlflow  # noqa: F401
+
+    tmp_project = Path(__file__).parent / "scenarios"
+
+    # Mock context WITHOUT MLflow config
+    mock_context = SimpleNamespace(
+        catalog=SimpleNamespace(list=lambda: []),
+        _hook_manager=SimpleNamespace(),
+    )
+    # Note: no mlflow attribute
+
+    # Patch is_mlflow_enabled to return True (installed but not configured)
+    monkeypatch.setattr("kedro_dagster.translator.is_mlflow_enabled", lambda: True)
+
+    # Patch initialize_kedro to avoid bootstrapping but set required attributes
+    def mock_initialize_kedro(self, conf_source=None):
+        self._context = mock_context
+        self._session_id = "test_session_456"
+
+    monkeypatch.setattr(
+        "kedro_dagster.translator.KedroProjectTranslator.initialize_kedro",
+        mock_initialize_kedro,
+    )
+
+    # Mock get_dagster_config to avoid config loading errors
+    from kedro_dagster.config.kedro_dagster import KedroDagsterConfig  # noqa: F401
+
+    mock_dagster_config = KedroDagsterConfig(jobs={})
+    monkeypatch.setattr(
+        "kedro_dagster.translator.get_dagster_config",
+        lambda context: mock_dagster_config,
+    )
+
+    monkeypatch.setattr(
+        "kedro.framework.project.pipelines",
+        SimpleNamespace(
+            get=lambda name: SimpleNamespace(nodes=[], tags=set()),
+            __contains__=lambda self, name: True,
+        ),
+    )
+
+    node_translator_calls = []
+
+    def mock_node_translator_init(self, *args, **kwargs):
+        node_translator_calls.append(kwargs)
+        self._mlflow_config = kwargs.get("mlflow_config")
+        self._pipelines = kwargs.get("pipelines", [])
+        self._catalog = kwargs.get("catalog")
+        self._hook_manager = kwargs.get("hook_manager")
+        self._asset_partitions = kwargs.get("asset_partitions", {})
+        self._named_resources = kwargs.get("named_resources", {})
+        self._env = kwargs.get("env", "base")
+
+    from kedro_dagster.nodes import NodeTranslator
+
+    monkeypatch.setattr(NodeTranslator, "__init__", mock_node_translator_init)
+    monkeypatch.setattr(NodeTranslator, "to_dagster", lambda self: ({}, {}))
+
+    translator = KedroProjectTranslator(project_path=tmp_project, env="base")
+
+    try:
+        _ = translator.to_dagster()
+    except Exception:
+        pass
+
+    # Verify NodeTranslator was called with mlflow_config=None
+    assert len(node_translator_calls) > 0
+    assert "mlflow_config" in node_translator_calls[0]
+    assert node_translator_calls[0]["mlflow_config"] is None

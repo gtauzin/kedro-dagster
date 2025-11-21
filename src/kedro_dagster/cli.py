@@ -161,8 +161,8 @@ def init(env: str, force: bool, silent: bool) -> None:
                 is_cookiecutter=False,
                 dst=dg_toml_path,
                 # Map template variables appropriately
-                project_name=package_name,  # Python module name
-                package_name=project_metadata.project_name,  # Display project name
+                project_name=package_name,
+                package_name=project_metadata.project_name,
             )
             if not silent:
                 click.secho(
@@ -216,10 +216,6 @@ if DAGSTER_VERSION >= (1, 10, 6):
         correctly initialized. We also set a few environment variables so the child
         process can pick up the Kedro project and environment if needed.
         """
-        # Lazy import to avoid circular dependency
-        from kedro.framework.session import KedroSession
-        from kedro.framework.startup import bootstrap_project
-
         # Discover the available dg commands from the official CLI entrypoint factory
         dg_root: click.Group = create_dg_cli()
         dg_command_names = list(dg_root.commands.keys())
@@ -236,18 +232,13 @@ if DAGSTER_VERSION >= (1, 10, 6):
                     """Wrapper around 'dg <name>' executed within a Kedro session."""
 
                     project_path = find_kedro_project(Path.cwd()) or Path.cwd()
-                    # Ensure Kedro project is bootstrapped and a session is created
-                    bootstrap_project(project_path)
-                    with KedroSession.create(project_path=project_path, env=env) as session:
-                        # Ensure the Kedro context is fully initialized
-                        session.load_context()
 
-                        env_vars = os.environ.copy()
-                        # Set Kedro env vars so child process can pick them up if needed
-                        env_vars["KEDRO_ENV"] = env
+                    env_vars = os.environ.copy()
+                    # Set Kedro env vars so child process can pick them up if needed
+                    env_vars["KEDRO_ENV"] = env
 
-                        # Execute the original 'dg' command, forwarding all extra args
-                        subprocess.call(["dg", name, *args], cwd=str(project_path), env=env_vars)
+                    # Execute the original 'dg' command, forwarding all extra args
+                    subprocess.call(["dg", name, *args], cwd=str(project_path), env=env_vars)
 
                 return _callback
 
@@ -342,7 +333,6 @@ else:
 
         """
         # Lazy import to avoid circular dependency
-        from kedro.framework.session import KedroSession
         from kedro.framework.startup import bootstrap_project
 
         project_path = find_kedro_project(Path.cwd()) or Path.cwd()
@@ -351,35 +341,28 @@ else:
         definitions_py = "definitions.py"
         definitions_py_path = project_path / "src" / package_name / definitions_py
 
-        with KedroSession.create(
-            project_path=project_path,
-            env=env,
-        ) as session:
-            # Ensure the Kedro context is fully initialized
-            session.load_context()
+        env_vars = os.environ.copy()
+        # Set Kedro env vars so child process can pick them up if needed
+        env_vars["KEDRO_ENV"] = env
 
-            env_vars = os.environ.copy()
-            # Set Kedro env vars so child process can pick them up if needed
-            env_vars["KEDRO_ENV"] = env
-
-            # call dagster dev with specific options
-            subprocess.call(
-                [
-                    "dagster",
-                    "dev",
-                    "--python-file",
-                    definitions_py_path,
-                    "--log-level",
-                    log_level,
-                    "--log-format",
-                    log_format,
-                    "--host",
-                    host,
-                    "--port",
-                    port,
-                    "--live-data-poll-rate",
-                    live_data_poll_rate,
-                ],
-                cwd=str(project_path),
-                env=env_vars,
-            )
+        # call dagster dev with specific options
+        subprocess.call(
+            [
+                "dagster",
+                "dev",
+                "--python-file",
+                definitions_py_path,
+                "--log-level",
+                log_level,
+                "--log-format",
+                log_format,
+                "--host",
+                host,
+                "--port",
+                port,
+                "--live-data-poll-rate",
+                live_data_poll_rate,
+            ],
+            cwd=str(project_path),
+            env=env_vars,
+        )

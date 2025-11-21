@@ -130,8 +130,13 @@ norecursedirs = "src/kedro_dagster/templates"
 filterwarnings = [
   # Ignore all Pydantic v2 deprecation warnings during tests
   "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+  "ignore::pydantic.warnings.PydanticDeprecatedSince212",
   # Silence Kedro framework warnings about missing pipelines in test scenarios
   "ignore:Your project does not contain any pipelines with nodes:UserWarning:kedro.framework.cli.starters",
+  # Ignore dagster-mlflow BetaWarning
+  "ignore:Function `_create_mlflow_run_hook` is currently in beta:dagster.BetaWarning:dagster_mlflow.hooks",
+  # Ignore pluggy `run_result` UserWarning
+  "ignore:Argument\\(s\\) 'run_result' which are declared in the hookspec cannot be found in this hook call:UserWarning",
 ]
 
 [tool.mypy]

@@ -128,7 +128,11 @@ root:
 
 #### In-code logging
 
-Logs generated within Kedro nodes are captured if `getLogger` is imported from the `kedro_dagster.logging` module instead of the `logging` package and the `getLogger` calls are made inside the node functions. These logs are then displayed in the Dagster UI, allowing for easier tracing and debugging of pipeline executions.  To configure logging within Dagster runs, use the Kedro-Dagster `loggers` section of the `dagster.yml` configuration file to define and customize loggers for your Dagster runs:
+Logs generated within Kedro nodes are captured if `getLogger` is imported from the `kedro_dagster.logging` module instead of the `logging` package and the `getLogger` calls are made inside the node functions. These logs are then displayed in the Dagster UI, allowing for easier tracing and debugging of pipeline executions.
+
+#####  Custom logger configuration
+
+Additionally, to configure logging within Dagster runs, use the Kedro-Dagster `loggers` section of the `dagster.yml` configuration file to define and customize loggers for your Dagster runs:
 
 ```yaml
 loggers:
@@ -151,7 +155,65 @@ jobs:
     loggers: [console_logger]
 ```
 
+##### Custom handlers, formatters, and filters
+
+You can define custom formatters and filters using either the `()` callable syntax or the `class` key:
+
+```yaml
+loggers:
+  advanced_logger:
+    log_level: DEBUG
+    formatters:
+      custom_formatter:
+        "()": my_package.formatters.CustomFormatter
+        prefix: "CUSTOM"
+        format: "%(message)s"
+      class_formatter:
+        class: my_package.formatters.AnotherFormatter
+        custom_param: "value"
+    filters:
+      custom_filter:
+        "()": my_package.filters.CustomFilter
+        keyword: "important"
+    handlers:
+      - class: logging.StreamHandler
+        level: DEBUG
+        formatter: custom_formatter
+        filters: [custom_filter]
+```
+
 See the [Example page](example.md#custom-logging-integration) for a complete example of configuring logging in Kedro-Dagster.
+
+## MLflow integration
+
+Kedro-Dagster provides seamless integration with MLflow when using [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow) for experiment tracking. When MLflow is configured in your Kedro project, Kedro-Dagster automatically captures MLflow run information and displays it in the Dagster UI.
+
+### Automatic MLflow run tracking
+
+When a Kedro node executes within a Dagster context and the active MLflow run triggered by the Kedro-MLflow hook is detected, Kedro-Dagster automatically:
+
+1. **Captures run metadata**: Extracts experiment ID, run ID, and tracking URI from the active MLflow run
+2. **Generates run URLs**: Creates clickable links to view the MLflow run in the MLflow UI
+3. **Logs to Dagster**: Records MLflow run information in Dagster logs for easy access and debugging
+
+Those details appear in the Dagster run logs, run tags, and asset materialization metadata, allowing users to quickly navigate between Dagster runs and their corresponding MLflow experiments.
+
+### Configuration requirements
+
+To enable MLflow integration:
+
+1. **Install kedro-mlflow**: See the [Kedro-MLflow installation instructions](https://kedro-mlflow.readthedocs.io/en/latest/source/02_getting_started/01_installation/01_installation.html)
+2. **Configure MLflow** in your Kedro project following the [kedro-mlflow documentation](https://kedro-mlflow.readthedocs.io/)
+3. **MLflow UI configuration**: For example, define UI host and port or tracking URI in `conf/<env>/mlflow.yml`:
+
+```yaml
+ui:
+  host: localhost
+  port: 5000
+
+server:
+  mlflow_tracking_uri: mlruns
+```
 
 ## Kedro datasets for Dagster partitioning
 
@@ -248,6 +310,7 @@ Kedro-Dagster expects a standard [Kedro project structure](https://docs.kedro.or
 This YAML file defines jobs, executors, and schedules for your project.
 
 !!! example
+
   ```yaml
   schedules:
     my_job_schedule: # Name of the schedule

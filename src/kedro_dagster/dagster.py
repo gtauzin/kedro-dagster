@@ -200,8 +200,12 @@ class LoggerCreator:
         """
 
         def _resolve_reference(ref: Any) -> Any:
-            """Resolve a string with "module.ClassName" or "module:function_name"."""
+            """Resolve a string with "module.ClassName", "module:function_name", or "ext://module.attr"."""
             if isinstance(ref, str):
+                # Handle ext:// protocol used in logging configurations
+                if ref.startswith("ext://"):
+                    ref = ref[6:]  # Remove "ext://" prefix
+
                 module_path, _, attr = ref.rpartition(".")
                 if module_path:
                     module = importlib.import_module(module_path)
@@ -272,6 +276,9 @@ class LoggerCreator:
                     if "()" in hcfg:
                         handler_callable = _resolve_reference(hcfg["()"])
                         init_kwargs = {k: v for (k, v) in hcfg.items() if k != "()"}
+                        # Resolve stream references like "ext://sys.stdout"
+                        if "stream" in init_kwargs and isinstance(init_kwargs["stream"], str):
+                            init_kwargs["stream"] = _resolve_reference(init_kwargs["stream"])
                         handler_inst = handler_callable(**init_kwargs)
                     else:
                         cls_path = hcfg.get("class", "logging.StreamHandler")
@@ -279,6 +286,9 @@ class LoggerCreator:
                         init_kwargs = {
                             k: v for (k, v) in hcfg.items() if k not in ("class", "level", "formatter", "filters")
                         }
+                        # Resolve stream references like "ext://sys.stdout"
+                        if "stream" in init_kwargs and isinstance(init_kwargs["stream"], str):
+                            init_kwargs["stream"] = _resolve_reference(init_kwargs["stream"])
                         handler_inst = handler_cls(**init_kwargs)
 
                     # Set handler level

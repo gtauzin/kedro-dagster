@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import re
 import warnings
-from unittest.mock import MagicMock
 
 import dagster as dg
 import pytest
@@ -250,7 +249,7 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
     assert isinstance(jobs["default"], dg.JobDefinition)
 
 
-def _patch_minimal_kedro_pipelines(monkeypatch):
+def _patch_minimal_kedro_pipelines(mocker):
     """Patch kedro.framework.project.pipelines.get to avoid real Kedro dependency."""
 
     class _DummyGetter:
@@ -261,10 +260,10 @@ def _patch_minimal_kedro_pipelines(monkeypatch):
 
             return _Pipe()
 
-    monkeypatch.setattr("kedro.framework.project.pipelines.get", _DummyGetter(), raising=False)
+    mocker.patch("kedro.framework.project.pipelines.get", _DummyGetter())
 
 
-def _make_translator_with(monkeypatch, named_loggers=None, named_executors=None):
+def _make_translator_with(mocker, named_loggers=None, named_executors=None):
     """Create a PipelineTranslator with minimal viable context and a stub translate_pipeline.
 
     Returns a tuple (translator, captured) where captured is a dict populated by the stub
@@ -287,7 +286,7 @@ def _make_translator_with(monkeypatch, named_loggers=None, named_executors=None)
         return f"job:{job_name}"
 
     # Ensure Kedro pipeline access is stubbed
-    _patch_minimal_kedro_pipelines(monkeypatch)
+    _patch_minimal_kedro_pipelines(mocker)
 
     translator = PipelineTranslator(
         dagster_config=type("Cfg", (), {"jobs": {}, "loggers": {}})(),
@@ -305,14 +304,14 @@ def _make_translator_with(monkeypatch, named_loggers=None, named_executors=None)
     )
 
     # Patch the instance method to capture logger_defs
-    monkeypatch.setattr(PipelineTranslator, "translate_pipeline", _fake_translate, raising=False)
+    mocker.patch.object(PipelineTranslator, "translate_pipeline", _fake_translate)
     return translator, captured
 
 
-def test_pipeline_translator_logger_string_reference_found(monkeypatch):
+def test_pipeline_translator_logger_string_reference_found(mocker):
     """Test that pipeline translator resolves logger string references correctly."""
     ld = dg.LoggerDefinition(logger_fn=lambda ctx: logging.getLogger("t"))
-    translator, captured = _make_translator_with(monkeypatch, {"console": ld})
+    translator, captured = _make_translator_with(mocker, {"console": ld})
 
     # Create a mock logger config for the "console" logger
     mock_logger_options = LoggerOptions(log_level="INFO")
@@ -339,9 +338,9 @@ def test_pipeline_translator_logger_string_reference_found(monkeypatch):
     assert captured.get("logger_defs") == {"console": ld}
 
 
-def test_pipeline_translator_logger_string_reference_missing(monkeypatch):
+def test_pipeline_translator_logger_string_reference_missing(mocker):
     """Test that pipeline translator raises error for missing logger string references."""
-    translator, _ = _make_translator_with(monkeypatch, {})
+    translator, _ = _make_translator_with(mocker, {})
     translator._dagster_config.jobs = {
         "jobA": type(
             "Job",
@@ -359,12 +358,12 @@ def test_pipeline_translator_logger_string_reference_missing(monkeypatch):
         translator.to_dagster()
 
 
-def test_pipeline_translator_inline_logger_found(monkeypatch):
+def test_pipeline_translator_inline_logger_found(mocker):
     """Test that pipeline translator resolves inline logger configurations correctly."""
     job_name = "jobB"
     specific_name = f"{job_name}__logger_0"
     ld = dg.LoggerDefinition(logger_fn=lambda ctx: logging.getLogger("t"))
-    translator, captured = _make_translator_with(monkeypatch, {specific_name: ld})
+    translator, captured = _make_translator_with(mocker, {specific_name: ld})
 
     translator._dagster_config.jobs = {
         job_name: type(
@@ -385,10 +384,10 @@ def test_pipeline_translator_inline_logger_found(monkeypatch):
     assert captured.get("logger_defs") == {specific_name: ld}
 
 
-def test_pipeline_translator_inline_logger_missing(monkeypatch):
+def test_pipeline_translator_inline_logger_missing(mocker):
     """Test that pipeline translator raises error for missing inline logger configurations."""
     job_name = "jobC"
-    translator, _ = _make_translator_with(monkeypatch, {})
+    translator, _ = _make_translator_with(mocker, {})
     translator._dagster_config.jobs = {
         job_name: type(
             "Job",
@@ -408,10 +407,10 @@ def test_pipeline_translator_inline_logger_missing(monkeypatch):
         translator.to_dagster()
 
 
-def test_pipeline_translator_executor_string_reference_found(monkeypatch):
+def test_pipeline_translator_executor_string_reference_found(mocker):
     """Test that pipeline translator resolves executor string references correctly."""
     exec_def = object()
-    translator, captured = _make_translator_with(monkeypatch, named_executors={"seq": exec_def})
+    translator, captured = _make_translator_with(mocker, named_executors={"seq": exec_def})
 
     translator._dagster_config.jobs = {
         "jobA": type(
@@ -433,9 +432,9 @@ def test_pipeline_translator_executor_string_reference_found(monkeypatch):
     assert captured.get("executor_def") is exec_def
 
 
-def test_pipeline_translator_executor_string_reference_missing(monkeypatch):
+def test_pipeline_translator_executor_string_reference_missing(mocker):
     """Test that pipeline translator raises error for missing executor string references."""
-    translator, _ = _make_translator_with(monkeypatch)
+    translator, _ = _make_translator_with(mocker)
     translator._dagster_config.jobs = {
         "jobA": type(
             "Job",
@@ -453,12 +452,12 @@ def test_pipeline_translator_executor_string_reference_missing(monkeypatch):
         translator.to_dagster()
 
 
-def test_pipeline_translator_executor_inline_found(monkeypatch):
+def test_pipeline_translator_executor_inline_found(mocker):
     """Test that pipeline translator resolves inline executor configurations correctly."""
     job_name = "jobB"
     job_exec_name = f"{job_name}__executor"
     exec_def = object()
-    translator, captured = _make_translator_with(monkeypatch, named_executors={job_exec_name: exec_def})
+    translator, captured = _make_translator_with(mocker, named_executors={job_exec_name: exec_def})
 
     translator._dagster_config.jobs = {
         job_name: type(
@@ -479,10 +478,10 @@ def test_pipeline_translator_executor_inline_found(monkeypatch):
     assert captured.get("executor_def") is exec_def
 
 
-def test_pipeline_translator_executor_inline_missing(monkeypatch):
+def test_pipeline_translator_executor_inline_missing(mocker):
     """Test that pipeline translator raises error for missing inline executor configurations."""
     job_name = "jobC"
-    translator, _ = _make_translator_with(monkeypatch)
+    translator, _ = _make_translator_with(mocker)
 
     translator._dagster_config.jobs = {
         job_name: type(
@@ -570,16 +569,16 @@ def test_warning_suppression_in_context():
             warnings.warn = original_warn
 
 
-def test_create_after_pipeline_run_hook_op_method_exists():
+def test_create_after_pipeline_run_hook_op_method_exists(mocker):
     """Test that the _create_after_pipeline_run_hook_op method exists and can be called."""
     # Create a minimal mock setup to test that the method exists and has the warning suppression
-    mock_context = MagicMock()
-    mock_context.catalog = MagicMock()
-    mock_context._hook_manager = MagicMock()
+    mock_context = mocker.Mock()
+    mock_context.catalog = mocker.Mock()
+    mock_context._hook_manager = mocker.Mock()
 
     # This is the minimal constructor args needed
     translator = PipelineTranslator(
-        dagster_config=MagicMock(),
+        dagster_config=mocker.Mock(),
         context=mock_context,
         project_path="/fake/path",
         env="test",
@@ -599,7 +598,7 @@ def test_create_after_pipeline_run_hook_op_method_exists():
     assert callable(method)
 
     # Test that we can call it with a mock pipeline and run params
-    mock_pipeline = MagicMock()
+    mock_pipeline = mocker.Mock()
     after_pipeline_run_asset_names = ["test_asset"]
     hook_op = method("test_job", mock_pipeline, after_pipeline_run_asset_names)
     assert callable(hook_op)
