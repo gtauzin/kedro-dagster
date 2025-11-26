@@ -12,6 +12,7 @@ nav:
   - Example: pages/example.md
   - Technical documentation: pages/technical.md
   - Reference: pages/reference.md
+  - FAQ: pages/faq.md
 
 theme:
   name: material

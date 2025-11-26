@@ -200,6 +200,7 @@ class PipelineTranslator:
         def before_pipeline_run_hook_op(context: dg.OpExecutionContext) -> dg.Nothing:
             kedro_run_resource = context.resources.kedro_run
             kedro_run_resource.after_context_created_hook()
+            kedro_run_resource.after_catalog_created_hook()
 
             self._hook_manager.hook.before_pipeline_run(
                 run_params=kedro_run_resource.run_params,

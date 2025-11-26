@@ -99,10 +99,25 @@ class KedroRunTranslator:
 
             @property
             def run_params(self) -> dict[str, Any]:
+                """Return all run parameters as a dictionary.
+
+                Returns:
+                    dict[str, Any]: Dictionary containing all Kedro run parameters
+                        including run_id/session_id, project path, environment, pipeline
+                        name, and filtering options.
+                """
                 return self.model_dump()  # type: ignore[no-any-return]
 
             @property
             def pipeline(self) -> dict[str, Any]:
+                """Load and return the filtered Kedro pipeline.
+
+                Applies filtering parameters (node names, tags, namespaces, from/to nodes)
+                to the base pipeline to produce the final executable pipeline.
+
+                Returns:
+                    dict[str, Any]: The filtered Kedro pipeline object.
+                """
                 # Lazy import to avoid circular dependency
                 from kedro.framework.project import pipelines
 
@@ -132,7 +147,22 @@ class KedroRunTranslator:
                 return pipeline_obj.filter(**filter_kwargs)  # type: ignore[no-any-return]
 
             def after_context_created_hook(self) -> None:
+                """Invoke the Kedro `after_context_created` hook.
+
+                This method is called at the beginning of Dagster job execution to
+                trigger any registered Kedro hooks that should run after the Kedro
+                context is initialized.
+                """
                 hook_manager.hook.after_context_created(context=context)
+
+            def after_catalog_created_hook(self) -> None:
+                """Invoke the Kedro `after_catalog_created` hook.
+
+                This method is called at the beginning of Dagster job execution to
+                trigger any registered Kedro hooks that should run after the Kedro
+                catalog is created.
+                """
+                hook_manager.hook.after_catalog_created(context=context, catalog=self._catalog)
 
         run_params = (
             self._kedro_params
