@@ -1,11 +1,14 @@
 """Translation of Kedro run params and on error pipeline hooks."""
 
+from logging import getLogger
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from kedro import __version__ as kedro_version
 
 from kedro_dagster.utils import KEDRO_VERSION, PYDANTIC_VERSION, create_pydantic_config, get_filter_params_dict
+
+LOGGER = getLogger(__name__)
 
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
@@ -51,6 +54,7 @@ class KedroRunTranslator:
             ConfigurableResource: Dagster resource for Kedro pipeline hooks.
 
         """
+        LOGGER.info(f"Creating Kedro run resource for pipeline '{pipeline_name}'")
 
         context = self._context
         hook_manager = self._hook_manager
@@ -155,6 +159,7 @@ class KedroRunTranslator:
             for the `on_pipeline_error` hook.
 
         """
+        LOGGER.info("Creating Dagster run sensors...")
 
         @dg.run_failure_sensor(
             name="on_pipeline_error_sensor",

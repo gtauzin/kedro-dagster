@@ -256,7 +256,7 @@ def get_match_pattern_from_catalog_resolver(config_resolver: "CatalogConfigResol
             try:
                 return match_method(ds_name)
             except Exception:
-                LOGGER.debug("Resolver.%s failed for dataset '%s'\n", method_name, ds_name, exc_info=True)
+                LOGGER.debug(f"Resolver.{method_name} failed for dataset '{ds_name}'", exc_info=True)
     return None
 
 
@@ -338,10 +338,9 @@ def format_dataset_name(name: str) -> str:
     # Special-case Dagster reserved identifiers to avoid conflicts with op/asset arg names
     # See dagster._core.definitions.utils.DISALLOWED_NAMES which includes "input" and "output".
     if name in {"input", "output"}:
-        raise ValueError(
-            f"Dataset name `{name}` is reserved in Dagster. "
-            "Please rename your Kedro dataset to avoid conflicts with Dagster's naming convention."
-        )
+        msg = f"Dataset name `{name}` is reserved in Dagster. Please rename your Kedro dataset to avoid conflicts with Dagster's naming convention."
+        LOGGER.error(msg)
+        raise ValueError(msg)
 
     dataset_name = name.replace(".", KEDRO_DAGSTER_SEPARATOR)
 
@@ -538,7 +537,9 @@ def get_mlflow_resource_from_config(mlflow_config: "BaseModel") -> dg.ResourceDe
         ResourceDefinition: Dagster resource definition for MLflow.
     """
     if mlflow_tracking is None:
-        raise ImportError("dagster-mlflow is not installed. Please install it to use MLflow integration.")
+        msg = "dagster-mlflow is not installed. Please install it to use MLflow integration."
+        LOGGER.error(msg)
+        raise ImportError(msg)
 
     mlflow_resource = mlflow_tracking.configured({
         "experiment_name": mlflow_config.tracking.experiment.name,

@@ -67,7 +67,7 @@ Kedro and Dagster logging is unified to provide a consistent logging experience 
 
 ### (Experimental) Dagster partitions support
 
-Enable time- or key-based [Dagster partitions](https://docs.dagster.io/guides/build/partitions-and-backfills) to backfill, schedule, and process incremental slices of your pipelines.
+Enable key-based [Dagster partitions](https://docs.dagster.io/guides/build/partitions-and-backfills) to backfill, schedule, and process incremental slices of your pipelines. Currently supports `StaticPartitionsDefinition` with `StaticPartitionMapping` or `IdentityPartitionMapping`. See the [technical documentation](technical.md#kedro-datasets-for-dagster-partitioning) for details on supported features and alternatives for time-based partitioning.
 
 ## Limitations and considerations
 

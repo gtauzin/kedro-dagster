@@ -160,8 +160,24 @@ kedro dagster dev --env local
 
 The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000) by default.
 
-!!! note
+!!! note "Logging Configuration"
     You may have noticed that by default, logs from Kedro/Kedro-Dagster and Dagster are displayed in different formats on the terminal. You can configure Kedro/Kedro-Dagster logging to match Dagster's format by making use of Dagster formatters in your Kedro project's `logging.yml`. For more information, see the [Logging](technical.md#logging) section in the technical documentation.
+
+!!! tip "Logging from Your Kedro Nodes"
+
+    To see logs from your Kedro node functions in the Dagster UI, replace `logging.getLogger` with `kedro_dagster.logging.getLogger` and make sure to make the import inside your node functions.
+
+    ```python
+
+    def process_data(data):
+        from kedro_dagster.logging import getLogger
+        logger = getLogger(__name__)
+        logger.info("Processing data...")
+        # Your code here
+        return processed_data
+    ```
+
+    For complete logging configuration and best practices, see the [Logging section](technical.md#logging) in the technical documentation.
 
 ### Assets
 

@@ -273,6 +273,9 @@ See also the API reference entries for filtering and execution options: [`Pipeli
 
 The `local` environment uses Dagster partitions via a dedicated Kedro dataset wrapper. Companies data are preprocessed in partitions, defined as static CSV files. The catalog defines both the upstream partitioned dataset and its downstream counterpart with a partition mapping:
 
+!!! note "Partition Type Selection"
+    This example uses `StaticPartitionsDefinition`, which is currently the only supported partition definition type in Kedro-Dagster. While Dagster supports others like time-based partitions (`TimeWindowPartitionsDefinition`), these are not yet supported by Kedro-Dagster.
+
 ```yaml
 companies_dagster_partition:
   type: kedro_dagster.DagsterPartitionedDataset
@@ -303,6 +306,35 @@ companies_dagster_partition:
 Partition mappings are implemented via `partition_mappings` on `DagsterPartitionedDataset` (pattern targets like `{namespace}.partitioned_dataset` are allowed) defined in the upstream dataset for each downstream datasets. Here, the partition mapping above links upstream raw company files (`1.csv`, `2.csv`, `3.csv`) to downstream preprocessed files (`10.csv`, `20.csv`, `30.csv`).
 
 In practice, when a job involving partitioned datasets is launched in Dagster, for each upstream partition key (e.g., `1.csv`) a separate dagster op will be created to compute the corresponding downstream partition key (`10.csv`) based on the defined mapping.
+
+#### Identity Partition Mapping
+
+For simpler cases where upstream and downstream partitions share the same keys, use `IdentityPartitionMapping`:
+
+```yaml
+companies_dagster_partition:
+  type: kedro_dagster.DagsterPartitionedDataset
+  path: data/01_raw/companies/
+  dataset:
+    type: pandas.CSVDataset
+  partition:
+    type: dagster.StaticPartitionsDefinition
+    partition_keys: ["region_us.csv", "region_eu.csv", "region_asia.csv"]
+  partition_mapping:
+    "{namespace}.processed_companies_dagster_partition":
+      type: dagster.IdentityPartitionMapping  # Same keys in both datasets
+
+"{namespace}.processed_companies_dagster_partition":
+   type: kedro_dagster.DagsterPartitionedDataset
+   path: data/02_intermediate/<env>/{namespace}/processed_companies/
+   dataset:
+      type: pandas.CSVDataset
+   partition:
+      type: dagster.StaticPartitionsDefinition
+      partition_keys: ["region_us.csv", "region_eu.csv", "region_asia.csv"]  # Matches upstream
+```
+
+This is simpler than `StaticPartitionMapping` when there's a 1:1 correspondence between partition keys.
 
 !!! note
    `DagsterPartitionedDataset` reduces to Kedro's `PartitionedDataset` when ran outside of Dagster, so the pipeline remains runnable with `kedro run` and outputs the same results.

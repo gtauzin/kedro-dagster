@@ -61,7 +61,9 @@ class KedroDagsterConfig(BaseModel):
             elif "docker_executor" in executor_config:
                 executor_name = "docker_executor"
             else:
-                raise ValueError(f"Unknown executor type in {name}")
+                msg = f"Unknown executor type in {name}"
+                LOGGER.error(msg)
+                raise ValueError(msg)
 
             executor_options_class = EXECUTOR_MAP[executor_name]
             executor_options_params = executor_config[executor_name] or {}
@@ -80,6 +82,8 @@ def get_dagster_config(context: "KedroContext") -> KedroDagsterConfig:
     Returns:
         KedroDagsterConfig: Dagster configuration.
     """
+    LOGGER.info("Loading Dagster configuration...")
+
     try:
         if "dagster" not in context.config_loader.config_patterns.keys():
             context.config_loader.config_patterns.update({"dagster": ["dagster*", "dagster*/**", "**/dagster*"]})
