@@ -103,6 +103,8 @@ def test_translator_passes_mlflow_config_to_node_translator(monkeypatch):
     def mock_initialize_kedro(self, conf_source=None):
         self._context = mock_context
         self._session_id = "test_session_123"
+        self._catalog = mock_context.catalog
+        self._pipelines = {}
 
     monkeypatch.setattr(
         "kedro_dagster.translator.KedroProjectTranslator.initialize_kedro",
@@ -143,6 +145,7 @@ def test_translator_passes_mlflow_config_to_node_translator(monkeypatch):
         self._asset_partitions = kwargs.get("asset_partitions", {})
         self._named_resources = kwargs.get("named_resources", {})
         self._env = kwargs.get("env", "base")
+        self._run_id = kwargs.get("run_id", "test_run_id")
 
     from kedro_dagster.catalog import CatalogTranslator
     from kedro_dagster.dagster import ExecutorCreator, ScheduleCreator
@@ -189,12 +192,7 @@ def test_translator_passes_mlflow_config_to_node_translator(monkeypatch):
     translator = KedroProjectTranslator(project_path=tmp_project, env="base")
 
     # This should trigger initialization
-    try:
-        _ = translator.to_dagster()
-    except Exception:
-        # We may get errors during full translation, but we just need to check
-        # that NodeTranslator was called with mlflow_config
-        pass
+    _ = translator.to_dagster()
 
     # Verify NodeTranslator was called with mlflow_config
     assert len(node_translator_calls) > 0
@@ -223,6 +221,8 @@ def test_translator_mlflow_config_none_when_not_configured(monkeypatch):
     def mock_initialize_kedro(self, conf_source=None):
         self._context = mock_context
         self._session_id = "test_session_456"
+        self._catalog = mock_context.catalog
+        self._pipelines = {}
 
     monkeypatch.setattr(
         "kedro_dagster.translator.KedroProjectTranslator.initialize_kedro",
@@ -257,6 +257,7 @@ def test_translator_mlflow_config_none_when_not_configured(monkeypatch):
         self._asset_partitions = kwargs.get("asset_partitions", {})
         self._named_resources = kwargs.get("named_resources", {})
         self._env = kwargs.get("env", "base")
+        self._run_id = kwargs.get("run_id", "test_run_id")
 
     from kedro_dagster.catalog import CatalogTranslator
     from kedro_dagster.dagster import ExecutorCreator, ScheduleCreator
