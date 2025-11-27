@@ -186,7 +186,6 @@ class KedroRunTranslator:
                     save_version = self.session_id
 
                 after_catalog_created_params = dict(
-                    context=context,
                     catalog=catalog,
                     conf_catalog=conf_catalog,
                     conf_creds=conf_creds,
@@ -194,9 +193,13 @@ class KedroRunTranslator:
                     load_versions=self.load_versions,
                 )
 
+                # Kedro 1.x uses 'parameters', Kedro 0.19 uses 'feed_dict'
                 if KEDRO_VERSION[0] >= 1:
                     parameters = context._get_parameters()
                     after_catalog_created_params["parameters"] = parameters
+                else:  # pragma: no cover
+                    feed_dict = context._get_feed_dict()
+                    after_catalog_created_params["feed_dict"] = feed_dict
 
                 hook_manager.hook.after_catalog_created(**after_catalog_created_params)
 

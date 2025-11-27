@@ -31,15 +31,15 @@ class _FakeHook:
         catalog: Any,
         conf_catalog: dict[str, Any],
         conf_creds: dict[str, Any],
-        parameters: dict[str, Any],
         save_version: str | None = None,
         load_versions: Any = None,
-        context: Any = None,  # Optional, not always passed by Kedro
+        parameters: dict[str, Any] | None = None,  # Kedro 1.x
+        feed_dict: dict[str, Any] | None = None,  # Kedro 0.19
     ) -> None:
         self.after_catalog_created_called_with.append({
-            "context": context,
             "catalog": catalog,
             "parameters": parameters,
+            "feed_dict": feed_dict,
             "conf_catalog": conf_catalog,
             "conf_creds": conf_creds,
             "save_version": save_version,
@@ -272,20 +272,21 @@ def test_after_catalog_created_hook_invokes_hook_manager(
     # (Kedro may also call it internally when accessing the catalog)
     assert len(fake_hook_mgr.hook.after_catalog_created_called_with) >= 1
 
-    # Find the call made by our method (it will have context set)
-    hook_call = None
-    for call in fake_hook_mgr.hook.after_catalog_created_called_with:
-        if call["context"] is not None:
-            hook_call = call
-            break
-
-    assert hook_call is not None, "Expected to find a hook call with context set"
+    # Get the last hook call (most recent)
+    hook_call = fake_hook_mgr.hook.after_catalog_created_called_with[-1]
 
     # Verify all required parameters were passed
-    assert hook_call["context"] == translator._context
     # Catalog might be a different instance, but verify it's a catalog object
     assert hasattr(hook_call["catalog"], "_datasets")
-    assert hook_call["parameters"] == translator._context._get_parameters()
+
+    # Kedro 1.x uses 'parameters', Kedro 0.19 uses 'feed_dict'
+    if KEDRO_VERSION[0] >= 1:
+        assert hook_call["parameters"] == translator._context._get_parameters()
+        assert hook_call["feed_dict"] is None
+    else:
+        assert hook_call["feed_dict"] == translator._context._get_feed_dict()
+        assert hook_call["parameters"] is None
+
     assert isinstance(hook_call["conf_catalog"], dict)
     assert isinstance(hook_call["conf_creds"], dict)
 

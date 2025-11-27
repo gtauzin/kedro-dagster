@@ -71,10 +71,10 @@ class RecordingHooks:
         catalog,
         conf_catalog,
         conf_creds,
-        parameters,
         save_version=None,
         load_versions=None,
-        context=None,
+        parameters=None,  # Kedro 1.x
+        feed_dict=None,  # Kedro 0.19
     ):
         self.after_catalog_created_calls += 1
 
