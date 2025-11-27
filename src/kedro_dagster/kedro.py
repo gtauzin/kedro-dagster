@@ -175,15 +175,20 @@ class KedroRunTranslator:
                 else:  # pragma: no cover
                     save_version = self.session_id
 
-                hook_manager.hook.after_catalog_created(
+                after_catalog_created_params = dict(
                     context=context,
                     catalog=context.catalog,
-                    parameters=context._get_parameters(),
                     conf_catalog=conf_catalog,
                     conf_creds=conf_creds,
                     save_version=save_version,
                     load_versions=self.load_versions,
                 )
+
+                if KEDRO_VERSION[0] >= 1:
+                    parameters = context._get_parameters()
+                    after_catalog_created_params["parameters"] = parameters
+
+                hook_manager.hook.after_catalog_created(**after_catalog_created_params)
 
         run_params = (
             self._kedro_params
