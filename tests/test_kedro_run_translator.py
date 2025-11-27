@@ -281,11 +281,8 @@ def test_after_catalog_created_hook_invokes_hook_manager(
     assert isinstance(hook_call["conf_catalog"], dict)
     assert isinstance(hook_call["conf_creds"], dict)
 
-    # Verify save_version matches run_id or session_id based on Kedro version
-    if KEDRO_VERSION[0] >= 1:
-        assert hook_call["save_version"] == "sid-456"
-    else:
-        assert hook_call["save_version"] == "sid-456"
+    # Verify save_version matches run_id (Kedro >= 1.0) or session_id (Kedro < 1.0)
+    assert hook_call["save_version"] == "sid-456"
 
     assert hook_call["load_versions"] is None
 

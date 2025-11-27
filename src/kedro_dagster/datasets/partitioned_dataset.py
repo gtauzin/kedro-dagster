@@ -213,7 +213,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
         if not is_static:
             msg = (
                 f"Partition definition type '{self._partition_type.__name__}' is not supported. "
-                "Kedro-Dagster currently only supports `StaticPartitionsDefinition`. "
+                "Kedro-Dagster currently only supports `StaticPartitionsDefinition`."
             )
             raise NotImplementedError(msg)
 
@@ -239,7 +239,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
             msg = (
                 f"Partition mapping type '{mapping_type.__name__}' for downstream dataset "
                 f"'{downstream_dataset_name}' is not supported. "
-                "Kedro-Dagster currently only supports `StaticPartitionMapping` and `IdentityPartitionMapping`. "
+                "Kedro-Dagster currently only supports `StaticPartitionMapping` and `IdentityPartitionMapping`."
             )
             raise NotImplementedError(msg)
 
