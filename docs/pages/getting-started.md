@@ -148,7 +148,7 @@ jobs:
 
 Here, we have added a "parallel_data_processing" and a "data_science" job to the jobs configuration. The first one makes use of the `node_names` Kedro pipeline filter argument to create a sub-pipeline of the Kedro "data_processing" pipeline from a list of two Kedro nodes: "preprocess_companies_node" and "preprocess_shuttles_node". Both jobs are to run daily using the "daily" schedule based on the `cron_schedule` "0 0 * * *". "parallel_data_processing" is to run using a "multiprocess" executor with 2 `max_concurrent` and "data_science" will run sequentially.
 
-See the [Technical documentation](technical.md) for more on customizing the Dagster configuration file.
+See the [user guide](guide.md) for more on customizing the Dagster configuration file.
 
 ## 5. Browse the Dagster UI
 
@@ -161,7 +161,7 @@ kedro dagster dev --env local
 The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000) by default.
 
 !!! note "Logging Configuration"
-    You may have noticed that by default, logs from Kedro/Kedro-Dagster and Dagster are displayed in different formats on the terminal. You can configure Kedro/Kedro-Dagster logging to match Dagster's format by making use of Dagster formatters in your Kedro project's `logging.yml`. For more information, see the [Logging](technical.md#logging) section in the technical documentation.
+    You may have noticed that by default, logs from Kedro/Kedro-Dagster and Dagster are displayed in different formats on the terminal. You can configure Kedro/Kedro-Dagster logging to match Dagster's format by making use of Dagster formatters in your Kedro project's `logging.yml`.
 
 !!! tip "Logging from Your Kedro Nodes"
 
@@ -177,7 +177,7 @@ The Dagster UI will be available at [http://127.0.0.1:3000](http://127.0.0.1:300
         return processed_data
     ```
 
-    For complete logging configuration and best practices, see the [Logging section](technical.md#logging) in the technical documentation.
+    For complete logging configuration and best practices, see the [Logging section](guide.md#logging) in the user guide.
 
 ### Assets
 
@@ -189,7 +189,7 @@ Moving to the "Assets" tab leads to the list of assets generated from the Kedro 
 <figcaption>Asset List.</figcaption>
 </figure>
 
-Each asset is prefixed by the Kedro environment that was passed to the [`KedroProjectTranslator`](reference.md#kedroprojecttranslator) in [`definitions.py`](technical.md#definitionspy). If the Kedro dataset was generated from a [dataset factory](https://docs.kedro.org/en/stable/data/kedro_dataset_factories.html), the namespace that prefixed its name will also appear as a prefix, allowing easy browsing of assets per environment and per namespace.
+Each asset is prefixed by the Kedro environment that was passed to the [`KedroProjectTranslator`](reference.md#kedroprojecttranslator) in [`definitions.py`](guide.md#definitionspy). If the Kedro dataset was generated from a [dataset factory](https://docs.kedro.org/en/stable/catalog-data/kedro_dataset_factories/#kedro-dataset-factories), the namespace that prefixed its name will also appear as a prefix, allowing easy browsing of assets per environment and per namespace.
 
 Clicking on the "Asset lineage" link at the top right of the window leads to the Dagster asset lineage graph, where you can observe the dependencies between assets and check their status and description.
 
@@ -259,5 +259,5 @@ The job can be run by clicking on the "Launchpad" sub-tab. The Kedro pipeline, i
 ## Next steps
 
 - **Advanced example:** Visit the [example](example.md) section for a more advanced example.
-- **Technical documentation:** Explore the [technical documentation](technical.md) for advanced configuration and customization.
+- **User guide:** Explore the [user guide](guide.md) for advanced configuration and customization.
 - **Reference:** See the [Kedro-Dagster reference](reference.md) for details on available classes and functions.

@@ -138,10 +138,6 @@ class DagsterPartitionedDataset(PartitionedDataset):
             downstream:
               type: dagster.IdentityPartitionMapping
         ```
-
-    See Also:
-        - Technical documentation: https://kedro-dagster.readthedocs.io/en/latest/pages/technical/#kedro-datasets-for-dagster-partitioning
-        - Migration guide: https://kedro-dagster.readthedocs.io/en/latest/pages/technical/#migration-and-workarounds
     """
 
     def __init__(

@@ -52,7 +52,7 @@ Additionally, the project features:
    ```
 
    !!! note
-      By default, logs from Kedro/Kedro-Dagster and Dagster are displayed in different formats on the terminal. You can configure Kedro/Kedro-Dagster logging to match Dagster's format by making use of Dagster formatters in your Kedro project's `logging.yml`. For more information, see the [Logging](technical.md#logging) section in the technical documentation.
+      By default, logs from Kedro/Kedro-Dagster and Dagster are displayed in different formats on the terminal. You can configure Kedro/Kedro-Dagster logging to match Dagster's format by making use of Dagster formatters in your Kedro project's `logging.yml`. For more information, see the [Logging](guide.md#logging) section in the user guide.
 
 6. **Explore pipelines in Dagster UI**:
 
@@ -89,7 +89,7 @@ Additionally, the project features:
 <figcaption>Dagster Asset List generated from the example Kedro project.</figcaption>
 </figure>
 
-## Technical guide
+## How it works
 
 This section explains how the example repository is wired to Dagster: environments, configuration, partitions, MLflow/Optuna integration, and how Kedro objects are translated.
 
@@ -360,7 +360,7 @@ These appear as `Nothing` assets in Dagster and only enforce dependencies.
 
 ### Optuna-based hyperparameter tuning
 
-The example demonstrates how to use the [`optuna.StudyDataset`](https://docs.kedro.readthedocs.io/en/stable/advanced/experimental.html#optuna-studydataset) Kedro dataset for distributed hyperparameter optimization via Optuna.
+The example demonstrates how to use the [`optuna.StudyDataset`](https://docs.kedro.org/projects/kedro-datasets/en/kedro-datasets-9.0.0/api/kedro_datasets_experimental/optuna.StudyDataset/) Kedro dataset for distributed hyperparameter optimization via Optuna.
 
 The `StudyDataset` allows Kedro to load and save Optuna studies, which collect optimization trials. It allows users to define an Optuna sampler and pruner via `load_args` and supports multiple backends (SQLite, PostgreSQL, and so on) for study storage.
 
@@ -442,5 +442,5 @@ Additionally, we show how to use MLflow alongside Optuna in a Kedro project thro
 
 ## Next steps
 
-- **Technical documentation:** Explore the full [technical documentation](technical.md) for mapping details and configuration models.
+- **User guide:** Explore the full [user guide](guide.md) for mapping details and configuration models.
 - **Reference:** See the [Kedro-Dagster reference](reference.md) for API and CLI details.

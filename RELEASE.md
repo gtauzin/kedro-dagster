@@ -4,7 +4,7 @@
 
 - Add comprehensive logging throughout the translation process with `LOGGER.info()` for major steps and `LOGGER.debug()` for detailed progress tracking by @gtauzin.
 - Add FAQ documentation page with common questions, troubleshooting guides, and production deployment considerations by @gtauzin.
-- Expand technical documentation with detailed `DagsterPartitionedDataset` usage examples and migration guides by @gtauzin.
+- Expand user guide documentation with detailed `DagsterPartitionedDataset` usage examples and migration guides by @gtauzin.
 - Restrict `DagsterPartitionedDataset` to only support `StaticPartitionsDefinition`, `StaticPartitionMapping`, and `IdentityPartitionMapping` with clear validation errors for unsupported partition types by @gtauzin.
 
 ## Bug fixes and other changes
@@ -13,6 +13,7 @@
 - Pass catalog directly to translators instead of accessing via context to avoid potential stale catalog references by @gtauzin.
 - Improve error messages throughout the codebase with better context and available options by @gtauzin.
 - Add detailed property docstrings to `KedroRunResource` for better API documentation by @gtauzin.
+- Rename Technical documentation to User guide and update links accordingly by @gtauzin.
 
 ## Breaking changes to the API
 

@@ -271,7 +271,7 @@ def process_data(data):
     return processed_data
 ```
 
-Module-level loggers won't capture Dagster context. See [Logging documentation](technical.md#logging) for details.
+Module-level loggers won't capture Dagster context. See [Logging documentation](guide.md#logging) for details.
 
 ---
 
@@ -284,7 +284,7 @@ Kedro-Dagster converts dots (`.`) to double underscores (`__`) in asset names to
 
 This is automatic and reversible—Kedro-Dagster maps them back internally. Prefer using underscores and dots in Kedro dataset names to avoid issues with other special characters.
 
-See [Naming Conventions](technical.md#naming-conventions) for details.
+See [Naming Conventions](guide.md#naming-conventions) for details.
 
 ---
 
@@ -297,7 +297,7 @@ You're likely using an unsupported partition type:
 
 **Solution**: Use `StaticPartitionsDefinition` with explicit partition keys, or use Dagster schedules for time-based execution.
 
-See [Partitions documentation](technical.md#kedro-datasets-for-dagster-partitioning) for examples.
+See [Partitions documentation](guide.md#kedro-datasets-for-dagster-partitioning) for examples.
 
 ---
 

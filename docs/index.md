@@ -31,7 +31,7 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 
     Understand how Kedro and Dagster work together
 
-    [Introduction](pages/intro.md) · [Technical Docs](pages/technical.md)
+    [Introduction](pages/intro.md) · [User guide](pages/guide.md)
 
 -   __See It In Action__
 
@@ -78,15 +78,15 @@ Kedro-Dagster is a [Kedro](https://kedro.readthedocs.io/) plugin that enables se
 
 - [Project overview](pages/example.md#project-overview)
 - [Quick start](pages/example.md#quick-start)
-- [Technical guide](pages/example.md#technical-guide)
+- [User guide](pages/guide.md#user-guide)
 
-### [Technical documentation](pages/technical.md)
+### [User guide](pages/guide.md)
 
   *In-depth documentation on the design, architecture, and core concepts of the plugin.*
 
-- [Project configuration](pages/technical.md#project-configuration)
-- [Kedro-Dagster concept mapping](pages/technical.md#kedro-dagster-concept-mapping)
-- [Compatibility notes between Kedro and Dagster](pages/technical.md#compatibility-notes-between-kedro-and-dagster)
+- [Project configuration](pages/guide.md#project-configuration)
+- [Kedro-Dagster concept mapping](pages/guide.md#kedro-dagster-concept-mapping)
+- [Compatibility notes between Kedro and Dagster](pages/guide.md#compatibility-notes-between-kedro-and-dagster)
 
 ### [Reference](pages/reference.md)
 
