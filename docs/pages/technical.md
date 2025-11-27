@@ -220,7 +220,7 @@ See the [Example page](example.md#custom-logging-integration) for a complete exa
 
 ## MLflow integration
 
-Kedro-Dagster provides seamless integration with MLflow when using [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow) for experiment tracking. When MLflow is configured in your Kedro project, Kedro-Dagster automatically captures MLflow run information and displays it in the Dagster UI.
+Kedro-Dagster provides seamless integration with MLflow when using [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow) for experiment tracking. When MLflow is configured in your Kedro project, Kedro-Dagster automatically captures MLflow run information and displays it in the Dagster UI. Checkout [Kedro-MLflow documentation](https://kedro-mlflow.readthedocs.io/en/stable/) for details on setting up MLflow tracking in Kedro.
 
 ### Automatic MLflow run tracking
 
@@ -232,111 +232,15 @@ When a Kedro node executes within a Dagster context and the active MLflow run tr
 
 Those details appear in the Dagster run logs, run tags, and asset materialization metadata, allowing users to quickly navigate between Dagster runs and their corresponding MLflow experiments.
 
-### Configuration requirements
-
-To enable MLflow integration:
-
-1. **Install kedro-mlflow**: See the [Kedro-MLflow installation instructions](https://kedro-mlflow.readthedocs.io/en/latest/source/02_getting_started/01_installation/01_installation.html)
-2. **Configure MLflow** in your Kedro project following the [kedro-mlflow documentation](https://kedro-mlflow.readthedocs.io/)
-3. **MLflow UI configuration**: For example, define UI host and port or tracking URI in `conf/<env>/mlflow.yml`:
-
-```yaml
-ui:
-  host: localhost
-  port: 5000
-
-server:
-  mlflow_tracking_uri: mlruns
-```
-
 ## Kedro datasets for Dagster partitioning
-
-Kedro-Dagster provides two custom datasets to enable Dagster partitioning and asset management within Kedro projects:
-
-- **`DagsterPartitionedDataset`**: A Kedro dataset that is partitioned according to Dagster's partitioning scheme. This allows for more efficient data processing and management within Kedro pipelines.
-- **`DagsterNothingDataset`**: A special Kedro dataset that represents a "no-op" or empty dataset in Dagster. This can be useful for cases where an order in execution between two nodes needs to be enforced.
 
 !!! warning "Experimental Status"
     Dagster partitions support in Kedro-Dagster is **experimental** and currently supports only a limited subset of Dagster's partition types. The plugin validates partition definitions and mappings at dataset instantiation and will raise clear errors for unsupported types.
 
-### Supported partition definitions and mappings
+Kedro-Dagster provides two custom datasets to enable Dagster partitioning and asset management within Kedro projects:
 
-Currently, only **`StaticPartitionsDefinition`** is supported:
-
-- Defines a fixed list of partition keys
-- Ideal for finite sets of partitions (e.g., specific dates, regions, model variants)
-- See [Dagster StaticPartitionsDefinition docs](https://docs.dagster.io/api/dagster/partitions#dagster.StaticPartitionsDefinition)
-
-Example:
-
-```yaml
-my_dataset:
-  type: kedro_dagster.DagsterPartitionedDataset
-  partition:
-    type: dagster.StaticPartitionsDefinition
-    partition_keys: ["2023-01-01", "2023-01-02", "2023-01-03"]
-```
-
-Two partition mapping types are supported:
-
-1. **`StaticPartitionMapping`**: Explicitly maps upstream partition keys to downstream partition keys
-   - Full control over partition relationships
-   - Example: Map 3 upstream partitions to 10 downstream partitions
-
-2. **`IdentityPartitionMapping`**: One-to-one mapping where partition keys match exactly
-   - Simplest mapping when upstream and downstream use the same partition keys
-   - No explicit configuration needed
-
-Example with `StaticPartitionMapping`:
-
-```yaml
-upstream_dataset:
-  type: kedro_dagster.DagsterPartitionedDataset
-  partition:
-    type: dagster.StaticPartitionsDefinition
-    partition_keys: ["1.csv", "2.csv", "3.csv"]
-  partition_mappings:
-    downstream_dataset:
-      type: dagster.StaticPartitionMapping
-      downstream_partition_keys_by_upstream_partition_key:
-        1.csv: 10.csv
-        2.csv: 20.csv
-        3.csv: 30.csv
-```
-
-Example with `IdentityPartitionMapping`:
-
-```yaml
-upstream_dataset:
-  type: kedro_dagster.DagsterPartitionedDataset
-  partition:
-    type: dagster.StaticPartitionsDefinition
-    partition_keys: ["A", "B", "C"]
-  partition_mappings:
-    downstream_dataset:
-      type: dagster.IdentityPartitionMapping  # Keys match exactly
-```
-
-### Unsupported Partition Types
-
-The following Dagster partition types are **not supported** and will raise validation errors:
-
-**Partition Definitions**:
-
-- ❌ `TimeWindowPartitionsDefinition` - Time-based partitions (daily, hourly, etc.)
-- ❌ `DynamicPartitionsDefinition` - Partitions that can be added/removed at runtime
-- ❌ `MultiPartitionsDefinition` - Composite partitions with multiple dimensions
-
-**Partition Mappings**:
-
-- ❌ `TimeWindowPartitionMapping` - Maps time-based partitions
-- ❌ `DimensionPartitionMapping` - Maps multi-partition dimensions
-- ❌ `AllPartitionMapping` - Maps all partitions from upstream
-- ❌ `LastPartitionMapping` - Maps to the most recent partition
-- ❌ Any other custom partition mapping types
-
-!!! info "Need Support for These Features?"
-    If you have a use case that requires any of these unsupported partition types, please [open an issue](https://github.com/gtauzin/kedro-dagster/issues) describing your requirements. Community feedback helps prioritize which features to add in future releases.
+- **`DagsterPartitionedDataset`**: A Kedro dataset that is partitioned according to Dagster's partitioning scheme. This allows for more efficient data processing and management within Kedro pipelines.
+- **`DagsterNothingDataset`**: A special Kedro dataset that represents a "no-op" or empty dataset in Dagster. This can be useful for cases where an order in execution between two nodes needs to be enforced. It can also be used to forced dependency between nodes outised of the Dagster partitions context.
 
 ### `DagsterPartitionedDataset`
 
@@ -393,6 +297,55 @@ my_upstream_partitioned_dataset:
     The `partition` and `partition_mapping` parameters expect Dagster partition definitions and mappings. Refer to the [Dagster Partitions documentation](https://docs.dagster.io/concepts/partitions-schedules-sensors/partitions) for more details on available partition types and mappings.
 
 See the API reference for [`DagsterPartitionedDataset`](reference.md#dagsterpartitioneddataset) for more details.
+
+#### Supported partition definitions and mappings
+
+Currently, only **`StaticPartitionsDefinition`** is supported. It works for a fixed sets of partitions (e.g., specific dates, regions, model variants). See [Dagster StaticPartitionsDefinition docs](https://docs.dagster.io/api/dagster/partitions#dagster.StaticPartitionsDefinition) for more details.
+
+Two partition mapping types are supported:
+
+1. **`StaticPartitionMapping`**: Explicitly maps upstream partition keys to downstream partition keys. See [Dagster StaticPartitionMapping docs](https://docs.dagster.io/api/dagster/partitions#dagster.StaticPartitionMapping) for more details.
+
+2. **`IdentityPartitionMapping`**: One-to-one mapping where partition keys match exactly. See [Dagster IdentityPartitionMapping docs](https://docs.dagster.io/api/dagster/partitions#dagster.IdentityPartitionMapping) for more details.
+
+Example with `StaticPartitionMapping`:
+
+```yaml
+upstream_dataset:
+  type: kedro_dagster.DagsterPartitionedDataset
+  path: data/02_raw/upstream/
+  dataset:
+    type: pandas.CSVDataSet
+  partition:
+    type: dagster.StaticPartitionsDefinition
+    partition_keys: ["1.csv", "2.csv", "3.csv"]
+  partition_mappings:
+    downstream_dataset:
+      type: dagster.StaticPartitionMapping
+      downstream_partition_keys_by_upstream_partition_key:
+        1.csv: 10.csv
+        2.csv: 20.csv
+        3.csv: 30.csv
+```
+
+Example with `IdentityPartitionMapping`:
+
+```yaml
+upstream_dataset:
+  type: kedro_dagster.DagsterPartitionedDataset
+  path: data/02_raw/upstream/
+  dataset:
+    type: pickle.PickleDataset
+  partition:
+    type: dagster.StaticPartitionsDefinition
+    partition_keys: ["A.pkl", "B.pkl", "C.pkl"]
+  partition_mappings:
+    downstream_dataset:
+      type: dagster.IdentityPartitionMapping  # Keys match exactly
+```
+
+!!! info "Need Support for other Dagster partitions?"
+    If you have a use case that requires any unsupported partition types, please [open an issue](https://github.com/gtauzin/kedro-dagster/issues) describing your requirements.
 
 ### `DagsterNothingDataset`
 
