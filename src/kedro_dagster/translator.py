@@ -120,6 +120,9 @@ class KedroProjectTranslator:
         LOGGER.info("Loading Kedro context...")
         self._context = self._session.load_context()
 
+        LOGGER.info("Getting Kedro catalog...")
+        self._catalog = self._context.catalog
+
         self._pipelines = find_pipelines()
 
         LOGGER.info("Kedro initialization complete.")
@@ -168,6 +171,7 @@ class KedroProjectTranslator:
 
         kedro_run_translator = KedroRunTranslator(
             context=self._context,
+            catalog=self._catalog,
             project_path=str(self._project_path),
             env=self._env,
             run_id=self._session_id,
@@ -192,7 +196,7 @@ class KedroProjectTranslator:
 
         defined_pipelines = self.get_defined_pipelines(dagster_config=dagster_config, translate_all=translate_all)
         self.catalog_translator = CatalogTranslator(
-            catalog=self._context.catalog,
+            catalog=self._catalog,
             pipelines=defined_pipelines,
             hook_manager=self._context._hook_manager,
             env=self._env,
@@ -202,7 +206,7 @@ class KedroProjectTranslator:
 
         self.node_translator = NodeTranslator(
             pipelines=defined_pipelines,
-            catalog=self._context.catalog,
+            catalog=self._catalog,
             hook_manager=self._context._hook_manager,
             run_id=self._session_id,
             asset_partitions=asset_partitions,
@@ -218,6 +222,7 @@ class KedroProjectTranslator:
         self.pipeline_translator = PipelineTranslator(
             dagster_config=dagster_config,
             context=self._context,
+            catalog=self._catalog,
             project_path=str(self._project_path),
             env=self._env,
             run_id=self._session_id,

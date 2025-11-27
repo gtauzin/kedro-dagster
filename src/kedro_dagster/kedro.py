@@ -12,6 +12,7 @@ LOGGER = getLogger(__name__)
 
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
+    from kedro.io import CatalogProtocol
 
 
 class KedroRunTranslator:
@@ -19,15 +20,23 @@ class KedroRunTranslator:
 
     Args:
         context (KedroContext): Kedro context.
+        catalog (CatalogProtocol): Kedro data catalog.
         project_path (str): Path to the Kedro project.
         env (str): Kedro environment.
         run_id (str): Kedro run ID. In Kedro < 1.0, this is called `session_id`.
 
     """
 
-    def __init__(self, context: "KedroContext", project_path: str, env: str, run_id: str):
+    def __init__(
+        self,
+        context: "KedroContext",
+        catalog: "CatalogProtocol",
+        project_path: str,
+        env: str,
+        run_id: str,
+    ) -> None:
         self._context = context
-        self._catalog = context.catalog
+        self._catalog = catalog
         self._hook_manager = context._hook_manager
         self._kedro_params = dict(
             project_path=project_path,
@@ -177,7 +186,7 @@ class KedroRunTranslator:
 
                 after_catalog_created_params = dict(
                     context=context,
-                    catalog=context.catalog,
+                    catalog=self._catalog,
                     conf_catalog=conf_catalog,
                     conf_creds=conf_creds,
                     save_version=save_version,

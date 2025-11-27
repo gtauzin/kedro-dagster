@@ -28,6 +28,7 @@ from kedro_dagster.utils import (
 
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
+    from kedro.io import CatalogProtocol
     from kedro.pipeline.node import Node
 
     from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
@@ -41,6 +42,7 @@ class PipelineTranslator:
     Args:
         dagster_config (KedroDagsterConfig): Parsed configuration of the Dagster repository.
         context (KedroContext): Active Kedro context (provides catalog and hooks).
+        catalog (DataCatalog): Kedro data catalog.
         project_path (str): Path to the Kedro project.
         env (str): Kedro environment used for namespacing.
         run_id (str): Kedro run ID. In Kedro < 1.0, this is called `session_id`.
@@ -57,6 +59,7 @@ class PipelineTranslator:
         self,
         dagster_config: "KedroDagsterConfig",
         context: "KedroContext",
+        catalog: "CatalogProtocol",
         project_path: str,
         env: str,
         run_id: str,
@@ -70,10 +73,10 @@ class PipelineTranslator:
     ):
         self._dagster_config = dagster_config
         self._context = context
+        self._catalog = catalog
         self._project_path = project_path
         self._env = env
         self._run_id = run_id
-        self._catalog = context.catalog
         self._hook_manager = context._hook_manager
         self._named_assets = named_assets
         self._asset_partitions = asset_partitions
@@ -435,6 +438,7 @@ class PipelineTranslator:
 
         kedro_run_translator = KedroRunTranslator(
             context=self._context,
+            catalog=self._catalog,
             project_path=self._project_path,
             env=self._env,
             run_id=self._run_id,
