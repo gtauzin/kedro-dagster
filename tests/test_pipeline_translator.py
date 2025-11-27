@@ -628,3 +628,39 @@ def test_warnings_catch_warnings_context_manager_works():
             assert "other warning" in captured
         finally:
             warnings.warn = original_warn
+
+
+def test_pipeline_translator_to_dagster_with_no_jobs_configured(mocker):
+    """Test that to_dagster returns empty dict when jobs config is None."""
+    # Create a mock context with minimal setup
+    mock_catalog = mocker.Mock()
+    mock_hook_manager = mocker.Mock()
+    mock_context = mocker.Mock()
+    mock_context.catalog = mock_catalog
+    mock_context._hook_manager = mock_hook_manager
+
+    # Create a mock config with jobs=None
+    mock_dagster_config = mocker.Mock()
+    mock_dagster_config.jobs = None
+
+    translator = PipelineTranslator(
+        dagster_config=mock_dagster_config,
+        context=mock_context,
+        project_path="/fake/path",
+        env="test",
+        run_id="test-run",
+        named_assets={},
+        asset_partitions={},
+        named_op_factories={},
+        named_resources={},
+        named_executors={},
+        named_loggers={},
+        enable_mlflow=False,
+    )
+
+    # Call to_dagster and verify it returns empty dict
+    result = translator.to_dagster()
+
+    assert result == {}
+    assert isinstance(result, dict)
+    assert len(result) == 0
