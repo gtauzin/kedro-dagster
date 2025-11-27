@@ -2,6 +2,18 @@
 
 ## Major features and improvements
 
+## Bug fixes and other changes
+
+## Breaking changes to the API
+
+## Thanks for supporting contributions
+
+We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
+
+# Release 0.5.0
+
+## Major features and improvements
+
 - Add comprehensive logging throughout the translation process with `LOGGER.info()` for major steps and `LOGGER.debug()` for detailed progress tracking by @gtauzin.
 - Add FAQ documentation page with common questions, troubleshooting guides, and production deployment considerations by @gtauzin.
 - Expand user guide documentation with detailed `DagsterPartitionedDataset` usage examples and migration guides by @gtauzin.
@@ -27,7 +39,6 @@
 - @gtauzin
 
 We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
-
 
 # Release 0.4.0
 
