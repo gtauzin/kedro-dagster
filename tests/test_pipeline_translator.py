@@ -69,6 +69,7 @@ def test_pipeline_translator_to_dagster_with_executor(env, request):
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
         context=context,
+        catalog=context.catalog,
         project_path=str(project_path),
         env=env,
         named_assets=named_assets,
@@ -127,6 +128,7 @@ def test_after_pipeline_run_hook_inputs_fan_in_for_partitions(env, request):
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
         context=context,
+        catalog=context.catalog,
         project_path=str(project_path),
         env=env,
         named_assets=named_assets,
@@ -233,6 +235,7 @@ def test_pipeline_translator_builds_jobs_for_scenarios(request, env_fixture):
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
         context=context,
+        catalog=context.catalog,
         project_path=str(project_path),
         env=env,
         named_assets=named_assets,
@@ -288,9 +291,11 @@ def _make_translator_with(mocker, named_loggers=None, named_executors=None):
     # Ensure Kedro pipeline access is stubbed
     _patch_minimal_kedro_pipelines(mocker)
 
+    ctx = _Ctx()
     translator = PipelineTranslator(
         dagster_config=type("Cfg", (), {"jobs": {}, "loggers": {}})(),
-        context=_Ctx(),
+        context=ctx,
+        catalog=ctx.catalog,
         project_path="/tmp/project",
         env="dev",
         run_id="rid",
@@ -573,13 +578,15 @@ def test_create_after_pipeline_run_hook_op_method_exists(mocker):
     """Test that the _create_after_pipeline_run_hook_op method exists and can be called."""
     # Create a minimal mock setup to test that the method exists and has the warning suppression
     mock_context = mocker.Mock()
-    mock_context.catalog = mocker.Mock()
+    mock_catalog = mocker.Mock()
+    mock_context.catalog = mock_catalog
     mock_context._hook_manager = mocker.Mock()
 
     # This is the minimal constructor args needed
     translator = PipelineTranslator(
         dagster_config=mocker.Mock(),
         context=mock_context,
+        catalog=mock_catalog,
         project_path="/fake/path",
         env="test",
         run_id="test-run",
@@ -646,6 +653,7 @@ def test_pipeline_translator_to_dagster_with_no_jobs_configured(mocker):
     translator = PipelineTranslator(
         dagster_config=mock_dagster_config,
         context=mock_context,
+        catalog=mock_catalog,
         project_path="/fake/path",
         env="test",
         run_id="test-run",

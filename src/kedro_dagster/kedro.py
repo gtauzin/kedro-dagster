@@ -67,6 +67,7 @@ class KedroRunTranslator:
 
         context = self._context
         hook_manager = self._hook_manager
+        catalog = self._catalog
 
         class RunParamsModel(dg.Config):
             if KEDRO_VERSION[0] >= 1:
@@ -186,7 +187,7 @@ class KedroRunTranslator:
 
                 after_catalog_created_params = dict(
                     context=context,
-                    catalog=self._catalog,
+                    catalog=catalog,
                     conf_catalog=conf_catalog,
                     conf_creds=conf_creds,
                     save_version=save_version,

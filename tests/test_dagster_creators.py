@@ -86,6 +86,7 @@ def test_schedule_creator_uses_named_schedule(env, request):
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
         context=context,
+        catalog=context.catalog,
         project_path=str(project_path),
         env=env,
         named_assets=named_assets,

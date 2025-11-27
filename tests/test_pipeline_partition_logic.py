@@ -27,6 +27,7 @@ def _make_translator(catalog: DataCatalog, asset_partitions: dict[str, dict] | N
     return PipelineTranslator(
         dagster_config={},
         context=DummyContext(catalog),
+        catalog=catalog,
         project_path="/tmp/project",
         env="local",
         run_id="test-session",

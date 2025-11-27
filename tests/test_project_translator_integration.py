@@ -144,13 +144,46 @@ def test_translator_passes_mlflow_config_to_node_translator(monkeypatch):
         self._named_resources = kwargs.get("named_resources", {})
         self._env = kwargs.get("env", "base")
 
+    from kedro_dagster.catalog import CatalogTranslator
+    from kedro_dagster.dagster import ExecutorCreator, ScheduleCreator
+    from kedro_dagster.kedro import KedroRunTranslator
     from kedro_dagster.nodes import NodeTranslator
+    from kedro_dagster.pipelines import PipelineTranslator
 
     # Patch NodeTranslator.__init__
     monkeypatch.setattr(NodeTranslator, "__init__", mock_node_translator_init)
 
     # Also mock to_dagster to return empty results
     monkeypatch.setattr(NodeTranslator, "to_dagster", lambda self: ({}, {}))
+
+    # Mock CatalogTranslator
+    monkeypatch.setattr(CatalogTranslator, "__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(CatalogTranslator, "to_dagster", lambda self: ({}, {}))
+
+    # Mock KedroRunTranslator
+    import dagster as dg
+
+    class MockKedroRunResource(dg.ConfigurableResource):
+        def after_context_created_hook(self):
+            pass
+
+        def after_catalog_created_hook(self):
+            pass
+
+    mock_resource = MockKedroRunResource()
+    monkeypatch.setattr(KedroRunTranslator, "__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(KedroRunTranslator, "to_dagster", lambda self, *args, **kwargs: mock_resource)
+    monkeypatch.setattr(KedroRunTranslator, "_translate_on_pipeline_error_hook", lambda self, *args, **kwargs: {})
+
+    # Mock PipelineTranslator
+    monkeypatch.setattr(PipelineTranslator, "__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(PipelineTranslator, "to_dagster", lambda self: {})
+
+    # Mock ExecutorCreator and ScheduleCreator
+    monkeypatch.setattr(ExecutorCreator, "__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(ExecutorCreator, "create_executors", lambda self: {})
+    monkeypatch.setattr(ScheduleCreator, "__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(ScheduleCreator, "create_schedules", lambda self: {})
 
     # Create translator
     translator = KedroProjectTranslator(project_path=tmp_project, env="base")
@@ -225,9 +258,43 @@ def test_translator_mlflow_config_none_when_not_configured(monkeypatch):
         self._named_resources = kwargs.get("named_resources", {})
         self._env = kwargs.get("env", "base")
 
+    from kedro_dagster.catalog import CatalogTranslator
+    from kedro_dagster.dagster import ExecutorCreator, ScheduleCreator
+    from kedro_dagster.kedro import KedroRunTranslator
     from kedro_dagster.nodes import NodeTranslator
+    from kedro_dagster.pipelines import PipelineTranslator
 
     monkeypatch.setattr(NodeTranslator, "__init__", mock_node_translator_init)
+    monkeypatch.setattr(NodeTranslator, "to_dagster", lambda self: ({}, {}))
+
+    # Mock CatalogTranslator
+    monkeypatch.setattr(CatalogTranslator, "__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(CatalogTranslator, "to_dagster", lambda self: ({}, {}))
+
+    # Mock KedroRunTranslator
+    import dagster as dg
+
+    class MockKedroRunResource(dg.ConfigurableResource):
+        def after_context_created_hook(self):
+            pass
+
+        def after_catalog_created_hook(self):
+            pass
+
+    mock_resource = MockKedroRunResource()
+    monkeypatch.setattr(KedroRunTranslator, "__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(KedroRunTranslator, "to_dagster", lambda self, *args, **kwargs: mock_resource)
+    monkeypatch.setattr(KedroRunTranslator, "_translate_on_pipeline_error_hook", lambda self, *args, **kwargs: {})
+
+    # Mock PipelineTranslator
+    monkeypatch.setattr(PipelineTranslator, "__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(PipelineTranslator, "to_dagster", lambda self: {})
+
+    # Mock ExecutorCreator and ScheduleCreator
+    monkeypatch.setattr(ExecutorCreator, "__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(ExecutorCreator, "create_executors", lambda self: {})
+    monkeypatch.setattr(ScheduleCreator, "__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(ScheduleCreator, "create_schedules", lambda self: {})
     monkeypatch.setattr(NodeTranslator, "to_dagster", lambda self: ({}, {}))
 
     translator = KedroProjectTranslator(project_path=tmp_project, env="base")

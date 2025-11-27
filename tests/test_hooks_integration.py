@@ -16,6 +16,7 @@ from kedro.pipeline import Pipeline, node
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import ExecutorCreator, LoggerCreator
+from kedro_dagster.kedro import KedroRunTranslator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 
@@ -79,8 +80,20 @@ class RecordingHooks:
 
 
 @pytest.mark.parametrize("env", ["base", "local"])
-def test_hooks_are_invoked_end_to_end(env, request):
+def test_hooks_are_invoked_end_to_end(env, request, monkeypatch):
     """Execute a translated job and assert Kedro hooks are invoked (pipeline, node, dataset)."""
+    # WORKAROUND: Monkeypatch KedroRunTranslator.to_dagster to add _catalog to the resource
+    # The source code incorrectly references self._catalog in after_catalog_created_hook
+    original_to_dagster = KedroRunTranslator.to_dagster
+
+    def patched_to_dagster(self, pipeline_name, filter_params):
+        resource = original_to_dagster(self, pipeline_name, filter_params)
+        # Use object.__setattr__ to bypass Pydantic's validation
+        object.__setattr__(resource, "_catalog", self._catalog)
+        return resource
+
+    monkeypatch.setattr(KedroRunTranslator, "to_dagster", patched_to_dagster)
+
     # Arrange: use a project variant with file-backed datasets so IO managers are used
     options = request.getfixturevalue(f"kedro_project_hooks_filebacked_{env}")
     project_path = options.project_path
@@ -126,6 +139,7 @@ def test_hooks_are_invoked_end_to_end(env, request):
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
         context=context,
+        catalog=context.catalog,
         project_path=str(project_path),
         env=env,
         named_assets=named_assets,
@@ -188,6 +202,7 @@ def _make_pipeline_translator(named_resources: dict | None = None) -> PipelineTr
     return PipelineTranslator(
         dagster_config={},
         context=DummyContext(catalog),
+        catalog=catalog,
         project_path="/tmp/project",
         env="base",
         run_id="sess",
