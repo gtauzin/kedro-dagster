@@ -1,5 +1,6 @@
 """Translation of Kedro run params and on error pipeline hooks."""
 
+from logging import getLogger
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
@@ -7,8 +8,11 @@ from kedro import __version__ as kedro_version
 
 from kedro_dagster.utils import KEDRO_VERSION, PYDANTIC_VERSION, create_pydantic_config, get_filter_params_dict
 
+LOGGER = getLogger(__name__)
+
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
+    from kedro.io import CatalogProtocol
 
 
 class KedroRunTranslator:
@@ -16,15 +20,23 @@ class KedroRunTranslator:
 
     Args:
         context (KedroContext): Kedro context.
+        catalog (CatalogProtocol): Kedro data catalog.
         project_path (str): Path to the Kedro project.
         env (str): Kedro environment.
         run_id (str): Kedro run ID. In Kedro < 1.0, this is called `session_id`.
 
     """
 
-    def __init__(self, context: "KedroContext", project_path: str, env: str, run_id: str):
+    def __init__(
+        self,
+        context: "KedroContext",
+        catalog: "CatalogProtocol",
+        project_path: str,
+        env: str,
+        run_id: str,
+    ) -> None:
         self._context = context
-        self._catalog = context.catalog
+        self._catalog = catalog
         self._hook_manager = context._hook_manager
         self._kedro_params = dict(
             project_path=project_path,
@@ -51,9 +63,11 @@ class KedroRunTranslator:
             ConfigurableResource: Dagster resource for Kedro pipeline hooks.
 
         """
+        LOGGER.info(f"Creating Kedro run resource for pipeline '{pipeline_name}'")
 
         context = self._context
         hook_manager = self._hook_manager
+        catalog = self._catalog
 
         class RunParamsModel(dg.Config):
             if KEDRO_VERSION[0] >= 1:
@@ -95,10 +109,25 @@ class KedroRunTranslator:
 
             @property
             def run_params(self) -> dict[str, Any]:
+                """Return all run parameters as a dictionary.
+
+                Returns:
+                    dict[str, Any]: Dictionary containing all Kedro run parameters
+                        including run_id/session_id, project path, environment, pipeline
+                        name, and filtering options.
+                """
                 return self.model_dump()  # type: ignore[no-any-return]
 
             @property
             def pipeline(self) -> dict[str, Any]:
+                """Load and return the filtered Kedro pipeline.
+
+                Applies filtering parameters (node names, tags, namespaces, from/to nodes)
+                to the base pipeline to produce the final executable pipeline.
+
+                Returns:
+                    dict[str, Any]: The filtered Kedro pipeline object.
+                """
                 # Lazy import to avoid circular dependency
                 from kedro.framework.project import pipelines
 
@@ -128,7 +157,51 @@ class KedroRunTranslator:
                 return pipeline_obj.filter(**filter_kwargs)  # type: ignore[no-any-return]
 
             def after_context_created_hook(self) -> None:
+                """Invoke the Kedro `after_context_created` hook.
+
+                This method is called at the beginning of Dagster job execution to
+                trigger any registered Kedro hooks that should run after the Kedro
+                context is initialized.
+                """
                 hook_manager.hook.after_context_created(context=context)
+
+            def after_catalog_created_hook(self) -> None:
+                """Invoke the Kedro `after_catalog_created` hook.
+
+                This method is called at the beginning of Dagster job execution to
+                trigger any registered Kedro hooks that should run after the Kedro
+                catalog is created.
+                """
+                from kedro.framework.context.context import _convert_paths_to_absolute_posix
+
+                conf_catalog = context.config_loader["catalog"]
+                conf_catalog = _convert_paths_to_absolute_posix(
+                    project_path=context.project_path, conf_dictionary=conf_catalog
+                )
+                conf_creds = context._get_config_credentials()
+
+                if KEDRO_VERSION[0] >= 1:
+                    save_version = self.run_id
+                else:  # pragma: no cover
+                    save_version = self.session_id
+
+                after_catalog_created_params = dict(
+                    catalog=catalog,
+                    conf_catalog=conf_catalog,
+                    conf_creds=conf_creds,
+                    save_version=save_version,
+                    load_versions=self.load_versions,
+                )
+
+                # Kedro 1.x uses 'parameters', Kedro 0.19 uses 'feed_dict'
+                if KEDRO_VERSION[0] >= 1:
+                    parameters = context._get_parameters()
+                    after_catalog_created_params["parameters"] = parameters
+                else:  # pragma: no cover
+                    feed_dict = context._get_feed_dict()
+                    after_catalog_created_params["feed_dict"] = feed_dict
+
+                hook_manager.hook.after_catalog_created(**after_catalog_created_params)
 
         run_params = (
             self._kedro_params
@@ -155,6 +228,7 @@ class KedroRunTranslator:
             for the `on_pipeline_error` hook.
 
         """
+        LOGGER.info("Creating Dagster run sensors...")
 
         @dg.run_failure_sensor(
             name="on_pipeline_error_sensor",

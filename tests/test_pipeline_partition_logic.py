@@ -27,6 +27,7 @@ def _make_translator(catalog: DataCatalog, asset_partitions: dict[str, dict] | N
     return PipelineTranslator(
         dagster_config={},
         context=DummyContext(catalog),
+        catalog=catalog,
         project_path="/tmp/project",
         env="local",
         run_id="test-session",
@@ -40,44 +41,25 @@ def _make_translator(catalog: DataCatalog, asset_partitions: dict[str, dict] | N
     )
 
 
-def test_enumerate_partition_keys_raises_for_multi_partitions():
-    """MultiPartitionsDefinition is unsupported and should raise NotImplementedError."""
+def test_enumerate_partition_keys_with_static_partitions():
+    """Test that _enumerate_partition_keys works correctly with StaticPartitionsDefinition."""
     catalog = DataCatalog()
     translator = _make_translator(catalog)
 
-    mpd = dg.MultiPartitionsDefinition(
-        partitions_defs={
-            "date": dg.StaticPartitionsDefinition(["2024-01", "2024-02"]),
-            "color": dg.StaticPartitionsDefinition(["red", "blue"]),
-        }
-    )
+    spd = dg.StaticPartitionsDefinition(["2024-01", "2024-02", "2024-03"])
+    keys = translator._enumerate_partition_keys(spd)
 
-    with pytest.raises(NotImplementedError) as exc:
-        translator._enumerate_partition_keys(mpd)
-    assert "MultiPartitionsDefinition is not supported" in str(exc.value)
+    assert keys == ["2024-01", "2024-02", "2024-03"]
 
 
-def test_enumerate_partition_keys_raises_for_time_window_partitions():
-    """TimeWindowPartitionsDefinition is unsupported and should raise NotImplementedError."""
+def test_enumerate_partition_keys_returns_empty_list_for_none():
+    """Test that _enumerate_partition_keys returns empty list when partitions_def is None."""
     catalog = DataCatalog()
     translator = _make_translator(catalog)
 
-    pd = dg.TimeWindowPartitionsDefinition(
-        start="2024-01-01",
-        end="2024-02-01",
-        cron_schedule="0 0 * * *",
-        fmt="%Y-%m-%d",
-    )
+    keys = translator._enumerate_partition_keys(None)
 
-    with pytest.raises(NotImplementedError) as exc:
-        translator._enumerate_partition_keys(pd)
-    assert "TimeWindowPartitionsDefinition is not supported" in str(exc.value)
-
-    pd_daily = dg.DailyPartitionsDefinition(start_date="2024-01-01", fmt="%Y-%m-%d")
-
-    with pytest.raises(NotImplementedError) as exc:
-        translator._enumerate_partition_keys(pd_daily)
-    assert "TimeWindowPartitionsDefinition is not supported" in str(exc.value)
+    assert keys == []
 
 
 def test_get_node_partition_keys_raises_on_mixed_outputs():

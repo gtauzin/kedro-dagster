@@ -129,43 +129,16 @@ class TestDagsterPartitionedDataset:
         dataset = _make_static_dataset(tmp_path)
         assert dataset._exists() is True
 
-    def test_dynamic_partitions_triggers_instance_calls(self, monkeypatch, tmp_path: Path):
-        """DynamicPartitionsDefinition registers (empty) keys with DagsterInstance and errors on load."""
-        base = tmp_path / "data" / "03_primary" / "dynamic"
-        base.mkdir(parents=True, exist_ok=True)
-
-        calls: list[tuple[str, list[str]]] = []
-
-        class DummyInstance:
-            def add_dynamic_partitions(self, name: str, keys: list[str]) -> None:
-                calls.append((name, keys))
-
-        monkeypatch.setattr(dg.DagsterInstance, "get", lambda: DummyInstance())
-
-        dataset = DagsterPartitionedDataset(
-            path=str(base),
-            dataset={"type": "pandas.CSVDataset"},
-            partition={"type": "DynamicPartitionsDefinition", "name": "dyn"},
-        )
-
-        with pytest.raises(Exception) as exc:
-            dataset.load()
-        assert "No partitions found in" in str(exc.value)
-        assert calls and calls[0] == ("dyn", [])
-
     def test_get_partitions_definition_instantiation_error_message(self):
         """Missing required fields for partitions definition yields a helpful error message."""
-        dataset = DagsterPartitionedDataset(
-            path="memory",
-            dataset={"type": "pandas.CSVDataset"},
-            partition={"type": "DynamicPartitionsDefinition"},  # missing required 'name'
-        )
-        with pytest.raises(ValueError) as exc:
-            dataset._get_partitions_definition()
-        assert (
-            str(exc.value)
-            == "Failed to instantiate partitions definition 'DynamicPartitionsDefinition' with config: {}"
-        )
+        # StaticPartitionsDefinition missing required 'partition_keys'
+        with pytest.raises(NotImplementedError):
+            # Will fail validation before getting to instantiation
+            DagsterPartitionedDataset(
+                path="memory",
+                dataset={"type": "pandas.CSVDataset"},
+                partition={"type": "DynamicPartitionsDefinition"},  # not supported
+            )
 
     def test_partition_mappings_instantiation_error_message(self):
         """Invalid partition mapping configuration yields a helpful instantiation error."""
@@ -244,32 +217,6 @@ class TestDagsterPartitionedDataset:
         )
         assert dataset._exists() is False
 
-    def test_dynamic_partitions_triggers_instance_calls_with_keys(self, monkeypatch, tmp_path: Path):
-        """Dynamic partitions register existing keys with DagsterInstance during load."""
-        base = tmp_path / "data" / "03_primary" / "dynamic_nonempty"
-        base.mkdir(parents=True, exist_ok=True)
-        # create files to generate keys
-        (base / "k1").write_text("one")
-        (base / "k2").write_text("two")
-
-        calls: list[tuple[str, list[str]]] = []
-
-        class DummyInstance:
-            def add_dynamic_partitions(self, name: str, keys: list[str]) -> None:
-                calls.append((name, keys))
-
-        monkeypatch.setattr(dg.DagsterInstance, "get", lambda: DummyInstance())
-
-        dataset = DagsterPartitionedDataset(
-            path=str(base),
-            dataset={"type": "pandas.CSVDataset"},
-            partition={"type": "DynamicPartitionsDefinition", "name": "dyn2"},
-        )
-
-        # load should not raise; it returns lazy loaders, but must call instance with existing keys
-        dataset.load()
-        assert calls and calls[0][0] == "dyn2" and set(calls[0][1]) == {"k1", "k2"}
-
     def test_load_relpath_exception_falls_back_to_basename(self, monkeypatch, tmp_path: Path):
         """If os.path.relpath raises, load() should fall back to basename and strip suffix."""
         base = tmp_path / "data" / "03_primary" / "intermediate"
@@ -305,3 +252,132 @@ class TestDagsterPartitionedDataset:
         loaded = dataset.load()
         # Expect the logical key 'p1' after basename fallback and suffix stripping
         assert "p1" in loaded
+
+    def test_unsupported_partition_definition_time_window_raises(self):
+        """Test that TimeWindowPartitionsDefinition raises NotImplementedError."""
+        with pytest.raises(NotImplementedError) as exc:
+            DagsterPartitionedDataset(
+                path="data/parts",
+                dataset={"type": "pandas.CSVDataset"},
+                partition={
+                    "type": "TimeWindowPartitionsDefinition",
+                    "start": "2024-01-01",
+                    "cron_schedule": "0 0 * * *",
+                    "fmt": "%Y-%m-%d",
+                },
+            )
+        assert "TimeWindowPartitionsDefinition" in str(exc.value)
+        assert "StaticPartitionsDefinition" in str(exc.value)
+
+    def test_unsupported_partition_definition_daily_raises(self):
+        """Test that DailyPartitionsDefinition raises NotImplementedError."""
+        # DailyPartitionsDefinition is a subclass of TimeWindowPartitionsDefinition
+        with pytest.raises(NotImplementedError) as exc:
+            DagsterPartitionedDataset(
+                path="data/parts",
+                dataset={"type": "pandas.CSVDataset"},
+                partition={
+                    "type": "DailyPartitionsDefinition",
+                    "start_date": "2024-01-01",
+                    "fmt": "%Y-%m-%d",
+                },
+            )
+        assert "DailyPartitionsDefinition" in str(exc.value)
+        assert "StaticPartitionsDefinition" in str(exc.value)
+
+    def test_unsupported_partition_definition_hourly_raises(self):
+        """Test that HourlyPartitionsDefinition raises NotImplementedError."""
+        with pytest.raises(NotImplementedError) as exc:
+            DagsterPartitionedDataset(
+                path="data/parts",
+                dataset={"type": "pandas.CSVDataset"},
+                partition={
+                    "type": "HourlyPartitionsDefinition",
+                    "start_date": "2024-01-01",
+                },
+            )
+        assert "HourlyPartitionsDefinition" in str(exc.value)
+        assert "StaticPartitionsDefinition" in str(exc.value)
+
+    def test_unsupported_partition_definition_multi_raises(self):
+        """Test that MultiPartitionsDefinition raises NotImplementedError."""
+        with pytest.raises(NotImplementedError) as exc:
+            DagsterPartitionedDataset(
+                path="data/parts",
+                dataset={"type": "pandas.CSVDataset"},
+                partition={
+                    "type": "MultiPartitionsDefinition",
+                    "partitions_defs": {
+                        "date": {"type": "StaticPartitionsDefinition", "partition_keys": ["2024-01"]},
+                        "color": {"type": "StaticPartitionsDefinition", "partition_keys": ["red"]},
+                    },
+                },
+            )
+        assert "MultiPartitionsDefinition" in str(exc.value)
+        assert "StaticPartitionsDefinition" in str(exc.value)
+
+    def test_unsupported_partition_definition_dynamic_raises(self):
+        """Test that DynamicPartitionsDefinition raises NotImplementedError."""
+        with pytest.raises(NotImplementedError) as exc:
+            DagsterPartitionedDataset(
+                path="data/parts",
+                dataset={"type": "pandas.CSVDataset"},
+                partition={"type": "DynamicPartitionsDefinition", "name": "dyn"},
+            )
+        assert "DynamicPartitionsDefinition" in str(exc.value)
+        assert "StaticPartitionsDefinition" in str(exc.value)
+
+    def test_unsupported_partition_mapping_all_raises(self):
+        """Test that AllPartitionMapping raises NotImplementedError."""
+        with pytest.raises(NotImplementedError) as exc:
+            DagsterPartitionedDataset(
+                path="data/parts",
+                dataset={"type": "pandas.CSVDataset"},
+                partition={"type": "StaticPartitionsDefinition", "partition_keys": ["a", "b"]},
+                partition_mapping={"downstream": {"type": "AllPartitionMapping"}},
+            )
+        assert "AllPartitionMapping" in str(exc.value)
+        assert "StaticPartitionMapping" in str(exc.value)
+        assert "IdentityPartitionMapping" in str(exc.value)
+
+    def test_unsupported_partition_mapping_time_window_raises(self):
+        """Test that TimeWindowPartitionMapping raises NotImplementedError."""
+        with pytest.raises(NotImplementedError) as exc:
+            DagsterPartitionedDataset(
+                path="data/parts",
+                dataset={"type": "pandas.CSVDataset"},
+                partition={"type": "StaticPartitionsDefinition", "partition_keys": ["a", "b"]},
+                partition_mapping={"downstream": {"type": "TimeWindowPartitionMapping", "start_offset": -1}},
+            )
+        assert "TimeWindowPartitionMapping" in str(exc.value)
+        assert "StaticPartitionMapping" in str(exc.value)
+        assert "IdentityPartitionMapping" in str(exc.value)
+
+    def test_supported_identity_partition_mapping(self):
+        """Test that IdentityPartitionMapping is accepted."""
+        dataset = DagsterPartitionedDataset(
+            path="data/parts",
+            dataset={"type": "pandas.CSVDataset"},
+            partition={"type": "StaticPartitionsDefinition", "partition_keys": ["a", "b"]},
+            partition_mapping={"downstream": {"type": "IdentityPartitionMapping"}},
+        )
+        mappings = dataset._get_partition_mappings()
+        assert mappings is not None
+        assert isinstance(mappings["downstream"], dg.IdentityPartitionMapping)
+
+    def test_supported_static_partition_mapping(self):
+        """Test that StaticPartitionMapping is accepted."""
+        dataset = DagsterPartitionedDataset(
+            path="data/parts",
+            dataset={"type": "pandas.CSVDataset"},
+            partition={"type": "StaticPartitionsDefinition", "partition_keys": ["a", "b"]},
+            partition_mapping={
+                "downstream": {
+                    "type": "StaticPartitionMapping",
+                    "downstream_partition_keys_by_upstream_partition_key": {"a": "x", "b": "y"},
+                }
+            },
+        )
+        mappings = dataset._get_partition_mappings()
+        assert mappings is not None
+        assert isinstance(mappings["downstream"], dg.StaticPartitionMapping)

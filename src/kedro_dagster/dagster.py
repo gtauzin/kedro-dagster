@@ -8,6 +8,7 @@ loggers.
 import importlib
 import logging
 import sys
+from logging import getLogger
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
@@ -26,6 +27,8 @@ from kedro_dagster.config.execution import (
 
 if TYPE_CHECKING:
     from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
+
+LOGGER = getLogger(__name__)
 
 
 class ExecutorCreator:
@@ -67,6 +70,7 @@ class ExecutorCreator:
         Returns:
             dict[str, dg.ExecutorDefinition]: Mapping of executor name to configured executor.
         """
+        LOGGER.info("Creating Dagster executors...")
         # Register all available executors dynamically
         for executor_option, module_name, executor_name in self._EXECUTOR_CONFIGS:
             try:
@@ -81,14 +85,17 @@ class ExecutorCreator:
         # First, create executors from the global executors configuration
         if self._dagster_config.executors is not None:
             for executor_name, executor_config in self._dagster_config.executors.items():
+                LOGGER.debug(f"Creating executor '{executor_name}'...")
                 # Make use of the executor map to create the executor
                 executor = self._OPTION_EXECUTOR_MAP.get(type(executor_config), None)
                 if executor is None:
-                    raise ValueError(
+                    msg = (
                         f"Executor '{executor_name}' not supported. "
-                        "Please use one of the following executors: "
+                        f"Please use one of the following executors: "
                         f"{', '.join([str(k) for k in self._OPTION_EXECUTOR_MAP.keys()])}"
                     )
+                    LOGGER.error(msg)
+                    raise ValueError(msg)
                 executor = executor.configured(executor_config.model_dump())
                 named_executors[executor_name] = executor
 
@@ -98,28 +105,34 @@ class ExecutorCreator:
 
             for job_name, job_config in self._dagster_config.jobs.items():
                 if job_config.executor is not None:
+                    LOGGER.debug(f"Processing executor configuration for job '{job_name}'...")
                     if isinstance(job_config.executor, str):
                         # String reference - validate it exists in available executors
                         if job_config.executor not in available_executor_names:
-                            raise ValueError(
+                            msg = (
                                 f"Executor named '{job_config.executor}' for job '{job_name}' not found in available executors. "
                                 f"Available executors: {sorted(available_executor_names)}"
                             )
+                            LOGGER.error(msg)
+                            raise ValueError(msg)
                     else:
                         # Inline executor configuration - create executor definition
                         executor = self._OPTION_EXECUTOR_MAP.get(type(job_config.executor), None)
                         if executor is None:
-                            raise ValueError(
+                            msg = (
                                 f"Executor type `{type(job_config.executor)}` for job '{job_name}' not supported. "
-                                "Please use one of the following executor types: "
+                                f"Please use one of the following executor types: "
                                 f"{', '.join([str(k) for k in self._OPTION_EXECUTOR_MAP.keys()])}"
                             )
+                            LOGGER.error(msg)
+                            raise ValueError(msg)
 
                         # Create the executor with job-specific naming
                         executor_name = f"{job_name}__executor"
                         executor_def = executor.configured(job_config.executor.model_dump())
                         named_executors[executor_name] = executor_def
 
+        LOGGER.debug(f"Created {len(named_executors)} executor(s)")
         return named_executors
 
 
@@ -142,9 +155,11 @@ class ScheduleCreator:
             dict[str, dg.ScheduleDefinition]: Dict of schedule definitions keyed by job name.
 
         """
+        LOGGER.info("Creating Dagster schedules...")
         named_schedule_config = {}
         if self._dagster_config.schedules is not None:
             for schedule_name, schedule_config in self._dagster_config.schedules.items():
+                LOGGER.debug(f"Registering schedule '{schedule_name}'...")
                 named_schedule_config[schedule_name] = schedule_config.model_dump()
 
         available_schedule_names = set(named_schedule_config.keys())
@@ -153,6 +168,7 @@ class ScheduleCreator:
         if self._dagster_config.jobs is not None:
             for job_name, job_config in self._dagster_config.jobs.items():
                 if job_config.schedule is not None:
+                    LOGGER.debug(f"Creating schedule for job '{job_name}'...")
                     if isinstance(job_config.schedule, str):
                         schedule_name = job_config.schedule
                         if schedule_name in named_schedule_config:
@@ -162,10 +178,12 @@ class ScheduleCreator:
                                 **named_schedule_config[schedule_name],
                             )
                         else:
-                            raise ValueError(
-                                f"Schedule named '{schedule_name}' for job '{job_name}' not found in available schedules. "
+                            msg = (
+                                f"Schedule named '{schedule_name}' for job '{job_name}' not found. "
                                 f"Available schedules: {sorted(available_schedule_names)}"
                             )
+                            LOGGER.error(msg)
+                            raise ValueError(msg)
                     else:
                         # If schedule_config is not a string, create schedule definition using inline config
                         schedule = dg.ScheduleDefinition(
@@ -176,6 +194,7 @@ class ScheduleCreator:
 
                     named_schedules[job_name] = schedule
 
+        LOGGER.debug(f"Created {len(named_schedules)} schedule(s)")
         return named_schedules
 
 
@@ -335,9 +354,11 @@ class LoggerCreator:
         Returns:
             dict[str, LoggerDefinition]: Mapping of fully-qualified logger name to definition.
         """
+        LOGGER.info("Creating Dagster loggers...")
         named_loggers = {}
         if self._dagster_config.loggers:
             for logger_name in self._dagster_config.loggers.keys():
+                LOGGER.debug(f"Creating logger '{logger_name}'...")
                 logger = self._get_logger_definition(logger_name)
                 named_loggers[logger_name] = logger
 
@@ -346,6 +367,7 @@ class LoggerCreator:
             available_logger_names = list(named_loggers.keys())
             for job_name, job_config in self._dagster_config.jobs.items():
                 if hasattr(job_config, "loggers") and job_config.loggers:
+                    LOGGER.debug(f"Processing {len(job_config.loggers)} loggers for job '{job_name}'...")
                     for idx, logger_config in enumerate(job_config.loggers):
                         if isinstance(logger_config, str):
                             # If logger_config is a string, check it exists in available_logger_names
@@ -360,4 +382,5 @@ class LoggerCreator:
                             logger = self._get_logger_definition(job_logger_name)
                             named_loggers[job_logger_name] = logger
 
+        LOGGER.debug(f"Created {len(named_loggers)} logger(s)")
         return named_loggers

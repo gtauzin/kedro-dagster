@@ -285,6 +285,7 @@ class NodeTranslator:
         Returns:
             dg.OpDefinition: Fully constructed Dagster op.
         """
+        LOGGER.debug(f"Creating op for node '{node.name}'")
         partition_key = None
         op_name = format_node_name(node.name)
         if partition_keys is not None:
@@ -507,6 +508,7 @@ class NodeTranslator:
         Returns:
             dg.AssetsDefinition: Multi-asset representing the node outputs.
         """
+        LOGGER.debug(f"Creating asset for node '{node.name}'")
 
         ins: dict[str, dg.AssetIn] = {}
         for dataset_name in node.inputs:
@@ -603,6 +605,7 @@ class NodeTranslator:
             - assets map names to either external :class:`dagster.AssetSpec` (for upstream inputs)
             or concrete :class:`dagster.AssetsDefinition` produced by nodes.
         """
+        LOGGER.info("Translating Kedro nodes to Dagster ops and assets...")
 
         default_pipeline: Pipeline = sum(self._pipelines, start=Pipeline([]))
 
@@ -612,6 +615,7 @@ class NodeTranslator:
         for external_dataset_name in default_pipeline.inputs():
             external_asset_name = format_dataset_name(external_dataset_name)
             if not _is_param_name(external_dataset_name):
+                LOGGER.debug(f"Creating external asset spec for '{external_dataset_name}'...")
                 dataset = get_dataset_from_catalog(self._catalog, external_dataset_name)
                 metadata: dict[str, Any] | None = None
                 description = None
@@ -656,6 +660,7 @@ class NodeTranslator:
         # Create assets from Kedro nodes that have outputs
         named_op_factories: dict[str, Any] = {}
         for pipeline_node in default_pipeline.nodes:
+            LOGGER.debug(f"Processing node '{pipeline_node.name}'...")
             op_name = format_node_name(pipeline_node.name)
             op_factory = partial(self.create_op, node=pipeline_node)
             named_op_factories[f"{op_name}_graph"] = op_factory
@@ -664,4 +669,5 @@ class NodeTranslator:
                 asset = self.create_asset(pipeline_node)
                 named_assets[op_name] = asset
 
+        LOGGER.debug(f"Translated {len(named_op_factories)} op(s) and {len(named_assets)} asset(s)")
         return named_op_factories, named_assets

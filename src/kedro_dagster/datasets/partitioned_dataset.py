@@ -63,7 +63,18 @@ def parse_dagster_definition(
 
 
 class DagsterPartitionedDataset(PartitionedDataset):
-    """A Kedro dataset that integrates with Dagster's partitioning system.
+    """Kedro dataset that enables Dagster partitioning.
+
+    This dataset wraps Kedro's `PartitionedDataset` to expose Dagster partition
+    definitions and mappings. It validates partition types at instantiation and
+    only supports a limited subset of Dagster's partition features.
+
+    **Supported Partition Types**:
+        - `StaticPartitionsDefinition`: Fixed list of partition keys
+
+    **Supported Partition Mappings**:
+        - `StaticPartitionMapping`: Explicit upstream→downstream key mapping
+        - `IdentityPartitionMapping`: 1:1 mapping with matching keys
 
     Args:
         path (str): Base path for partitions.
@@ -80,19 +91,52 @@ class DagsterPartitionedDataset(PartitionedDataset):
         metadata (dict[str, Any] | None): Arbitrary metadata.
 
     Examples:
-        ```python
-        from kedro_dagster.datasets import DagsterPartitionedDataset
+        Basic usage with `StaticPartitionsDefinition`:
 
-        partitioned_dataset = DagsterPartitionedDataset(
-            path="data/partitions/",
-            dataset=CSVDataSet(
-                filepath_arg="filepath",
-                sep=",",
-            ),
-            partition=StaticPartitionsDefinition(["2023-01-01", "2023-01-02"]),
-            partition_mapping={"downstream_dataset": TimeWindowPartitionMapping()},
-            filename_suffix=".csv",
-        )
+        ```yaml
+        my_partitioned_dataset:
+          type: kedro_dagster.DagsterPartitionedDataset
+          path: data/partitions/
+          dataset:
+            type: pandas.CSVDataset
+          partition:
+            type: dagster.StaticPartitionsDefinition
+            partition_keys: ["A", "B", "C"]
+        ```
+
+        With `StaticPartitionMapping`:
+
+        ```yaml
+        upstream:
+          type: kedro_dagster.DagsterPartitionedDataset
+          path: data/01_raw/upstream/
+          dataset:
+            type: pandas.CSVDataset
+          partition:
+            type: dagster.StaticPartitionsDefinition
+            partition_keys: ["1.csv", "2.csv"]
+          partition_mappings:
+            downstream:
+              type: dagster.StaticPartitionMapping
+              downstream_partition_keys_by_upstream_partition_key:
+                1.csv: 10.csv
+                2.csv: 20.csv
+        ```
+
+        With `IdentityPartitionMapping`:
+
+        ```yaml
+        upstream:
+          type: kedro_dagster.DagsterPartitionedDataset
+          path: data/02_raw/upstream/
+          dataset:
+            type: pickle.PickleDataset
+          partition:
+            type: dagster.StaticPartitionsDefinition
+            partition_keys: ["2024-01.pkl", "2024-02.pkl"]
+          partition_mappings:
+            downstream:
+              type: dagster.IdentityPartitionMapping
         ```
     """
 
@@ -128,6 +172,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
         partition = partition if isinstance(partition, dict) else {"type": partition}
         self._validate_partitions_definition(partition)
         self._partition_type, self._partition_config = parse_dagster_definition(partition)
+        self._validate_partition_definition_type()
 
         self._partition_mapping: dict[str, Any] | None = None
         if partition_mapping is not None:
@@ -141,6 +186,7 @@ class DagsterPartitionedDataset(PartitionedDataset):
                 downstream_partition_mapping_type, downstream_partition_mapping_config = parse_dagster_definition(
                     downstream_mapping_cfg
                 )
+                self._validate_partition_mapping_type(downstream_partition_mapping_type, downstream_dataset_name)
                 self._partition_mapping[downstream_dataset_name] = {
                     "type": downstream_partition_mapping_type,
                     "config": downstream_partition_mapping_config,
@@ -154,6 +200,50 @@ class DagsterPartitionedDataset(PartitionedDataset):
         """
         if "type" not in partition:
             raise ValueError("Partition definition must contain the 'type' key.")
+
+    def _validate_partition_definition_type(self) -> None:
+        """Validate that only StaticPartitionsDefinition is used.
+
+        Raises:
+            NotImplementedError: If partition definition type is not supported.
+        """
+        # Check if it's StaticPartitionsDefinition or a subclass
+        is_static = self._partition_type is dg.StaticPartitionsDefinition or (
+            isinstance(self._partition_type, type) and issubclass(self._partition_type, dg.StaticPartitionsDefinition)
+        )
+
+        if not is_static:
+            msg = (
+                f"Partition definition type '{self._partition_type.__name__}' is not supported. "
+                "Kedro-Dagster currently only supports `StaticPartitionsDefinition`."
+            )
+            raise NotImplementedError(msg)
+
+    def _validate_partition_mapping_type(self, mapping_type: type, downstream_dataset_name: str) -> None:
+        """Validate that only supported partition mappings are used.
+
+        Args:
+            mapping_type: The partition mapping class.
+            downstream_dataset_name: Name of the downstream dataset.
+
+        Raises:
+            NotImplementedError: If partition mapping type is not supported.
+        """
+        # Allowed mapping types (StaticPartitionMapping and IdentityPartitionMapping)
+        allowed_types = (dg.StaticPartitionMapping, dg.IdentityPartitionMapping)
+
+        # Check if mapping_type is one of the allowed types or a subclass
+        is_allowed = mapping_type in allowed_types or (
+            isinstance(mapping_type, type) and any(issubclass(mapping_type, t) for t in allowed_types)
+        )
+
+        if not is_allowed:
+            msg = (
+                f"Partition mapping type '{mapping_type.__name__}' for downstream dataset "
+                f"'{downstream_dataset_name}' is not supported. "
+                "Kedro-Dagster currently only supports `StaticPartitionMapping` and `IdentityPartitionMapping`."
+            )
+            raise NotImplementedError(msg)
 
     def _get_partitions_definition(self) -> dg.PartitionsDefinition:
         """Instantiate and return the Dagster partitions definition.
@@ -246,9 +336,6 @@ class DagsterPartitionedDataset(PartitionedDataset):
         Returns:
             list[str]: Full paths of discovered partitions.
         """
-        if self._partition_type is dg.DynamicPartitionsDefinition:
-            return cast(list[str], super()._list_partitions())
-
         partitions_def = self._get_partitions_definition()
         partition_keys = partitions_def.get_partition_keys()
 
@@ -298,10 +385,6 @@ class DagsterPartitionedDataset(PartitionedDataset):
         Returns:
             dict[str, Callable[[], Any]]: Map of partition key to loader callable.
         """
-        if self._partition_type is dg.DynamicPartitionsDefinition:
-            instance = dg.DagsterInstance.get()
-            instance.add_dynamic_partitions(self._partition_config["name"], self._list_available_partition_keys())
-
         loaded_data = cast(dict[str, Callable[[], Any]], super().load())
 
         # Normalize keys to logical partition keys (e.g., "p1") instead of full paths.
@@ -331,17 +414,15 @@ class DagsterPartitionedDataset(PartitionedDataset):
         Args:
             data (dict[str, Any]): Map of partition key to data.
         """
-
-        if self._partition_type is not dg.DynamicPartitionsDefinition:
-            partitions_def = self._get_partitions_definition()
-            partition_keys = partitions_def.get_partition_keys()
-            if not isinstance(data, dict):
-                raise TypeError(f"Expected data to be a dict mapping partition keys to data, but got: {type(data)}")
-            elif all(key not in partition_keys for key in data.keys()):
-                raise ValueError(
-                    "No matching partitions found to save the provided data. Partition keys: "
-                    f"{list(data.keys())}. Expected keys: {partition_keys}"
-                )
+        partitions_def = self._get_partitions_definition()
+        partition_keys = partitions_def.get_partition_keys()
+        if not isinstance(data, dict):
+            raise TypeError(f"Expected data to be a dict mapping partition keys to data, but got: {type(data)}")
+        elif all(key not in partition_keys for key in data.keys()):
+            raise ValueError(
+                "No matching partitions found to save the provided data. Partition keys: "
+                f"{list(data.keys())}. Expected keys: {partition_keys}"
+            )
 
         super().save(data)
 

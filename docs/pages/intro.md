@@ -30,7 +30,7 @@ What makes Kedro‑Dagster shine is that it leverages the complementarity of bot
 - **Automatic node parallelization across partitions:** Use Dagster’s partitions to fan out Kedro node execution across time windows or other keys with minimal configuration—no code changes required.
 - **Variety of execution targets:** Run locally for development, in Docker, on a remote machine, or scale on Kubernetes and other Dagster-supported executors, selectable per job via configuration.
 
-Refer to the [Dagster documentation](https://docs.dagster.io) and in particular to the [Dagster Deployment Options](https://docs.dagster.io/guides/deploy) to find out if Dagster fits your need and connect to the [Dagster Slack](https://dagster.io/slack) to get in touch with the community.
+Refer to the [Dagster documentation](https://docs.dagster.io) and in particular to the [Dagster Deployment Options](https://docs.dagster.io/deployment) to find out if Dagster fits your need and connect to the [Dagster Slack](https://dagster.io/slack) to get in touch with the community.
 
 ### For Dagster users
 
@@ -67,7 +67,7 @@ Kedro and Dagster logging is unified to provide a consistent logging experience 
 
 ### (Experimental) Dagster partitions support
 
-Enable time- or key-based [Dagster partitions](https://docs.dagster.io/guides/build/partitions-and-backfills) to backfill, schedule, and process incremental slices of your pipelines.
+Enable key-based [Dagster partitions](https://docs.dagster.io/guides/build/partitions-and-backfills) to backfill, schedule, and process incremental slices of your pipelines. Currently supports `StaticPartitionsDefinition` with `StaticPartitionMapping` or `IdentityPartitionMapping`. See the [user guide](guide.md#kedro-datasets-for-dagster-partitioning) for details on supported features and alternatives for time-based partitioning.
 
 ## Limitations and considerations
 

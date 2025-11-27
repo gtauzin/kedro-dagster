@@ -10,8 +10,9 @@ nav:
   - Introduction: pages/intro.md
   - Getting started: pages/getting-started.md
   - Example: pages/example.md
-  - Technical documentation: pages/technical.md
+  - User guide: pages/guide.md
   - Reference: pages/reference.md
+  - FAQ: pages/faq.md
 
 theme:
   name: material

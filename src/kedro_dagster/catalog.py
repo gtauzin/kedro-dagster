@@ -202,6 +202,7 @@ class CatalogTranslator:
 
     def to_dagster(self) -> tuple[dict[str, dg.IOManagerDefinition], dict[str, dict[str, Any]]]:
         """Generate IO managers and partitions for all Kedro datasets referenced by pipelines."""
+        LOGGER.info("Translating Kedro catalog to Dagster IO managers...")
         named_io_managers: dict[str, dg.IOManagerDefinition] = {}
         asset_partitions: dict[str, dict[str, Any]] = {}
 
@@ -209,6 +210,7 @@ class CatalogTranslator:
             if _is_param_name(dataset_name) or is_nothing_asset_name(self._catalog, dataset_name):
                 continue
 
+            LOGGER.debug(f"Translating dataset '{dataset_name}'...")
             asset_name = format_dataset_name(dataset_name)
             dataset = get_dataset_from_catalog(self._catalog, dataset_name)
             if dataset is None:
@@ -229,4 +231,7 @@ class CatalogTranslator:
                     "partition_mappings": partition_mappings,
                 }
 
+        LOGGER.debug(
+            f"Translated {len(named_io_managers)} IO manager(s) with {len(asset_partitions)} partition definition(s)"
+        )
         return named_io_managers, asset_partitions

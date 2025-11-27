@@ -86,6 +86,7 @@ def test_schedule_creator_uses_named_schedule(env, request):
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
         context=context,
+        catalog=context.catalog,
         project_path=str(project_path),
         env=env,
         named_assets=named_assets,
@@ -168,7 +169,8 @@ def test_schedule_creator_raises_for_unknown_named_schedule(env, project_scenari
     with pytest.raises(ValueError) as e:
         schedule_creator.create_schedules()
 
-    assert "Schedule named 'unknown' for job 'default' not found in available schedules" in str(e.value)
+    assert "Schedule named 'unknown' for job 'default' not found" in str(e.value)
+    assert "Available schedules: []" in str(e.value)
 
 
 @pytest.mark.parametrize("env", ["base"])  # keep fast
@@ -698,10 +700,8 @@ def test_schedule_creator_validates_string_references():
     with pytest.raises(ValueError) as exc_info:
         schedule_creator.create_schedules()
 
-    assert (
-        "Schedule named 'nonexistent_schedule' for job 'job_with_bad_schedule_ref' not found in available schedules"
-        in str(exc_info.value)
-    )
+    assert "Schedule named 'nonexistent_schedule' for job 'job_with_bad_schedule_ref' not found" in str(exc_info.value)
+    assert "Available schedules: ['available_schedule']" in str(exc_info.value)
 
 
 def test_schedule_creator_mixed_schedule_types(monkeypatch):

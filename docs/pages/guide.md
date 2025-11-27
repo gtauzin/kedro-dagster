@@ -1,4 +1,4 @@
-# Technical documentation
+# User guide
 
 This section provides an in-depth look at the architecture, configuration, and core concepts behind Kedro-Dagster. Here you'll find details on how Kedro projects are mapped to Dagster constructs, how to configure orchestration, and how to customize the integration for advanced use cases.
 
@@ -14,20 +14,18 @@ Kedro-Dagster translates core Kedro concepts into their Dagster equivalents. Und
 
 | Kedro Concept   | Dagster Concept      | Description |
 |-----------------|----------------------|-------------|
-| **Node**        | Op,&nbsp;Asset            | Each [Kedro node](https://docs.kedro.org/en/stable/nodes_and_pipelines/nodes.html) becomes a Dagster op. Node parameters are passed as config. |
-| **Pipeline**    | Job                  | [Kedro pipelines](https://docs.kedro.org/en/stable/nodes_and_pipelines/pipeline_introduction.html) are filtered and translated into a Dagster job. Jobs can be scheduled and can target executors. |
-| **Dataset**     | Asset,&nbsp;IO&nbsp;Manager    | Each [Kedro data catalog](https://docs.kedro.org/en/stable/data/data_catalog.html)'s dataset become Dagster assets managed by a dedicated IO managers. |
-| **Hooks**       | Hooks,&nbsp;Sensors       | [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) are executed at the appropriate points in the Dagster job lifecycle. |
+| **Node**        | Op,&nbsp;Asset            | Each [Kedro node](https://docs.kedro.org/en/stable/build/nodes/) becomes a Dagster op. Node parameters are passed as config. |
+| **Pipeline**    | Job                  | [Kedro pipelines](https://docs.kedro.org/en/stable/build/pipeline_introduction/) are filtered and translated into a Dagster job. Jobs can be scheduled and can target executors. |
+| **Dataset**     | Asset,&nbsp;IO&nbsp;Manager    | Each [Kedro data catalog](https://docs.kedro.org/en/stable/catalog-data/introduction/)'s dataset become Dagster assets managed by a dedicated IO managers. |
+| **Hooks**       | Hooks,&nbsp;Sensors       | [Kedro hooks](https://docs.kedro.org/en/stable/extend/hooks/introduction/) are executed at the appropriate points in the Dagster job lifecycle. |
 | **Parameters**  | Config,&nbsp;Resources    | [Kedro parameters](https://docs.kedro.org/en/stable/configuration/parameters.html) are passed as Dagster config. |
-| **Logging**     | Logger               | [Kedro logging](https://docs.kedro.org/en/stable/logging/index.html) is integrated with Dagster's logging system. |
+| **Logging**     | Logger               | [Kedro logging](https://docs.kedro.org/en/stable/develop/logging/) is integrated with Dagster's logging system. |
 
 Additionally, we provide Kedro datasets, namely `DagsterPartitionedDataset` and `DagsterNothingDataset`, to enable [Dagster partitions](https://docs.dagster.io/guides/build/partitions-and-backfills).
 
 ### Catalog
 
-Kedro-Dagster translates Kedro datasets into Dagster assets and IO managers. This allows you to use Kedro's [Data Catalog](https://docs.kedro.org/en/stable/data/data_catalog.html) with Dagster's asset materialization and IO management features.
-
-For the Kedro pipelines specified in `dagster.yml`, the following Dagster objects are defined:
+Kedro-Dagster translates Kedro datasets into Dagster assets and IO managers. For the Kedro pipelines specified in `dagster.yml`, the following Dagster objects are defined:
 
 - **External assets**: Input datasets to the pipelines are registered as Dagster external assets.
 - **Assets**: Output datasets to the pipelines are defined as Dagster assets
@@ -35,12 +33,9 @@ For the Kedro pipelines specified in `dagster.yml`, the following Dagster object
 
 See the API reference for [`CatalogTranslator`](reference.md#catalogtranslator) for more details.
 
-!!! note
-    Each Kedro dataset can take a `metadata` parameter to define additional metadata for the corresponding Dagster asset, such as a description. This description will appear in the Dagster UI.
+#### Dataset `metadata`
 
-### Group name metadata
-
-In addition to common metadata like `description`, a Kedro dataset's `metadata` can include a `group_name` field. When present, `group_name` is used to set the asset's group in Dagster and overrides the default group inferred from the node's pipeline. For multi-asset translations, `group_name` is applied per-AssetOut, allowing each asset produced by a multi-asset to belong to its own group when needed.
+Each Kedro dataset can take a `metadata` parameter to define additional metadata for the dataset. Kedro-Dagster takes advantage of this to populate the corresponding Dagster asset, and propagates parameters such as `description` to the asset. A `description` provided this way will appear in the Dagster UI. In addition to common metadata like `description`, a Kedro dataset's `metadata` can include a `group_name` field. When present, `group_name` is used to set the asset's group in Dagster and overrides the default group inferred from the node's pipeline. For multi-asset translations, `group_name` is applied per-AssetOut, allowing each asset produced by a multi-asset to belong to its own group when needed.
 
 ### Node
 
@@ -56,10 +51,12 @@ See the API reference for [`NodeTranslator`](reference.md#nodetranslator) for mo
 
 ### Pipeline
 
-Kedro pipelines are translated into Dagster jobs. Each job can be filtered, scheduled, and assigned an executor via configuration.
+Kedro pipelines are translated into Dagster jobs. Each job is defined as a filtered pipeline and can be scheduled and assigned an executor and a list of loggers via the `dagster.yml` configuration.
 
-- **Jobs**: Each pipeline is mapped to a Dagster job.
 - **Filtering**: Jobs are defined granuarily from Kedro pipelines by allowing the filtering of their nodes, namespaces, tags, and inputs/outputs.
+- **Scheduling**: Jobs can be scheduled using cron expressions defined in `dagster.yml`. See the [schedules section](guide.md#customizing-schedules) for more details.
+- **Executors**: Jobs can be assigned different executors defined in `dagster.yml`. See the [executors section](guide.md#customizing-executors) for more details.
+- **Loggers**: Jobs can be assigned different loggers defined in `dagster.yml`. See the [logging section](guide.md#custom-logger-configuration) for more details.
 
 If one of the datasets involved in the pipeline is a `DagsterPartitionedDataset`, the corresponding job will fan-out the nodes the partitioned datasets are involved in according to the defined partitions.
 
@@ -67,7 +64,7 @@ See the API reference for [`PipelineTranslator`](reference.md#pipelinetranslator
 
 ### Hook
 
-Kedro-Dagster preserves all [Kedro hooks](https://docs.kedro.org/en/stable/hooks/index.html#hooks) in the Dagster context. Hooks are executed at the appropriate points in the Dagster job lifecycle. Catalog hooks are called in the `handle_output` and `load_input` function of each Dagster IO manager. Node hooks are plugged in the appropriate Dagster Op. As for the Context hook, they are called within a Dagster Op running at the beginning of each job along with the `before_pipeline_run` pipeline hook. The `after_pipeline_run` is called in a Dagster op running at the end of each job. Finally the `on_pipeline_error` pipeline, is embedded in a dedicated Dagster sensor that is triggered by a run failure.
+Kedro-Dagster preserves all [Kedro hooks](https://docs.kedro.org/en/stable/extend/hooks/introduction/) in the Dagster context. Hooks are executed at the appropriate points in the Dagster job lifecycle. Dataset hooks are called in the `handle_output` and `load_input` function of each Dagster IO manager. Node hooks are plugged in the appropriate Dagster Op. As for the Context hook `after_context_created` and the Catalog hook `after_catalog_created`, they are called within a Dagster Op running at the beginning of each job along with the `before_pipeline_run` pipeline hook. The `after_pipeline_run` is called in a Dagster op running at the end of each job. Finally the `on_pipeline_error` pipeline, is embedded in a dedicated Dagster sensor that is triggered by a run failure.
 
 ## Compatibility notes between Kedro and Dagster
 
@@ -128,9 +125,43 @@ root:
 
 #### In-code logging
 
+##### Overview
+
+Kedro-Dagster integrates Kedro's logging with Dagster's logging system to provide unified log visibility. Logs generated within your Kedro node functions can be captured and displayed in the Dagster UI when you use the `kedro_dagster.logging` module.
+
+**How it works:**
+
+The `kedro_dagster.logging.getLogger` function automatically detects the execution context:
+
+- During Dagster runs: Returns a Dagster logger (logs appear in Dagster UI)
+- During Kedro runs: Returns a standard Python logger (logs appear in terminal)
+
+This allows the same node code to work seamlessly in both Kedro and Dagster contexts.
+
+##### Using kedro_dagster.logging in node functions
+
 Logs generated within Kedro nodes are captured if `getLogger` is imported from the `kedro_dagster.logging` module instead of the `logging` package and the `getLogger` calls are made inside the node functions. These logs are then displayed in the Dagster UI, allowing for easier tracing and debugging of pipeline executions.
 
-#####  Custom logger configuration
+**Example:**
+
+```python
+
+def process_data(data: pd.DataFrame) -> pd.DataFrame:
+    from kedro_dagster.logging import getLogger
+    logger = getLogger(__name__)
+    logger.info(f"Processing {len(data)} rows")
+
+    # Your processing logic
+    processed = data.dropna()
+
+    logger.info(f"After processing: {len(processed)} rows")
+    return processed
+```
+
+!!! tip "Logger Creation"
+    Always import `getLogger` and create the logger **inside** the node function, not at module level. This ensures the logger is properly initialized in the Dagster execution context.
+
+##### Custom logger configuration
 
 Additionally, to configure logging within Dagster runs, use the Kedro-Dagster `loggers` section of the `dagster.yml` configuration file to define and customize loggers for your Dagster runs:
 
@@ -186,7 +217,7 @@ See the [Example page](example.md#custom-logging-integration) for a complete exa
 
 ## MLflow integration
 
-Kedro-Dagster provides seamless integration with MLflow when using [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow) for experiment tracking. When MLflow is configured in your Kedro project, Kedro-Dagster automatically captures MLflow run information and displays it in the Dagster UI.
+Kedro-Dagster provides seamless integration with MLflow when using [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow) for experiment tracking. When MLflow is configured in your Kedro project, Kedro-Dagster automatically captures MLflow run information and displays it in the Dagster UI. Checkout the [Kedro-MLflow documentation](https://kedro-mlflow.readthedocs.io/en/stable/) for details on setting up MLflow tracking in Kedro.
 
 ### Automatic MLflow run tracking
 
@@ -198,32 +229,15 @@ When a Kedro node executes within a Dagster context and the active MLflow run tr
 
 Those details appear in the Dagster run logs, run tags, and asset materialization metadata, allowing users to quickly navigate between Dagster runs and their corresponding MLflow experiments.
 
-### Configuration requirements
-
-To enable MLflow integration:
-
-1. **Install kedro-mlflow**: See the [Kedro-MLflow installation instructions](https://kedro-mlflow.readthedocs.io/en/latest/source/02_getting_started/01_installation/01_installation.html)
-2. **Configure MLflow** in your Kedro project following the [kedro-mlflow documentation](https://kedro-mlflow.readthedocs.io/)
-3. **MLflow UI configuration**: For example, define UI host and port or tracking URI in `conf/<env>/mlflow.yml`:
-
-```yaml
-ui:
-  host: localhost
-  port: 5000
-
-server:
-  mlflow_tracking_uri: mlruns
-```
-
 ## Kedro datasets for Dagster partitioning
+
+!!! warning "Experimental Status"
+    Dagster partitions support in Kedro-Dagster is **experimental** and currently supports only a limited subset of Dagster's partition types. The plugin validates partition definitions and mappings at dataset instantiation and will raise clear errors for unsupported types.
 
 Kedro-Dagster provides two custom datasets to enable Dagster partitioning and asset management within Kedro projects:
 
 - **`DagsterPartitionedDataset`**: A Kedro dataset that is partitioned according to Dagster's partitioning scheme. This allows for more efficient data processing and management within Kedro pipelines.
-- **`DagsterNothingDataset`**: A special Kedro dataset that represents a "no-op" or empty dataset in Dagster. This can be useful for cases where an order in execution between two nodes needs to be enforced.
-
-!!! danger
-  Dagster partitions support is currently experimental. Please open an issue if you encounter problems or have feature requests.
+- **`DagsterNothingDataset`**: A special Kedro dataset that represents a "no-op" or empty dataset in Dagster. This can be useful for cases where an order in execution between two nodes needs to be enforced. It can also be used to forced dependency between nodes outised of the Dagster partitions context.
 
 ### `DagsterPartitionedDataset`
 
@@ -245,9 +259,6 @@ my_downstream_partitioned_dataset:
       - 2023-01-02.csv
       - 2023-01-03.csv
 ```
-
-!!! danger
-    `MultiPartitionsDefinition` is currently not supported.
 
 To define a partition mapping to downstream datasets, you can use the `partition_mappings` parameter:
 
@@ -284,6 +295,55 @@ my_upstream_partitioned_dataset:
 
 See the API reference for [`DagsterPartitionedDataset`](reference.md#dagsterpartitioneddataset) for more details.
 
+#### Supported partition definitions and mappings
+
+Currently, only **`StaticPartitionsDefinition`** is supported. It works for a fixed sets of partitions (e.g., specific dates, regions, model variants). See [Dagster StaticPartitionsDefinition docs](https://docs.dagster.io/api/dagster/partitions#dagster.StaticPartitionsDefinition) for more details.
+
+Two partition mapping types are supported:
+
+1. **`StaticPartitionMapping`**: Explicitly maps upstream partition keys to downstream partition keys. See [Dagster StaticPartitionMapping docs](https://docs.dagster.io/api/dagster/partitions#dagster.StaticPartitionMapping) for more details.
+
+2. **`IdentityPartitionMapping`**: One-to-one mapping where partition keys match exactly. See [Dagster IdentityPartitionMapping docs](https://docs.dagster.io/api/dagster/partitions#dagster.IdentityPartitionMapping) for more details.
+
+Example with `StaticPartitionMapping`:
+
+```yaml
+upstream_dataset:
+  type: kedro_dagster.DagsterPartitionedDataset
+  path: data/02_raw/upstream/
+  dataset:
+    type: pandas.CSVDataSet
+  partition:
+    type: dagster.StaticPartitionsDefinition
+    partition_keys: ["1.csv", "2.csv", "3.csv"]
+  partition_mappings:
+    downstream_dataset:
+      type: dagster.StaticPartitionMapping
+      downstream_partition_keys_by_upstream_partition_key:
+        1.csv: 10.csv
+        2.csv: 20.csv
+        3.csv: 30.csv
+```
+
+Example with `IdentityPartitionMapping`:
+
+```yaml
+upstream_dataset:
+  type: kedro_dagster.DagsterPartitionedDataset
+  path: data/02_raw/upstream/
+  dataset:
+    type: pickle.PickleDataset
+  partition:
+    type: dagster.StaticPartitionsDefinition
+    partition_keys: ["A.pkl", "B.pkl", "C.pkl"]
+  partition_mappings:
+    downstream_dataset:
+      type: dagster.IdentityPartitionMapping  # Keys match exactly
+```
+
+!!! info "Need Support for other Dagster partitions?"
+    If you have a use case that requires any unsupported partition types, please [open an issue](https://github.com/gtauzin/kedro-dagster/issues) describing your requirements.
+
 ### `DagsterNothingDataset`
 
 A dummy dataset representing a Dagster asset of type `Nothing` without associated data used to enforce links between nodes. It does not read or write any data but allows you to create dependencies between nodes in your Kedro pipelines that translate to Dagster assets of type `Nothing`.
@@ -300,6 +360,14 @@ my_nothing_dataset:
 ```
 
 See the API reference for [`DagsterNothingDataset`](reference.md#dagsternothingdataset) for more details.
+git
+### Future roadmap
+
+Support for additional partition types may be added in future releases. Track progress and request features at:
+
+- [Kedro-Dagster Issue Tracker](https://github.com/gtauzin/kedro-dagster/issues)
+
+If you have a use case requiring specific partition types, please open a feature request with your requirements.
 
 ## Project configuration
 
@@ -330,7 +398,7 @@ This YAML file defines jobs, executors, and schedules for your project.
       schedule: my_job_schedule
   ```
 
-- **jobs**: Map [Kedro pipelines](https://docs.kedro.org/en/stable/nodes_and_pipelines/pipeline_introduction.html) to Dagster jobs, with optional [filtering](https://docs.kedro.org/en/stable/api/kedro.pipeline.Pipeline.html#kedro.pipeline.Pipeline.filter).
+- **jobs**: Map [Kedro pipelines](https://docs.kedro.org/en/stable/build/pipeline_introduction/) to Dagster jobs, with optional [filtering](https://docs.kedro.org/en/stable/api/pipeline/kedro.pipeline.Pipeline/#kedro.pipeline.Pipeline.filter).
 - **executors**: Define how jobs are executed (in-process, multiprocess, k8s, etc) by picking executors from those [implemented in Dagster](https://docs.dagster.io/guides/operate/run-executors#example-executors).
 - **schedules**: Set up cron-based or custom schedules for jobs.
 
@@ -379,7 +447,7 @@ executors:
 
 #### Customizing jobs
 
-You can filter which nodes, tags, or inputs/outputs are included in each job. Each job can be associated with a pre-defined executor and/or schedule. See the [Kedro pipeline documentation](https://docs.kedro.org/en/stable/api/kedro.pipeline.Pipeline.html#kedro.pipeline.Pipeline.filter) for more on pipelines and filtering. The accepted pipeline parameters are documented in the associated Pydantic model, [`PipelineOptions`](reference.md#pipelineoptions).
+You can filter which nodes, tags, or inputs/outputs are included in each job. Each job can be associated with a pre-defined executor and/or schedule. See the [Kedro pipeline documentation](https://docs.kedro.org/en/stable/api/pipeline/kedro.pipeline.Pipeline/#kedro.pipeline.Pipeline.filter) for more on pipelines and filtering. The accepted pipeline parameters are documented in the associated Pydantic model, [`PipelineOptions`](reference.md#pipelineoptions).
 
 To each job, you can assign a schedule and/or an executor by name if it was previously defined in the configuration file.
 

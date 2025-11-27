@@ -7,6 +7,7 @@ overrides per job.
 """
 
 import warnings
+from logging import getLogger
 from typing import TYPE_CHECKING, Any
 
 import dagster as dg
@@ -27,9 +28,12 @@ from kedro_dagster.utils import (
 
 if TYPE_CHECKING:
     from kedro.framework.context import KedroContext
+    from kedro.io import CatalogProtocol
     from kedro.pipeline.node import Node
 
     from kedro_dagster.config.kedro_dagster import KedroDagsterConfig
+
+LOGGER = getLogger(__name__)
 
 
 class PipelineTranslator:
@@ -38,6 +42,7 @@ class PipelineTranslator:
     Args:
         dagster_config (KedroDagsterConfig): Parsed configuration of the Dagster repository.
         context (KedroContext): Active Kedro context (provides catalog and hooks).
+        catalog (DataCatalog): Kedro data catalog.
         project_path (str): Path to the Kedro project.
         env (str): Kedro environment used for namespacing.
         run_id (str): Kedro run ID. In Kedro < 1.0, this is called `session_id`.
@@ -54,6 +59,7 @@ class PipelineTranslator:
         self,
         dagster_config: "KedroDagsterConfig",
         context: "KedroContext",
+        catalog: "CatalogProtocol",
         project_path: str,
         env: str,
         run_id: str,
@@ -67,10 +73,10 @@ class PipelineTranslator:
     ):
         self._dagster_config = dagster_config
         self._context = context
+        self._catalog = catalog
         self._project_path = project_path
         self._env = env
         self._run_id = run_id
-        self._catalog = context.catalog
         self._hook_manager = context._hook_manager
         self._named_assets = named_assets
         self._asset_partitions = asset_partitions
@@ -83,7 +89,8 @@ class PipelineTranslator:
     def _enumerate_partition_keys(self, partitions_def: dg.PartitionsDefinition | None) -> list[str]:
         """Enumerate partition keys for an asset.
 
-        Note: Multi-partitions are not supported by the static fan-out strategy.
+        Note: This method assumes the partition definition has already been validated
+        by `DagsterPartitionedDataset`. Only `StaticPartitionsDefinition` should reach here.
 
         Args:
             partitions_def (PartitionsDefinition | None): Partitions definition of the asset to enumerate.
@@ -93,12 +100,6 @@ class PipelineTranslator:
         """
         if not partitions_def:
             return []
-
-        if isinstance(partitions_def, dg.MultiPartitionsDefinition):
-            raise NotImplementedError("MultiPartitionsDefinition is not supported.")
-
-        if isinstance(partitions_def, dg.TimeWindowPartitionsDefinition):
-            raise NotImplementedError("TimeWindowPartitionsDefinition is not supported.")
 
         return list(partitions_def.get_partition_keys())
 
@@ -202,6 +203,7 @@ class PipelineTranslator:
         def before_pipeline_run_hook_op(context: dg.OpExecutionContext) -> dg.Nothing:
             kedro_run_resource = context.resources.kedro_run
             kedro_run_resource.after_context_created_hook()
+            kedro_run_resource.after_catalog_created_hook()
 
             self._hook_manager.hook.before_pipeline_run(
                 run_params=kedro_run_resource.run_params,
@@ -436,6 +438,7 @@ class PipelineTranslator:
 
         kedro_run_translator = KedroRunTranslator(
             context=self._context,
+            catalog=self._catalog,
             project_path=self._project_path,
             env=self._env,
             run_id=self._run_id,
@@ -474,14 +477,18 @@ class PipelineTranslator:
         Returns:
             dict[str, dg.JobDefinition]: Translated Dagster jobs.
         """
+        LOGGER.info("Translating Kedro pipelines to Dagster jobs...")
         # Lazy import to avoid circular dependency
         from kedro.framework.project import pipelines
 
         named_jobs: dict[str, dg.JobDefinition] = {}
         if self._dagster_config.jobs is None:
+            LOGGER.debug("No jobs defined in configuration")
             return named_jobs
 
+        LOGGER.debug(f"Processing {len(self._dagster_config.jobs)} job(s)")
         for job_name, job_config in self._dagster_config.jobs.items():
+            LOGGER.debug(f"Translating job '{job_name}'...")
             pipeline_config = job_config.pipeline
 
             pipeline_name = pipeline_config.pipeline_name
@@ -497,25 +504,32 @@ class PipelineTranslator:
                     if executor_config in self._named_executors:
                         executor_def = self._named_executors[executor_config]
                     else:
-                        raise ValueError(f"Executor '{executor_config}' not found.")
+                        msg = f"Executor '{executor_config}' not found. Available executors: {list(self._named_executors.keys())}"
+                        LOGGER.error(msg)
+                        raise ValueError(msg)
                 else:
                     # Inline executor configuration - look for job-specific executor
                     job_executor_name = f"{job_name}__executor"
                     if job_executor_name in self._named_executors:
                         executor_def = self._named_executors[job_executor_name]
                     else:
-                        raise ValueError(f"Job-specific executor '{job_executor_name}' not found.")
+                        msg = f"Job-specific executor '{job_executor_name}' not found. Available executors: {list(self._named_executors.keys())}"
+                        LOGGER.error(msg)
+                        raise ValueError(msg)
 
             # Handle logger configurations (string references and/or inline configs)
             logger_defs, logger_configs = {}, {}
             if job_config.loggers:
+                LOGGER.debug(f"Processing {len(job_config.loggers)} loggers for job '{job_name}'...")
                 for idx, logger_config in enumerate(job_config.loggers):
                     if isinstance(logger_config, str):
                         # String reference to named logger
                         if logger_config in self._named_loggers:
                             logger_defs[logger_config] = self._named_loggers[logger_config]
                         else:
-                            raise ValueError(f"Logger '{logger_config}' not found.")
+                            msg = f"Logger '{logger_config}' not found. Available loggers: {list(self._named_loggers.keys())}"
+                            LOGGER.error(msg)
+                            raise ValueError(msg)
 
                         # If logger_config exists in _named_loggers, then loggers must exist - we assert for mypy
                         assert self._dagster_config.loggers is not None
@@ -527,9 +541,9 @@ class PipelineTranslator:
                         if job_logger_name in self._named_loggers:
                             logger_defs[job_logger_name] = self._named_loggers[job_logger_name]
                         else:
-                            raise ValueError(
-                                f"Job-specific logger '{job_logger_name}' for inline logger configuration not found."
-                            )
+                            msg = f"Job-specific logger '{job_logger_name}' for inline logger configuration not found."
+                            LOGGER.error(msg)
+                            raise ValueError(msg)
 
                         logger_configs[job_logger_name] = logger_config
 
@@ -552,5 +566,7 @@ class PipelineTranslator:
             )
 
             named_jobs[job_name] = job
+            LOGGER.debug(f"Successfully translated job '{job_name}'")
 
+        LOGGER.debug(f"Translated {len(named_jobs)} Dagster job(s)")
         return named_jobs

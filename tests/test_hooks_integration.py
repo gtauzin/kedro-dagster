@@ -16,6 +16,7 @@ from kedro.pipeline import Pipeline, node
 from kedro_dagster.catalog import CatalogTranslator
 from kedro_dagster.config import get_dagster_config
 from kedro_dagster.dagster import ExecutorCreator, LoggerCreator
+from kedro_dagster.kedro import KedroRunTranslator
 from kedro_dagster.nodes import NodeTranslator
 from kedro_dagster.pipelines import PipelineTranslator
 
@@ -30,6 +31,7 @@ class RecordingHooks:
     after_node_run_calls: list[str] = field(default_factory=list)
     before_pipeline_run_calls: int = 0
     after_pipeline_run_calls: int = 0
+    after_catalog_created_calls: int = 0
 
     @hook_impl
     def before_dataset_loaded(self, dataset_name, node):
@@ -63,10 +65,33 @@ class RecordingHooks:
     def after_pipeline_run(self, run_params, pipeline, catalog):
         self.after_pipeline_run_calls += 1
 
+    @hook_impl
+    def after_catalog_created(
+        self,
+        catalog,
+        conf_catalog,
+        conf_creds,
+        save_version=None,
+        load_versions=None,
+        parameters=None,  # Kedro 1.x
+        feed_dict=None,  # Kedro 0.19
+    ):
+        self.after_catalog_created_calls += 1
+
 
 @pytest.mark.parametrize("env", ["base", "local"])
-def test_hooks_are_invoked_end_to_end(env, request):
+def test_hooks_are_invoked_end_to_end(env, request, monkeypatch):
     """Execute a translated job and assert Kedro hooks are invoked (pipeline, node, dataset)."""
+    original_to_dagster = KedroRunTranslator.to_dagster
+
+    def patched_to_dagster(self, pipeline_name, filter_params):
+        resource = original_to_dagster(self, pipeline_name, filter_params)
+        # Use object.__setattr__ to bypass Pydantic's validation
+        object.__setattr__(resource, "_catalog", self._catalog)
+        return resource
+
+    monkeypatch.setattr(KedroRunTranslator, "to_dagster", patched_to_dagster)
+
     # Arrange: use a project variant with file-backed datasets so IO managers are used
     options = request.getfixturevalue(f"kedro_project_hooks_filebacked_{env}")
     project_path = options.project_path
@@ -112,6 +137,7 @@ def test_hooks_are_invoked_end_to_end(env, request):
     pipeline_translator = PipelineTranslator(
         dagster_config=dagster_config,
         context=context,
+        catalog=context.catalog,
         project_path=str(project_path),
         env=env,
         named_assets=named_assets,
@@ -128,6 +154,9 @@ def test_hooks_are_invoked_end_to_end(env, request):
     # Act: execute the job in process to trigger hooks
     result = jobs["default"].execute_in_process()
     assert result.success
+
+    # Assert: Catalog creation hook called (at least once - Kedro calls it internally, plus our explicit call)
+    assert hooks.after_catalog_created_calls >= 1
 
     # Assert: Pipeline hooks called once each
     assert hooks.before_pipeline_run_calls == 1
@@ -171,6 +200,7 @@ def _make_pipeline_translator(named_resources: dict | None = None) -> PipelineTr
     return PipelineTranslator(
         dagster_config={},
         context=DummyContext(catalog),
+        catalog=catalog,
         project_path="/tmp/project",
         env="base",
         run_id="sess",
