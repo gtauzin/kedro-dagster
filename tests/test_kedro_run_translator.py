@@ -260,11 +260,6 @@ def test_after_catalog_created_hook_invokes_hook_manager(
     translator._hook_manager = fake_hook_mgr  # also update translator cache used in closure
     resource = translator.to_dagster(pipeline_name="__default__", filter_params={})
 
-    # WORKAROUND: Add _catalog to resource so after_catalog_created_hook can access it
-    # The source code incorrectly references self._catalog instead of using the closure variable
-    # Use object.__setattr__ to bypass Pydantic's validation
-    object.__setattr__(resource, "_catalog", translator._catalog)
-
     # Call the hook and ensure the underlying kedro hook was triggered
     resource.after_catalog_created_hook()
 

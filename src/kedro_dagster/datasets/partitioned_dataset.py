@@ -129,8 +129,8 @@ class DagsterPartitionedDataset(PartitionedDataset):
         upstream:
           type: kedro_dagster.DagsterPartitionedDataset
           path: data/02_raw/upstream/
-            dataset:
-              type: pickle.PickleDataset
+          dataset:
+            type: pickle.PickleDataset
           partition:
             type: dagster.StaticPartitionsDefinition
             partition_keys: ["2024-01.pkl", "2024-02.pkl"]

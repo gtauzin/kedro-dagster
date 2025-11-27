@@ -296,7 +296,6 @@ def test_translator_mlflow_config_none_when_not_configured(monkeypatch):
     monkeypatch.setattr(ExecutorCreator, "create_executors", lambda self: {})
     monkeypatch.setattr(ScheduleCreator, "__init__", lambda self, *args, **kwargs: None)
     monkeypatch.setattr(ScheduleCreator, "create_schedules", lambda self: {})
-    monkeypatch.setattr(NodeTranslator, "to_dagster", lambda self: ({}, {}))
 
     translator = KedroProjectTranslator(project_path=tmp_project, env="base")
 

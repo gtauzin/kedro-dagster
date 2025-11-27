@@ -82,8 +82,6 @@ class RecordingHooks:
 @pytest.mark.parametrize("env", ["base", "local"])
 def test_hooks_are_invoked_end_to_end(env, request, monkeypatch):
     """Execute a translated job and assert Kedro hooks are invoked (pipeline, node, dataset)."""
-    # WORKAROUND: Monkeypatch KedroRunTranslator.to_dagster to add _catalog to the resource
-    # The source code incorrectly references self._catalog in after_catalog_created_hook
     original_to_dagster = KedroRunTranslator.to_dagster
 
     def patched_to_dagster(self, pipeline_name, filter_params):
