@@ -162,7 +162,7 @@ def process_data(data: pd.DataFrame) -> pd.DataFrame:
 ```
 
 !!! tip "Logger Creation"
-    Always create the logger **inside** the node function, not at module level. This ensures the logger is properly initialized in the Dagster execution context.
+    Always import `getLogger` and create the logger **inside** the node function, not at module level. This ensures the logger is properly initialized in the Dagster execution context.
 
 #####  Custom logger configuration
 
@@ -220,7 +220,7 @@ See the [Example page](example.md#custom-logging-integration) for a complete exa
 
 ## MLflow integration
 
-Kedro-Dagster provides seamless integration with MLflow when using [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow) for experiment tracking. When MLflow is configured in your Kedro project, Kedro-Dagster automatically captures MLflow run information and displays it in the Dagster UI. Checkout [Kedro-MLflow documentation](https://kedro-mlflow.readthedocs.io/en/stable/) for details on setting up MLflow tracking in Kedro.
+Kedro-Dagster provides seamless integration with MLflow when using [kedro-mlflow](https://github.com/Galileo-Galilei/kedro-mlflow) for experiment tracking. When MLflow is configured in your Kedro project, Kedro-Dagster automatically captures MLflow run information and displays it in the Dagster UI. Checkout the [Kedro-MLflow documentation](https://kedro-mlflow.readthedocs.io/en/stable/) for details on setting up MLflow tracking in Kedro.
 
 ### Automatic MLflow run tracking
 
@@ -363,15 +363,7 @@ my_nothing_dataset:
 ```
 
 See the API reference for [`DagsterNothingDataset`](reference.md#dagsternothingdataset) for more details.
-
-### When to use Dagster partitions
-
-Use `DagsterPartitionedDataset` when:
-
-- You have a **finite, predefined set** of partitions (e.g., list of regions, model variants, specific date ranges)
-- You want to leverage Dagster UI's partition selection and backfill features
-- Your partition keys are static and won't change frequently
-
+git
 ### Future roadmap
 
 Support for additional partition types may be added in future releases. Track progress and request features at:
