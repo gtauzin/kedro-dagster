@@ -109,6 +109,9 @@ class DagsterPartitionedDataset(PartitionedDataset):
         ```yaml
         upstream:
           type: kedro_dagster.DagsterPartitionedDataset
+          path: data/01_raw/upstream/
+          dataset:
+            type: pandas.CSVDataset
           partition:
             type: dagster.StaticPartitionsDefinition
             partition_keys: ["1.csv", "2.csv"]
@@ -125,9 +128,12 @@ class DagsterPartitionedDataset(PartitionedDataset):
         ```yaml
         upstream:
           type: kedro_dagster.DagsterPartitionedDataset
+          path: data/02_raw/upstream/
+            dataset:
+              type: pickle.PickleDataset
           partition:
             type: dagster.StaticPartitionsDefinition
-            partition_keys: ["2024-01", "2024-02"]
+            partition_keys: ["2024-01.pkl", "2024-02.pkl"]
           partition_mappings:
             downstream:
               type: dagster.IdentityPartitionMapping
