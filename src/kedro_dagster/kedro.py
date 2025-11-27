@@ -162,7 +162,28 @@ class KedroRunTranslator:
                 trigger any registered Kedro hooks that should run after the Kedro
                 catalog is created.
                 """
-                hook_manager.hook.after_catalog_created(context=context, catalog=context.catalog)
+                from kedro.framework.context.context import _convert_paths_to_absolute_posix
+
+                conf_catalog = context.config_loader["catalog"]
+                conf_catalog = _convert_paths_to_absolute_posix(
+                    project_path=context.project_path, conf_dictionary=conf_catalog
+                )
+                conf_creds = context._get_config_credentials()
+
+                if KEDRO_VERSION[0] >= 1:
+                    save_version = self.run_id
+                else:  # pragma: no cover
+                    save_version = self.session_id
+
+                hook_manager.hook.after_catalog_created(
+                    context=context,
+                    catalog=context.catalog,
+                    parameters=context._get_parameters(),
+                    conf_catalog=conf_catalog,
+                    conf_creds=conf_creds,
+                    save_version=save_version,
+                    load_versions=self.load_versions,
+                )
 
         run_params = (
             self._kedro_params

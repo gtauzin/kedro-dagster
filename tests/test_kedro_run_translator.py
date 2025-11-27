@@ -18,11 +18,33 @@ from kedro_dagster.utils import KEDRO_VERSION
 class _FakeHook:
     def __init__(self) -> None:
         self.after_context_created_called_with: list[Any] = []
+        self.after_catalog_created_called_with: list[dict[str, Any]] = []
         self.on_pipeline_error_called_with: list[dict[str, Any]] = []
 
     # signature used in kedro.py
     def after_context_created(self, *, context: Any) -> None:
         self.after_context_created_called_with.append(context)
+
+    def after_catalog_created(
+        self,
+        *,
+        catalog: Any,
+        conf_catalog: dict[str, Any],
+        conf_creds: dict[str, Any],
+        parameters: dict[str, Any],
+        save_version: str | None = None,
+        load_versions: Any = None,
+        context: Any = None,  # Optional, not always passed by Kedro
+    ) -> None:
+        self.after_catalog_created_called_with.append({
+            "context": context,
+            "catalog": catalog,
+            "parameters": parameters,
+            "conf_catalog": conf_catalog,
+            "conf_creds": conf_creds,
+            "save_version": save_version,
+            "load_versions": load_versions,
+        })
 
     def on_pipeline_error(self, *, error: Exception, run_params: dict[str, Any], pipeline: Any, catalog: Any) -> None:
         self.on_pipeline_error_called_with.append({
@@ -215,6 +237,57 @@ def test_after_context_created_hook_invokes_hook_manager(
 
     fake_ctx = translator._context
     assert fake_ctx._hook_manager.hook.after_context_created_called_with == [fake_ctx]
+
+
+def test_after_catalog_created_hook_invokes_hook_manager(
+    kedro_context_base: Any, kedro_project_exec_filebacked_base
+) -> None:
+    """after_catalog_created_hook triggers the Kedro hook with all required parameters."""
+    options = kedro_project_exec_filebacked_base
+    translator = KedroRunTranslator(
+        context=kedro_context_base,
+        project_path=str(options.project_path),
+        env=options.env,
+        run_id="sid-456",
+    )
+    # Install fake hook manager BEFORE resource creation so the closure captures it
+    fake_hook_mgr = _FakeHookManager()
+    translator._context._hook_manager = fake_hook_mgr
+    translator._hook_manager = fake_hook_mgr  # also update translator cache used in closure
+    resource = translator.to_dagster(pipeline_name="__default__", filter_params={})
+
+    # Call the hook and ensure the underlying kedro hook was triggered
+    resource.after_catalog_created_hook()
+
+    # Verify the hook was called at least twice:
+    # - Once by Kedro internally when accessing catalog (context=None)
+    # - Once by our explicit call with full parameters (context is set)
+    assert len(fake_hook_mgr.hook.after_catalog_created_called_with) >= 2
+
+    # Find the call made by our method (it will have context set)
+    hook_call = None
+    for call in fake_hook_mgr.hook.after_catalog_created_called_with:
+        if call["context"] is not None:
+            hook_call = call
+            break
+
+    assert hook_call is not None, "Expected to find a hook call with context set"
+
+    # Verify all required parameters were passed
+    assert hook_call["context"] == translator._context
+    # Catalog might be a different instance, but verify it's a catalog object
+    assert hasattr(hook_call["catalog"], "_datasets")
+    assert hook_call["parameters"] == translator._context._get_parameters()
+    assert isinstance(hook_call["conf_catalog"], dict)
+    assert isinstance(hook_call["conf_creds"], dict)
+
+    # Verify save_version matches run_id or session_id based on Kedro version
+    if KEDRO_VERSION[0] >= 1:
+        assert hook_call["save_version"] == "sid-456"
+    else:
+        assert hook_call["save_version"] == "sid-456"
+
+    assert hook_call["load_versions"] is None
 
 
 def test_translate_on_pipeline_error_hook_returns_sensor(

@@ -30,6 +30,7 @@ class RecordingHooks:
     after_node_run_calls: list[str] = field(default_factory=list)
     before_pipeline_run_calls: int = 0
     after_pipeline_run_calls: int = 0
+    after_catalog_created_calls: int = 0
 
     @hook_impl
     def before_dataset_loaded(self, dataset_name, node):
@@ -62,6 +63,19 @@ class RecordingHooks:
     @hook_impl
     def after_pipeline_run(self, run_params, pipeline, catalog):
         self.after_pipeline_run_calls += 1
+
+    @hook_impl
+    def after_catalog_created(
+        self,
+        catalog,
+        conf_catalog,
+        conf_creds,
+        parameters,
+        save_version=None,
+        load_versions=None,
+        context=None,
+    ):
+        self.after_catalog_created_calls += 1
 
 
 @pytest.mark.parametrize("env", ["base", "local"])
@@ -128,6 +142,9 @@ def test_hooks_are_invoked_end_to_end(env, request):
     # Act: execute the job in process to trigger hooks
     result = jobs["default"].execute_in_process()
     assert result.success
+
+    # Assert: Catalog creation hook called (at least once - Kedro calls it internally, plus our explicit call)
+    assert hooks.after_catalog_created_calls >= 1
 
     # Assert: Pipeline hooks called once each
     assert hooks.before_pipeline_run_calls == 1
