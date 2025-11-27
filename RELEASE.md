@@ -2,13 +2,31 @@
 
 ## Major features and improvements
 
+- Add comprehensive logging throughout the translation process with `LOGGER.info()` for major steps and `LOGGER.debug()` for detailed progress tracking by @gtauzin.
+- Add FAQ documentation page with common questions, troubleshooting guides, and production deployment considerations by @gtauzin.
+- Expand technical documentation with detailed `DagsterPartitionedDataset` usage examples and migration guides by @gtauzin.
+- Restrict `DagsterPartitionedDataset` to only support `StaticPartitionsDefinition`, `StaticPartitionMapping`, and `IdentityPartitionMapping` with clear validation errors for unsupported partition types by @gtauzin.
+
 ## Bug fixes and other changes
+
+- Fix missing `after_catalog_created` hook invocation in Dagster job execution by @gtauzin.
+- Pass catalog directly to translators instead of accessing via context to avoid potential stale catalog references by @gtauzin.
+- Improve error messages throughout the codebase with better context and available options by @gtauzin.
+- Add detailed property docstrings to `KedroRunResource` for better API documentation by @gtauzin.
 
 ## Breaking changes to the API
 
+- `KedroRunTranslator` now requires `catalog` as an explicit parameter instead of accessing it from `context.catalog` by @gtauzin.
+- `PipelineTranslator` now requires `catalog` as an explicit parameter instead of accessing it from `context.catalog` by @gtauzin.
+- `DagsterPartitionedDataset` now raises `NotImplementedError` at instantiation for unsupported partition types (`TimeWindowPartitionsDefinition`, `MultiPartitionsDefinition`, `DynamicPartitionsDefinition`) instead of at runtime by @gtauzin.
+- `DagsterPartitionedDataset` now raises `NotImplementedError` at instantiation for unsupported partition mappings (anything other than `StaticPartitionMapping` and `IdentityPartitionMapping`) by @gtauzin.
+
 ## Thanks for supporting contributions
 
+- @gtauzin
+
 We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
+
 
 # Release 0.4.0
 
