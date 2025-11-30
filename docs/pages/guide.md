@@ -246,7 +246,9 @@ Kedro-Dagster provides two custom datasets to enable Dagster partitioning:
 - **`DagsterPartitionedDataset`**: A Kedro dataset that is partitioned according to Dagster's partitioning definition and enforces partition mappings to downstream assets.
 - **`DagsterNothingDataset`**: A special Kedro dataset that represents a "no-op" or empty dataset in Dagster. This can be useful for cases where an order in execution between two nodes needs to be enforced. It can also be used to forced dependency between nodes outside of the Dagster partitions context.
 
-Fan-out occurs at the Kedro node level during translation. If a node depends on or produces a `DagsterPartitionedDataset` dataset, the translator creates per-partition Dagster ops for that node. Note that the corresponding assets are simply equipped with their corresponding partition definitions and mappings, therefore one may use Dagtser UI to perform backfills, materialize specific partitions, and observe partition-aware asset lineage.
+Fan-out occurs at the Kedro node level during translation. If a node depends on or produces a `DagsterPartitionedDataset` dataset, the translator creates per-partition Dagster ops for that node. Ops created this way will be executed in parallel for each partition key defined in the `DagsterPartitionedDataset`. Downstream nodes depending on the partitioned dataset will also be fanned-out accordingly, respecting any defined partition mappings. When ops are fanned-out, their name is suffixed with the partition key to ensure uniqueness.
+
+The corresponding assets are equipped with their corresponding partition definitions and mappings, therefore one may use Dagtser UI to perform backfills, materialize specific partitions, and observe partition-aware asset lineage.
 
 !!! note
     Kedro-Dagster's fan-out mechanism is static and occurs at translation time. Therefore, dynamic partitioning based on runtime information is not supported.
