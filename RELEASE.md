@@ -3,6 +3,7 @@
 ## Major features and improvements
 
 ## Bug fixes and other changes
+- Enhanced explanation of Dagster partitions integration goals and architecture in the user guide by @gtauzin.
 
 ## Breaking changes to the API
 
