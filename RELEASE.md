@@ -9,6 +9,8 @@
 
 ## Thanks for supporting contributions
 
+- @gtauzin
+
 We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
 
 # Release 0.5.0
