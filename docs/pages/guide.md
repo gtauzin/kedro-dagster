@@ -229,19 +229,36 @@ When a Kedro node executes within a Dagster context and the active MLflow run tr
 
 Those details appear in the Dagster run logs, run tags, and asset materialization metadata, allowing users to quickly navigate between Dagster runs and their corresponding MLflow experiments.
 
-## Kedro datasets for Dagster partitioning
+## Integrating Dagster partitions
 
 !!! warning "Experimental Status"
-    Dagster partitions support in Kedro-Dagster is **experimental** and currently supports only a limited subset of Dagster's partition types. The plugin validates partition definitions and mappings at dataset instantiation and will raise clear errors for unsupported types.
+    Dagster partitions support in Kedro-Dagster is **experimental** and currently supports only a limited subset of Dagster's partition types.
 
-Kedro-Dagster provides two custom datasets to enable Dagster partitioning and asset management within Kedro projects:
+Kedro-Dagster’s integration of [Dagster partitions](https://docs.dagster.io/guides/build/partitions-and-backfills) has the following goals:
 
-- **`DagsterPartitionedDataset`**: A Kedro dataset that is partitioned according to Dagster's partitioning scheme. This allows for more efficient data processing and management within Kedro pipelines.
-- **`DagsterNothingDataset`**: A special Kedro dataset that represents a "no-op" or empty dataset in Dagster. This can be useful for cases where an order in execution between two nodes needs to be enforced. It can also be used to forced dependency between nodes outised of the Dagster partitions context.
+- Represent partitioned datasets as Dagster assets equipped with a Dagster partition definitions and potentially partition mappings of downstream assets
+- Enable job-level fan-out of Kedro nodes when partitioned datasets are involved so that partitioned runs can be executed in parallel per partition key
+
+This asset-job duality allows users to leverage Dagster's parallel partition processing as well as asset-based backfilling and partition-aware lineage.
+
+Kedro-Dagster provides two custom datasets to enable Dagster partitioning:
+
+- **`DagsterPartitionedDataset`**: A Kedro dataset that is partitioned according to Dagster's partitioning definition and enforces partition mappings to downstream assets.
+- **`DagsterNothingDataset`**: A special Kedro dataset that represents a "no-op" or empty dataset in Dagster. This can be useful for cases where an order in execution between two nodes needs to be enforced. It can also be used to forced dependency between nodes outside of the Dagster partitions context.
+
+Fan-out occurs at the Kedro node level during translation. If a node depends on or produces a `DagsterPartitionedDataset` dataset, the translator creates per-partition Dagster ops for that node. Ops created this way will be executed in parallel for each partition key defined in the `DagsterPartitionedDataset`. Downstream nodes depending on the partitioned dataset will also be fanned-out accordingly, respecting any defined partition mappings. When ops are fanned-out, their name is suffixed with the partition key to ensure uniqueness.
+
+The corresponding assets are equipped with their corresponding partition definitions and mappings, therefore one may use Dagster UI to perform backfills, materialize specific partitions, and observe partition-aware asset lineage.
+
+!!! note "Fanning-out is static at translation time"
+    Kedro-Dagster's fan-out mechanism is static and occurs at translation time. Therefore, dynamic partitioning based on runtime information is not supported.
 
 ### `DagsterPartitionedDataset`
 
-This dataset wraps Kedro’s `PartitionedDataset` to enable Dagster partitioning and optional partition mappings to downstream datasets. When a job includes a `DagsterPartitionedDataset`, Dagster will schedule and materialize per-partition runs; you can select keys in the Launchpad or use backfills for ranges.
+This dataset wraps Kedro’s `PartitionedDataset` to enable Dagster partitioning and optional partition mappings to downstream datasets. When a job includes a `DagsterPartitionedDataset`, Dagster will schedule and materialize per-partition runs; you can select partition keys in the Dagster UI launchpad or use backfills for ranges.
+
+!!! danger "No hooks triggered on asset jobs"
+    If you decide to run backfills or materialize specific partitions from the Dagster UI, be aware that no Kedro hooks will be triggered in those runs. In particular, this means that any Kedro-MLflow integration relying on hooks will not function in those cases.
 
 #### Example Usage
 
@@ -360,7 +377,7 @@ my_nothing_dataset:
 ```
 
 See the API reference for [`DagsterNothingDataset`](reference.md#dagsternothingdataset) for more details.
-git
+
 ### Future roadmap
 
 Support for additional partition types may be added in future releases. Track progress and request features at:
