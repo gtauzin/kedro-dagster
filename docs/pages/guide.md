@@ -250,14 +250,14 @@ Fan-out occurs at the Kedro node level during translation. If a node depends on 
 
 The corresponding assets are equipped with their corresponding partition definitions and mappings, therefore one may use Dagster UI to perform backfills, materialize specific partitions, and observe partition-aware asset lineage.
 
-!!! note
+!!! note "Fanning-out is static at translation time"
     Kedro-Dagster's fan-out mechanism is static and occurs at translation time. Therefore, dynamic partitioning based on runtime information is not supported.
 
 ### `DagsterPartitionedDataset`
 
 This dataset wraps Kedro’s `PartitionedDataset` to enable Dagster partitioning and optional partition mappings to downstream datasets. When a job includes a `DagsterPartitionedDataset`, Dagster will schedule and materialize per-partition runs; you can select partition keys in the Dagster UI launchpad or use backfills for ranges.
 
-!!! danger
+!!! danger "No hooks triggered on asset jobs"
     If you decide to run backfills or materialize specific partitions from the Dagster UI, be aware that no Kedro hooks will be triggered in those runs. In particular, this means that any Kedro-MLflow integration relying on hooks will not function in those cases.
 
 #### Example Usage
