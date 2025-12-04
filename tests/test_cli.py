@@ -530,7 +530,7 @@ def test_cli_dev_old_branch_from_subdir(monkeypatch, mocker, kedro_project_no_da
         importlib.reload(cli_mod)
 
 
-@pytest.mark.skipif(utils.DAGSTER_VERSION < (1, 10, 6), reason="dg commands require dagster>=1.10.6")
+@pytest.mark.skipif(utils.DAGSTER_VERSION < (1, 11, 0), reason="dg list defs commands require dagster>=1.11.0")
 def test_list_defs_mocked_proxies_to_dg_list_defs(kedro_project_spaceflights_quickstart_base, monkeypatch, mocker):
     """Verify list defs command proxies to dg list defs with correct arguments."""
     project_path = kedro_project_spaceflights_quickstart_base.project_path
@@ -554,7 +554,7 @@ def test_list_defs_mocked_proxies_to_dg_list_defs(kedro_project_spaceflights_qui
     assert kwargs["env"]["KEDRO_ENV"] == kedro_project_spaceflights_quickstart_base.env
 
 
-@pytest.mark.skipif(utils.DAGSTER_VERSION < (1, 10, 6), reason="dg commands require dagster>=1.10.6")
+@pytest.mark.skipif(utils.DAGSTER_VERSION < (1, 11, 0), reason="dg list defs commands require dagster>=1.11.0")
 def test_list_defs_real_subprocess_returns_definitions(kedro_project_exec_filebacked_base, monkeypatch):
     """Integration test: verify list defs returns expected definitions from a scenario.
 
@@ -598,7 +598,7 @@ def test_list_defs_real_subprocess_returns_definitions(kedro_project_exec_fileba
     assert len(asset_keys) >= 1, f"Expected at least 1 asset in {asset_keys}"
 
 
-@pytest.mark.skipif(utils.DAGSTER_VERSION < (1, 10, 6), reason="dg commands require dagster>=1.10.6")
+@pytest.mark.skipif(utils.DAGSTER_VERSION < (1, 11, 0), reason="dg list defs commands require dagster>=1.11.0")
 def test_list_defs_real_subprocess_with_local_env(kedro_project_exec_filebacked_local, monkeypatch):
     """Integration test: verify list defs works with 'local' environment."""
     project_path = kedro_project_exec_filebacked_local.project_path
