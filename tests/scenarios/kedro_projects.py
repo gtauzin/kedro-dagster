@@ -524,3 +524,190 @@ def options_group_name_metadata(env: str) -> KedroProjectOptions:
     return KedroProjectOptions(
         env=env, catalog=catalog, dagster=dagster, pipeline_registry_py=pipeline_registry_group_name_metadata()
     )
+
+
+def pipeline_registry_spaceflights() -> str:
+    """Pipeline registry mimicking spaceflights-pandas starter structure."""
+    return '''
+from kedro.pipeline import Pipeline, node
+
+
+def preprocess_companies(companies):
+    """Preprocess companies data."""
+    return companies
+
+
+def preprocess_shuttles(shuttles):
+    """Preprocess shuttles data."""
+    return shuttles
+
+
+def create_model_input_table(preprocessed_companies, preprocessed_shuttles, reviews):
+    """Combine preprocessed data into model input table."""
+    return {"companies": preprocessed_companies, "shuttles": preprocessed_shuttles}
+
+
+def split_data(model_input_table, parameters):
+    """Split data into training and test sets."""
+    return model_input_table, model_input_table, [0], [1]
+
+
+def train_model(X_train, y_train):
+    """Train a regression model."""
+    return {"model": "trained"}
+
+
+def evaluate_model(regressor, X_test, y_test):
+    """Evaluate the trained model."""
+    return None
+
+
+def register_pipelines():
+    # Data processing pipeline
+    data_processing = Pipeline(
+        [
+            node(
+                preprocess_companies,
+                inputs="companies",
+                outputs="preprocessed_companies",
+                name="preprocess_companies_node",
+            ),
+            node(
+                preprocess_shuttles,
+                inputs="shuttles",
+                outputs="preprocessed_shuttles",
+                name="preprocess_shuttles_node",
+            ),
+            node(
+                create_model_input_table,
+                inputs=["preprocessed_companies", "preprocessed_shuttles", "reviews"],
+                outputs="model_input_table",
+                name="create_model_input_table_node",
+            ),
+        ],
+        tags="data_processing",
+    )
+
+    # Data science pipeline
+    data_science = Pipeline(
+        [
+            node(
+                split_data,
+                inputs=["model_input_table", "params:model_options"],
+                outputs=["X_train", "X_test", "y_train", "y_test"],
+                name="split_data_node",
+            ),
+            node(
+                train_model,
+                inputs=["X_train", "y_train"],
+                outputs="regressor",
+                name="train_model_node",
+            ),
+            node(
+                evaluate_model,
+                inputs=["regressor", "X_test", "y_test"],
+                outputs=None,
+                name="evaluate_model_node",
+            ),
+        ],
+        tags="data_science",
+    )
+
+    return {
+        "__default__": data_processing + data_science,
+        "data_processing": data_processing,
+        "data_science": data_science,
+    }
+'''
+
+
+def options_spaceflights_quickstart(env: str) -> KedroProjectOptions:
+    """Scenario mimicking docs/pages/getting-started.md spaceflights quickstart.
+
+    Creates a project structure with:
+    - data_processing pipeline (preprocess_companies, preprocess_shuttles, create_model_input_table)
+    - data_science pipeline (split_data, train_model, evaluate_model)
+    - dagster.yml with jobs: default, parallel_data_processing
+    - Schedules, executors, and loggers as documented
+
+    Note: The data_science pipeline job is omitted since it has a cross-pipeline
+    dependency on model_input_table (produced by data_processing). The parallel_data_processing
+    job demonstrates the node_names filtering feature from the docs.
+    """
+    catalog = {
+        # Raw data inputs
+        "companies": {"type": "MemoryDataset"},
+        "shuttles": {"type": "MemoryDataset"},
+        "reviews": {"type": "MemoryDataset"},
+        # Intermediate data
+        "preprocessed_companies": {"type": "MemoryDataset"},
+        "preprocessed_shuttles": {"type": "MemoryDataset"},
+        "model_input_table": {"type": "MemoryDataset"},
+        # Data science outputs
+        "X_train": {"type": "MemoryDataset"},
+        "X_test": {"type": "MemoryDataset"},
+        "y_train": {"type": "MemoryDataset"},
+        "y_test": {"type": "MemoryDataset"},
+        "regressor": {"type": "MemoryDataset"},
+    }
+
+    # Configuration matching docs/pages/getting-started.md example
+    # (without data_science job which has cross-pipeline dependency)
+    dagster = {
+        "loggers": {
+            "console_logger": {
+                "log_level": "INFO",
+                "formatters": {
+                    "simple": {
+                        "format": "[%(asctime)s] %(levelname)s - %(message)s",
+                    },
+                },
+                "handlers": [
+                    {
+                        "class": "logging.StreamHandler",
+                        "stream": "ext://sys.stdout",
+                        "formatter": "simple",
+                    },
+                ],
+            },
+        },
+        "schedules": {
+            "daily": {
+                "cron_schedule": "0 0 * * *",
+            },
+        },
+        "executors": {
+            "sequential": {"in_process": {}},
+            "multiprocess": {"multiprocess": {"max_concurrent": 2}},
+        },
+        "jobs": {
+            "default": {
+                "pipeline": {"pipeline_name": "__default__"},
+                "executor": "sequential",
+            },
+            "parallel_data_processing": {
+                "pipeline": {
+                    "pipeline_name": "data_processing",
+                    "node_names": ["preprocess_companies_node", "preprocess_shuttles_node"],
+                },
+                "loggers": ["console_logger"],
+                "schedule": "daily",
+                "executor": "multiprocess",
+            },
+        },
+    }
+
+    parameters = {
+        "model_options": {
+            "test_size": 0.2,
+            "random_state": 42,
+        },
+    }
+
+    return KedroProjectOptions(
+        env=env,
+        catalog=catalog,
+        dagster=dagster,
+        parameters=parameters,
+        pipeline_registry_py=pipeline_registry_spaceflights(),
+    )
