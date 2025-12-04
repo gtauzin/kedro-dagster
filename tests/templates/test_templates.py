@@ -45,10 +45,10 @@ def test_dg_toml_template_placeholders_and_renders(tmp_path):
     text = _read_text_from_package("templates/dg.toml")
 
     # Contains expected placeholders
-    assert "root_module = {{ project_name }}" in text
+    assert 'root_module = "{{ project_name }}"' in text
     assert 'code_location_target_module = "{{ project_name }}.definitions"' in text
     assert 'code_location_name = "{{ package_name }}"' in text
-    assert 'defs_module = "kedro_dagster_example"' in text
+    assert 'defs_module = "{{ project_name }}"' in text
 
     # Render using utils to ensure Jinja processing is valid
     pkg_root = files("kedro_dagster")
