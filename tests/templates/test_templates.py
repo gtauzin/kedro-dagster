@@ -45,10 +45,10 @@ def test_dg_toml_template_placeholders_and_renders(tmp_path):
     text = _read_text_from_package("templates/dg.toml")
 
     # Contains expected placeholders
-    assert "root_module = {{ project_name }}" in text
+    assert 'root_module = "{{ project_name }}"' in text
     assert 'code_location_target_module = "{{ project_name }}.definitions"' in text
     assert 'code_location_name = "{{ package_name }}"' in text
-    assert 'defs_module = "kedro_dagster_example"' in text
+    assert 'defs_module = "{{ project_name }}"' in text
 
     # Render using utils to ensure Jinja processing is valid
     pkg_root = files("kedro_dagster")
@@ -56,11 +56,11 @@ def test_dg_toml_template_placeholders_and_renders(tmp_path):
     rendered = render_jinja_template(str(template_path), project_name="my_pkg", package_name="My Project")
 
     # Check replacements happened
-    assert "root_module = my_pkg" in rendered
+    assert 'root_module = "my_pkg"' in rendered
     assert 'code_location_target_module = "my_pkg.definitions"' in rendered
     assert 'code_location_name = "My Project"' in rendered
     # Ensure defs_module remains the constant used by the integration
-    assert 'defs_module = "kedro_dagster_example"' in rendered
+    assert 'defs_module = "my_pkg"' in rendered
 
 
 def test_dagster_yml_template_contains_file_logger_configuration():

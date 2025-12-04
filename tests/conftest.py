@@ -25,6 +25,7 @@ from .scenarios.kedro_projects import (
     options_partitioned_identity_mapping,
     options_partitioned_intermediate_output2,
     options_partitioned_static_mapping,
+    options_spaceflights_quickstart,
 )
 from .scenarios.project_factory import KedroProjectOptions, build_kedro_project_scenario
 
@@ -359,4 +360,18 @@ def kedro_project_group_name_metadata_base(project_scenario_factory) -> KedroPro
 def kedro_project_group_name_metadata_local(project_scenario_factory) -> KedroProjectOptions:
     return project_scenario_factory(
         options_group_name_metadata(env="local"), project_name="kedro-project-group-name-metadata-local"
+    )
+
+
+@fixture(scope="function")
+def kedro_project_spaceflights_quickstart_base(project_scenario_factory) -> KedroProjectOptions:
+    return project_scenario_factory(
+        options_spaceflights_quickstart(env="base"), project_name="kedro-project-spaceflights-quickstart-base"
+    )
+
+
+@fixture(scope="function")
+def kedro_project_spaceflights_quickstart_local(project_scenario_factory) -> KedroProjectOptions:
+    return project_scenario_factory(
+        options_spaceflights_quickstart(env="local"), project_name="kedro-project-spaceflights-quickstart-local"
     )

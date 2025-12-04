@@ -1,5 +1,8 @@
 import importlib
+import json
+import os
 import re
+import subprocess
 import sys
 
 import click
@@ -525,3 +528,117 @@ def test_cli_dev_old_branch_from_subdir(monkeypatch, mocker, kedro_project_no_da
         sys.modules.pop("kedro_dagster.cli", None)
         cli_mod = importlib.import_module("kedro_dagster.cli")
         importlib.reload(cli_mod)
+
+
+@pytest.mark.skipif(utils.DAGSTER_VERSION < (1, 11, 0), reason="dg list defs commands require dagster>=1.11.0")
+def test_list_defs_mocked_proxies_to_dg_list_defs(kedro_project_spaceflights_quickstart_base, monkeypatch, mocker):
+    """Verify list defs command proxies to dg list defs with correct arguments."""
+    project_path = kedro_project_spaceflights_quickstart_base.project_path
+    monkeypatch.chdir(project_path)
+    runner = CliRunner()
+    # Initialize project first
+    init_result = runner.invoke(cli_init, ["-e", kedro_project_spaceflights_quickstart_base.env])
+    assert init_result.exit_code == 0
+
+    sp_call = mocker.patch("kedro_dagster.cli.subprocess.call")
+    result = runner.invoke(
+        cli_dagster,
+        ["list", "defs", "-e", kedro_project_spaceflights_quickstart_base.env],
+    )
+
+    assert result.exit_code == 0
+    called_args = sp_call.call_args[0][0]
+    assert called_args[:3] == ["dg", "list", "defs"]
+    kwargs = sp_call.call_args[1]
+    assert kwargs["cwd"] == str(project_path)
+    assert kwargs["env"]["KEDRO_ENV"] == kedro_project_spaceflights_quickstart_base.env
+
+
+@pytest.mark.skipif(utils.DAGSTER_VERSION < (1, 11, 0), reason="dg list defs commands require dagster>=1.11.0")
+@pytest.mark.skipif(
+    utils.KEDRO_VERSION < (1, 0, 0) and utils.is_mlflow_enabled(),
+    reason="MLflow emits warnings that break dg list defs",
+)
+def test_list_defs_real_subprocess_returns_definitions(kedro_project_exec_filebacked_base, monkeypatch):
+    """Integration test: verify list defs returns expected definitions from a scenario.
+
+    This test runs the actual dg list defs command and verifies the output contains
+    expected jobs and assets.
+    """
+    project_path = kedro_project_exec_filebacked_base.project_path
+    monkeypatch.chdir(project_path)
+    runner = CliRunner()
+    # Initialize project first
+    init_result = runner.invoke(cli_init, ["-e", kedro_project_exec_filebacked_base.env])
+    assert init_result.exit_code == 0
+    env = kedro_project_exec_filebacked_base.env
+
+    # Run dg list defs with JSON output for easier parsing
+    result = subprocess.run(
+        ["dg", "list", "defs", "--json"],
+        cwd=str(project_path),
+        capture_output=True,
+        text=True,
+        env={**os.environ, "KEDRO_ENV": env},
+        check=False,
+    )
+
+    # Command should succeed
+    assert result.returncode == 0, f"dg list defs failed: {result.stderr}"
+
+    output = json.loads(result.stdout)
+
+    # Output format is a dict with keys: assets, jobs, resources, schedules, sensors
+    assert isinstance(output, dict), f"Expected dict output, got {type(output)}"
+
+    # Verify at least one job is present
+    jobs = output.get("jobs", [])
+    job_names = [job["name"] for job in jobs]
+    assert len(job_names) >= 1, f"Expected at least 1 job in {job_names}"
+
+    # Verify at least one asset is present
+    assets = output.get("assets", [])
+    asset_keys = [asset["key"] for asset in assets]
+    assert len(asset_keys) >= 1, f"Expected at least 1 asset in {asset_keys}"
+
+
+@pytest.mark.skipif(utils.DAGSTER_VERSION < (1, 11, 0), reason="dg list defs commands require dagster>=1.11.0")
+@pytest.mark.skipif(
+    utils.KEDRO_VERSION < (1, 0, 0) and utils.is_mlflow_enabled(),
+    reason="MLflow emits warnings that break dg list defs",
+)
+def test_list_defs_real_subprocess_with_local_env(kedro_project_exec_filebacked_local, monkeypatch):
+    """Integration test: verify list defs works with 'local' environment."""
+    project_path = kedro_project_exec_filebacked_local.project_path
+    monkeypatch.chdir(project_path)
+    runner = CliRunner()
+    # Initialize project first
+    init_result = runner.invoke(cli_init, ["-e", kedro_project_exec_filebacked_local.env])
+    assert init_result.exit_code == 0
+    env = kedro_project_exec_filebacked_local.env
+
+    result = subprocess.run(
+        ["dg", "list", "defs", "--json"],
+        cwd=str(project_path),
+        capture_output=True,
+        text=True,
+        env={**os.environ, "KEDRO_ENV": env},
+        check=False,
+    )
+
+    assert result.returncode == 0, f"dg list defs failed: {result.stderr}"
+
+    output = json.loads(result.stdout)
+
+    # Output format is a dict with keys: assets, jobs, resources, schedules, sensors
+    assert isinstance(output, dict), f"Expected dict output, got {type(output)}"
+
+    # Should have jobs
+    jobs = output.get("jobs", [])
+    job_names = [job["name"] for job in jobs]
+    assert len(job_names) >= 1, f"Expected at least 1 job, got {job_names}"
+
+    # Should have assets
+    assets = output.get("assets", [])
+    asset_keys = [asset["key"] for asset in assets]
+    assert len(asset_keys) >= 1, f"Expected at least 1 asset, got {asset_keys}"
