@@ -3,6 +3,14 @@
 ## Major features and improvements
 
 ## Bug fixes and other changes
+
+## Breaking changes to the API
+
+## Thanks for supporting contributions
+
+# Release 0.5.1
+
+## Bug fixes and other changes
 - Fix `dg.toml` template as it was not working out-of-the-box for new projects by @gtauzin.
 - Enhanced explanation of Dagster partitions integration goals and architecture in the user guide by @gtauzin.
 
