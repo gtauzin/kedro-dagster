@@ -3,10 +3,13 @@
 ## Major features and improvements
 
 ## Bug fixes and other changes
+- Fix pin on kedro dependency to support all kedro 1.x versions by @gtauzin.
 
 ## Breaking changes to the API
 
 ## Thanks for supporting contributions
+
+- @gtauzin
 
 # Release 0.5.1
 

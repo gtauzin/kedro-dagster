@@ -22,7 +22,7 @@ nox.options.sessions = ["fix", "tests_coverage", "serve_docs"]
 # --------------------------------------------------------------------------------------
 KEDRO_SPECS = [
     "kedro>=0.19,<1.0",
-    "kedro>=1.0,<1.1",
+    "kedro>=1.0,<2.0",
 ]
 
 # Keep dagster and dagster-webserver on the same minor line where possible

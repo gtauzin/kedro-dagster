@@ -33,7 +33,7 @@ urls."Changelog" = "https://github.com/gtauzin/kedro-dagster/releases"
 urls.Documentation = "https://github.com/gtauzin/kedro-dagster/"
 urls."Source Code" = "https://github.com/gtauzin/kedro-dagster"
 dependencies = [
-    "kedro>=0.19,<1.1",
+    "kedro>=0.19,<2.0",
     "kedro-datasets",
     "dagster>=1.10,<2.0",
     "dagster-webserver",
