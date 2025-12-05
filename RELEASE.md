@@ -3,6 +3,18 @@
 ## Major features and improvements
 
 ## Bug fixes and other changes
+
+## Breaking changes to the API
+
+## Thanks for supporting contributions
+
+We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
+
+# Release 0.5.2
+
+## Major features and improvements
+
+## Bug fixes and other changes
 - Fix pin on kedro dependency to support all kedro 1.x versions by @gtauzin.
 
 ## Breaking changes to the API
@@ -10,6 +22,8 @@
 ## Thanks for supporting contributions
 
 - @gtauzin
+
+We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
 
 # Release 0.5.1
 
