@@ -113,8 +113,4 @@ plugins:
               returns_named_value: false
           paths: [src]
 
-extra:
-  version:
-    provider: mike
-
 copyright: Copyright &copy; 2024 - 2025 Guillaume Tauzin

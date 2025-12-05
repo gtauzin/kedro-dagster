@@ -297,7 +297,7 @@ You're likely using an unsupported partition type:
 
 **Solution**: Use `StaticPartitionsDefinition` with explicit partition keys, or use Dagster schedules for time-based execution.
 
-See [Partitions documentation](guide.md#kedro-datasets-for-dagster-partitioning) for examples.
+See [Partitions documentation](guide.md#integrating-dagster-partitions) for examples.
 
 ---
 
