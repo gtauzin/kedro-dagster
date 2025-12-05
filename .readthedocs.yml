@@ -4,11 +4,8 @@ version: 2
 build:
   os: ubuntu-24.04
   tools:
-    python: "3.12"
+    python: "3.13"
   jobs:
-    post_checkout:
-      # Unshallow the clone for git-revision-date-localized plugin
-      - git fetch --unshallow || true
     pre_create_environment:
       # Install uv via asdf (or system package) before creating the venv
       - asdf plugin add uv || true
@@ -18,7 +15,7 @@ build:
       # Create the virtual environment using uv
       - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
-      # Sync doc-dependencies (the group "docs"), then install the project itself
+      # Sync doc-dependencies (the group “docs”), then install the project itself
       - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --group docs
 mkdocs:
   configuration: mkdocs.yml
