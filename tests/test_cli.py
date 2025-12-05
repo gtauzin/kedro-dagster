@@ -43,7 +43,7 @@ def test_dagster_commands_discovered(monkeypatch, kedro_project_no_dagster_confi
     project_path = options.project_path
     monkeypatch.chdir(project_path)
     runner = CliRunner()
-    result = runner.invoke(cli_dagster)
+    result = runner.invoke(cli_dagster, ["--help"])
 
     assert result.exit_code == 0
     cmds = set(_extract_cmd_from_help(result.output))
