@@ -60,7 +60,7 @@ docs = [
   "mkdocstrings==1.0",
   "mkdocstrings-python==2.0.1",
   "mkdocs-glightbox==0.5.2",
-  "pymdown-extensions==10.17",
+  "pymdown-extensions==10.18",
   "black==25.11",
 ]
 fix = [
