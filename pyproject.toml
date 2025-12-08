@@ -58,7 +58,7 @@ docs = [
   "mkdocs-material==9.7",
   "mkdocs-git-revision-date-localized-plugin==1.5",
   "mkdocstrings==1.0",
-  "mkdocstrings-python==2.0",
+  "mkdocstrings-python==2.0.1",
   "mkdocs-glightbox==0.5.2",
   "pymdown-extensions==10.17",
   "black==25.11",
