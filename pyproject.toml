@@ -61,7 +61,7 @@ docs = [
   "mkdocstrings-python==2.0.1",
   "mkdocs-glightbox==0.5.2",
   "pymdown-extensions==10.20",
-  "black==25.12.0",
+  "black==26.1.0",
 ]
 fix = [
   "pre-commit-uv>=4.1",
