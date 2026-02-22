@@ -10,6 +10,21 @@
 
 We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
 
+# Release 0.5.3
+
+## Major features and improvements
+
+## Bug fixes and other changes
+- Fix `DagsterPartitionedDataset` initialisation by ensuring `_partition_cache` is set before calling `super().__init__()` by @gtauzin.
+
+## Breaking changes to the API
+
+## Thanks for supporting contributions
+
+- @gtauzin
+
+We are also grateful to everyone who advised and supported us, filed issues or helped resolve them, asked and answered questions and were part of inspiring discussions.
+
 # Release 0.5.2
 
 ## Major features and improvements
