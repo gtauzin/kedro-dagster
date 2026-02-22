@@ -156,6 +156,10 @@ class DagsterPartitionedDataset(PartitionedDataset):
         save_lazily: bool = True,
         metadata: dict[str, Any] | None = None,
     ):
+        # Must be set before super().__init__() because the parent constructor
+        # calls self._invalidate_caches(), which clears this dict.
+        self._partition_cache: dict[Any, Any] = {}
+
         super().__init__(
             path=path,
             dataset=dataset,
@@ -244,6 +248,11 @@ class DagsterPartitionedDataset(PartitionedDataset):
                 "Kedro-Dagster currently only supports `StaticPartitionMapping` and `IdentityPartitionMapping`."
             )
             raise NotImplementedError(msg)
+
+    def _invalidate_caches(self) -> None:
+        """Invalidate both the parent partition cache and the Dagster partition cache."""
+        super()._invalidate_caches()
+        self._partition_cache.clear()
 
     def _get_partitions_definition(self) -> dg.PartitionsDefinition:
         """Instantiate and return the Dagster partitions definition.
